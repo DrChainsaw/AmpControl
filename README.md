@@ -13,14 +13,17 @@ This is done by continously feeding the contents of an audio buffer (e.g. from a
 In order to be able to integrate the whole thing in a home automation system, the app can be controlled through a messaging protocol, e.g. MQTT.
 
 The current interfaces are currently supported:
+
 Audio input:
-* ASIO (using [Jasiohost] (https://github.com/mhroth/jasiohost))
+* ASIO (using [Jasiohost](https://github.com/mhroth/jasiohost))
+
 Amp control output:
 * MIDI (using javas native implementation)
-App control:
-* MQTT (using [Eclipse Paho Java] (https://github.com/eclipse/paho.mqtt.java))    
 
-Neural nets by [deeplearning4j] (https://github.com/deeplearning4j/deeplearning4j)
+App control:
+* MQTT (using [Eclipse Paho Java](https://github.com/eclipse/paho.mqtt.java))    
+
+Neural nets by [deeplearning4j](https://github.com/deeplearning4j/deeplearning4j)
 
 ### Does it really work?
 
@@ -67,12 +70,12 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-* [deeplearning4j] (https://github.com/deeplearning4j/deeplearning4j) - Neural networks for classifiers
-* [Jcommander] (http://jcommander.org/) - "Because life is too short to parse command line parameters"
-* [Jasiohost] (https://github.com/mhroth/jasiohost) - Audio input from ASIO sound cards
-* [Eclipse Paho Java] (https://github.com/eclipse/paho.mqtt.java) - For remote/automated control of the app
-* [JTransforms] (https://github.com/wendykierp/JTransforms) - FFTs and other transforms
-* [jzy3d] (http://www.jzy3d.org/) - 3D plotting of spectrograms and similar for debugging
-* [xchart] (https://github.com/timmolter/xchart) - Simple realtime plots 
-* [Ganesh Tiwari] (http://ganeshtiwaridotcomdotnp.blogspot.com) - "Borrowed" MFSC implementation
-* [WinThing] (https://github.com/msiedlarek/winthing) - "Borrowed" design of Engine from here
+* [deeplearning4j](https://github.com/deeplearning4j/deeplearning4j) - Neural networks for classifiers
+* [Jcommander](http://jcommander.org/) - "Because life is too short to parse command line parameters"
+* [Jasiohost](https://github.com/mhroth/jasiohost) - Audio input from ASIO sound cards
+* [Eclipse Paho Java](https://github.com/eclipse/paho.mqtt.java) - For remote/automated control of the app
+* [JTransforms](https://github.com/wendykierp/JTransforms) - FFTs and other transforms
+* [jzy3d](http://www.jzy3d.org/) - 3D plotting of spectrograms and similar for debugging
+* [xchart](https://github.com/timmolter/xchart) - Simple realtime plots 
+* [Ganesh Tiwari](http://ganeshtiwaridotcomdotnp.blogspot.com) - "Borrowed" MFSC implementation
+* [WinThing](https://github.com/msiedlarek/winthing) - "Borrowed" design of Engine from here
