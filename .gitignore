@@ -1,0 +1,32 @@
+### /.gitignore-boilerplates/Global/Eclipse.gitignore
+.metadata
+bin/
+
+# Trained models
+models/
+
+# CUDA compiler
+nvcc.exe
+
+# Locally stored "Eclipse launch configurations"
+*.launch
+
+# PDT-specific
+.buildpath
+
+### .gitignore-boilerplates/Java.gitignore
+*.class
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Intellij
+.idea/
+*.iml
+*.iws
+
+# Maven
+log/
+target/
