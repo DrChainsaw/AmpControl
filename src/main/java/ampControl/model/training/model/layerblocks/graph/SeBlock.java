@@ -89,7 +89,7 @@ public class SeBlock implements LayerBlockConfig {
 
     /**
      * Number of nodes in dense layers will be nrofChannels / reduction
-     * @param reduction
+     * @param reduction the reduction
      * @return the {@link SeBlock}
      */
     public SeBlock setReduction(double reduction) {
@@ -100,7 +100,7 @@ public class SeBlock implements LayerBlockConfig {
     /**
      * Sets activation function to use.
      *
-     * @param activation
+     * @param activation the activation function
      * @return the {@link SeBlock}
      */
     public SeBlock setActivation(IActivation activation) {
@@ -110,7 +110,7 @@ public class SeBlock implements LayerBlockConfig {
 
     /**
      * Sets the {@link LayerBlockConfig} to be used as global pool.
-     * @param globPool
+     * @param globPool the {@link LayerBlockConfig} to be used as global pool.
      * @return the {@link SeBlock}
      */
     public SeBlock setGlobPool(LayerBlockConfig globPool) {
