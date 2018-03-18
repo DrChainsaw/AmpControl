@@ -24,7 +24,7 @@ public class Output implements LayerBlockConfig {
         this.nrofLabels = nrofLabels;
     }
 
-    private INDArray weights = Nd4j.create(new double[]{0.5, 0.5, 0.8, 1});
+    private INDArray weights = Nd4j.create(new double[]{1, 1, 1, 1});
 
     @Override
     public String name() {

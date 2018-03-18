@@ -38,7 +38,7 @@ public class SeBlock implements LayerBlockConfig {
         actStr = actStr.isEmpty() ? actStr : "_" + actStr;
         String gpStr = globPoolChanged ? "_" + globPool.name() + "_" : "";
         String reduction = String.valueOf(this.reduction).replace(".", "p");
-        return "se" + gpStr + reduction + actStr;
+        return "se_" + gpStr + reduction + actStr;
     }
 
     @Override

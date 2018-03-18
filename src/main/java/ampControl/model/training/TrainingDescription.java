@@ -46,7 +46,7 @@ public class TrainingDescription {
     private final static int trainingIterations = 10; // 10
     private final static int trainBatchSize = 20;   // 32 64
     private final static int evalBatchSize = 20;
-    private final static double evalSetPercentage = 5;
+    private final static double evalSetPercentage = 3;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -139,9 +139,8 @@ public class TrainingDescription {
         labelToBuilder.put("silence", () -> silence);
         labelToBuilder = Collections.unmodifiableMap(labelToBuilder);
         MultiplyLabelExpander labelExpander = new MultiplyLabelExpander()
-                .addExpansion("noise", 5)
-                .addExpansion("rythm", 20)
-                .addExpansion("lead", 20);
+                .addExpansion("rythm", 2)
+                .addExpansion("lead", 2);
         MultiplyLabelExpander labelExpanderEval = new MultiplyLabelExpander()
                 .addExpansion("noise", 20)
                 .addExpansion("rythm", 100)
@@ -180,11 +179,11 @@ public class TrainingDescription {
 
         String prefix = "ws_" + timeWindowSize + SupplierFactory.prefix() + audioPostProcessingSupplier.get().name() + "_";
 
+        new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-        new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
         // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);

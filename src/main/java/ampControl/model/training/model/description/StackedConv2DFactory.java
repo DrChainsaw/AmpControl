@@ -6,6 +6,8 @@ import ampControl.model.training.model.GenericModelHandle;
 import ampControl.model.training.model.GraphModelAdapter;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
+import ampControl.model.training.model.layerblocks.graph.SeBlock;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.learning.config.Nesterovs;
 
@@ -13,6 +15,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Description of a bunch of architectures which belong to a family of stacked 2D convolutional neural networks.
@@ -36,6 +39,7 @@ public class StackedConv2DFactory {
 
     /**
      * Adds the ModelHandles defined by this class to the given list
+     *
      * @param modelData list to add models to
      */
     public void addModelData(List<ModelHandle> modelData) {
@@ -161,56 +165,107 @@ public class StackedConv2DFactory {
 //            });
 
         // Current best score with lgsc 96.0. Also performs very well in practice
-        IntStream.of(3).forEach(kernelSize -> {
-            DoubleStream.of(0).forEach(dropOutProb -> {
-                BlockBuilder bBuilder = new BlockBuilder()
-                        .setStartingLearningRate(0.005)
-                        .setUpdater(new Nesterovs(0.9))
-                        .setNamePrefix(namePrefix)
-                        //.setTrainWs(WorkspaceMode.SEPARATE)
-                        // .setEvalWs(WorkspaceMode.SEPARATE)
-                        .first(new ConvType(inputShape))
-                        // .andThen(zeroPad4x4)
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(64))
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(64))
-                        .andThen(new Pool2D().setSize(2).setStride(2))
+        final LayerBlockConfig pool = new MinMaxPool().setSize(2).setStride(2);
+//        IntStream.of(3).forEach(kernelSize -> {
+//            DoubleStream.of(0).forEach(dropOutProb -> {
+//                BlockBuilder bBuilder = new BlockBuilder()
+//                        .setStartingLearningRate(0.005)
+//                        .setUpdater(new Nesterovs(0.9))
+//                        .setNamePrefix(namePrefix)
+//                        //.setTrainWs(WorkspaceMode.SEPARATE)
+//                        // .setEvalWs(WorkspaceMode.SEPARATE)
+//                        .first(new ConvType(inputShape))
+//                        // .andThen(zeroPad4x4)
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(64))
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(64))
+//                        .andThen(pool)
+//
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(128))
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(128))
+//                        .andThen(pool)
+//
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(256))
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(256))
+//                        .andThen(pool)
+//
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(512))
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(kernelSize)
+//                                .setNrofKernels(512))
+//                        .andThen(pool)
+//
+//                        //.andThen(new GlobMeanMax())
+//                        .andThenStack(2)
+//                        .aggOf(new Dense()
+//                                .setHiddenWidth(512)
+//                                .setActivation(new ActivationReLU()))
+//                        .andFinally(new DropOut().setDropProb(dropOutProb))
+//                        .andFinally(new Output(trainIter.totalOutcomes()));
+//                modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
+//            });
+//        });
 
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(128))
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(128))
-                        .andThen(new Pool2D().setSize(2).setStride(2))
+        Stream.of(new IdBlock(), new SeBlock()).forEach(afterConvBlock -> {
+            IntStream.of(3).forEach(kernelSize -> {
+                DoubleStream.of(0).forEach(dropOutProb -> {
+                    BlockBuilder bBuilder = new BlockBuilder()
+                            .setStartingLearningRate(0.005)
+                            .setUpdater(new Nesterovs(0.9))
+                            .setNamePrefix(namePrefix)
+                            //.setTrainWs(WorkspaceMode.SEPARATE)
+                            // .setEvalWs(WorkspaceMode.SEPARATE)
+                            .first(new ConvType(inputShape))
+                            .andThenStack(2)
+                            .of(new Conv2DBatchNormAfter()
+                                    .setKernelSize(kernelSize)
+                                    .setNrofKernels(64))
+                            .andThen(afterConvBlock)
+                            .andThen(pool)
 
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(256))
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(256))
-                        .andThen(new Pool2D().setSize(2).setStride(2))
+                            .andThenStack(2)
+                            .of(new Conv2DBatchNormAfter()
+                                    .setKernelSize(kernelSize)
+                                    .setNrofKernels(128))
+                            .andThen(afterConvBlock)
+                            .andThen(pool)
 
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(512))
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(kernelSize)
-                                .setNrofKernels(512))
-                        .andThen(new Pool2D().setSize(2).setStride(2))
+                            .andThenStack(2)
+                            .of(new Conv2DBatchNormAfter()
+                                    .setKernelSize(kernelSize)
+                                    .setNrofKernels(256))
+                            .andThen(afterConvBlock)
+                            .andThen(pool)
 
-                        //.andThen(new GlobMeanMax())
-                        .andThenStack(2)
-                        .aggOf(new Dense()
-                                .setHiddenWidth(512)
-                                .setActivation(new ActivationReLU()))
-                        .andFinally(new DropOut().setDropProb(dropOutProb))
-                        .andFinally(new Output(trainIter.totalOutcomes()));
-                modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
+                            .andThenStack(2)
+                            .of(new Conv2DBatchNormAfter()
+                                    .setKernelSize(kernelSize)
+                                    .setNrofKernels(512))
+                            .andThen(afterConvBlock)
+                            .andThen(pool)
+
+                            //.andThen(new GlobMeanMax())
+                            .andThenStack(2)
+                            .aggOf(new Dense()
+                                    .setHiddenWidth(512)
+                                    .setActivation(new ActivationReLU()))
+                            .andFinally(new DropOut().setDropProb(dropOutProb))
+                            .andFinally(new Output(trainIter.totalOutcomes()));
+                    modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
+                });
             });
         });
 
