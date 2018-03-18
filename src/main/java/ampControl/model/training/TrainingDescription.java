@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 public class TrainingDescription {
 
     private static final Logger log = LoggerFactory.getLogger(TrainingDescription.class);
-    
+
     private final static int clipLengthMs = 1000;
     private final static int clipSamplingRate = 44100;
     private final static Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
@@ -46,7 +46,7 @@ public class TrainingDescription {
     private final static int trainingIterations = 10; // 10
     private final static int trainBatchSize = 20;   // 32 64
     private final static int evalBatchSize = 20;
-    private final static double evalSetPercentage = 8;
+    private final static double evalSetPercentage = 5;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -101,15 +101,15 @@ public class TrainingDescription {
 
         final Supplier<ProcessingResult.Processing> audioPostProcessingSupplier = () -> new Pipe(
                 new Spectrogram(256, 16),
-                // new Fork(
-                //         new Pipe(
-                //                 new Mfsc(44100),
-                //                 new UnitStdZeroMean()),
-                new Pipe(
-                        new Mfsc(clipSamplingRate),
-                        new ZeroMean()
+                new Fork(
+                        new Pipe(
+                                new Log10(),
+                                new ZeroMean()),
+                        new Pipe(
+                                new Mfsc(clipSamplingRate),
+                                new ZeroMean()
+                        )
                 )
-                //        )
         );
 
         //  final Supplier<ProcessingResult.Processing> audioPostProcessingSupplier = () -> new UnitMaxZeroMean();
@@ -182,17 +182,17 @@ public class TrainingDescription {
 
         new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-       // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
         new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-       // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-       // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-       // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-       // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-       // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
     }
 
 }

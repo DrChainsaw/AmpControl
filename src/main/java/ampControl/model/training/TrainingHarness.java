@@ -186,7 +186,7 @@ public class TrainingHarness {
                                 try {
                                     printSynchronized("Eval report for " + fmdh.name());
                                     printSynchronized(eval.stats());
-                                    printSynchronized(eval.confusionToString());
+                                    printSynchronized("\\n" + eval.confusionToString());
 
                                     final String lastEvalLabel = lastEvalName(fmdh.name());
                                     evalPlot.plotData(lastEvalLabel, evalIterNr, accuracy);
