@@ -38,12 +38,10 @@ public class ResNetConv2DFactory {
 
     /**
      * Adds the ModelHandles defined by this class to the given list
+     *
      * @param modelData list to add models to
      */
     public void addModelData(List<ModelHandle> modelData) {
-
-
-
 
 
 //
@@ -73,11 +71,12 @@ public class ResNetConv2DFactory {
 //            modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.name(), bBuilder.getAccuracy()));
 //        });
 //
-            LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
+        LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
+        IntStream.of(0, 2, 10, 50).forEach(resDepth -> {
             DoubleStream.of(0).forEach(dropOutProb -> {
                 BlockBuilder bBuilder = new BlockBuilder()
                         .setNamePrefix(namePrefix)
-                        .setStartingLearningRate(0.005)
+                        .setStartingLearningRate(0.001)
                         .setUpdater(new Nesterovs(0.9))
                         //.setTrainWs(WorkspaceMode.SEPARATE)
                         //.setEvalWs(WorkspaceMode.SEPARATE)
@@ -96,15 +95,19 @@ public class ResNetConv2DFactory {
                         .andThen(zeroPad3x3)
                         .andThen(new Conv2DBatchNormAfter()
                                 .setKernelSize(3)
-                                .setNrofKernels(256))
+                                .setNrofKernels(128))
                         .andThen(new MinMaxPool().setSize(3).setStride(3))
                         .andThen(new SeBlock())
-                        .andThenStack(8)
+                        .andThenStack(resDepth)
                         .res()
                         .aggOf(zeroPad3x3)
                         .andThen(new Conv2DBatchNormAfter()
                                 .setKernelSize(3)
-                                .setNrofKernels(512))
+                                .setNrofKernels(256))
+                        .andThen(zeroPad3x3)
+                        .andThen(new Conv2DBatchNormAfter()
+                                .setKernelSize(3)
+                                .setNrofKernels(256))
                         //.andThen(zeroPad3x3)
                         .andFinally(new SeBlock())
                         //.andFinally(new DropOut().setDropProb(dropOutProb))
@@ -114,6 +117,7 @@ public class ResNetConv2DFactory {
                         .andFinally(new Output(trainIter.totalOutcomes()));
                 modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
             });
+        });
 
     }
 }

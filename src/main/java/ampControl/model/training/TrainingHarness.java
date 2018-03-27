@@ -151,7 +151,7 @@ public class TrainingHarness {
                 long endtime = System.nanoTime();
                 double time = (endtime - starttime) / 1000000d;
                 printSynchronized("Training took " + time + " ms for " + md.getNrofTrainingExamplesPerBatch() + " examples, " + time / (double) md.getNrofTrainingExamplesPerBatch() + " ms per example");
-                if (trainingStep % evalEveryNrofSteps == evalEveryNrofSteps - 39) {
+                if (trainingStep % evalEveryNrofSteps == evalEveryNrofSteps - 1) {
                     if (modelInfoMap.get(md).skipEval > 0) {
                         modelInfoMap.get(md).skipEval--;
                         printSynchronized("Skip eval! " + modelInfoMap.get(md).skipEval);
