@@ -71,8 +71,55 @@ public class ResNetConv2DFactory {
 //            modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.name(), bBuilder.getAccuracy()));
 //        });
 //
-        LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
-        IntStream.of(0, 2, 10, 50).forEach(resDepth -> {
+        final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
+//        IntStream.of(0, 2, 10, 50).forEach(resDepth -> {
+//            DoubleStream.of(0).forEach(dropOutProb -> {
+//                BlockBuilder bBuilder = new BlockBuilder()
+//                        .setNamePrefix(namePrefix)
+//                        .setStartingLearningRate(0.001)
+//                        .setUpdater(new Nesterovs(0.9))
+//                        //.setTrainWs(WorkspaceMode.SEPARATE)
+//                        //.setEvalWs(WorkspaceMode.SEPARATE)
+//                        .first(new ConvType(inputShape))
+//                        .andThen(zeroPad3x3)
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(3)
+//                                .setNrofKernels(64))
+//                        .andThen(new MinMaxPool().setSize(3).setStride(3))
+//                        .andThen(zeroPad3x3)
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(3)
+//                                .setNrofKernels(128))
+//                        .andThen(new MinMaxPool().setSize(3).setStride(3))
+//                        .andThen(new SeBlock())
+//                        .andThen(zeroPad3x3)
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(3)
+//                                .setNrofKernels(128))
+//                        .andThen(new MinMaxPool().setSize(3).setStride(3))
+//                        .andThen(new SeBlock())
+//                        .andThenStack(resDepth)
+//                        .res()
+//                        .aggOf(zeroPad3x3)
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(3)
+//                                .setNrofKernels(256))
+//                        .andThen(zeroPad3x3)
+//                        .andThen(new Conv2DBatchNormAfter()
+//                                .setKernelSize(3)
+//                                .setNrofKernels(256))
+//                        //.andThen(zeroPad3x3)
+//                        .andFinally(new SeBlock())
+//                        //.andFinally(new DropOut().setDropProb(dropOutProb))
+//                        .andThenStack(2)
+//                        .aggOf(new Dense())
+//                        .andFinally(new DropOut().setDropProb(dropOutProb))
+//                        .andFinally(new Output(trainIter.totalOutcomes()));
+//                modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
+//            });
+//        });
+
+        IntStream.of(50,75).forEach(resDepth -> {
             DoubleStream.of(0).forEach(dropOutProb -> {
                 BlockBuilder bBuilder = new BlockBuilder()
                         .setNamePrefix(namePrefix)
@@ -100,13 +147,15 @@ public class ResNetConv2DFactory {
                         .andThen(new SeBlock())
                         .andThenStack(resDepth)
                         .res()
-                        .aggOf(zeroPad3x3)
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(3)
-                                .setNrofKernels(256))
+                        .aggOf(new Conv2DBatchNormAfter()
+                                .setKernelSize(1)
+                                .setNrofKernels(64))
                         .andThen(zeroPad3x3)
                         .andThen(new Conv2DBatchNormAfter()
                                 .setKernelSize(3)
+                                .setNrofKernels(128))
+                        .andThen(new Conv2DBatchNormAfter()
+                                .setKernelSize(1)
                                 .setNrofKernels(256))
                         //.andThen(zeroPad3x3)
                         .andFinally(new SeBlock())

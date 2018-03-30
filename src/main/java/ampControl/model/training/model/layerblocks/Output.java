@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  */
 public class Output implements LayerBlockConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(Conv2DBatchNormBetween.class);
+    private static final Logger log = LoggerFactory.getLogger(Output.class);
 
     private final int nrofLabels;
 
