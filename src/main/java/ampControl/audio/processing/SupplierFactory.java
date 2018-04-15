@@ -28,7 +28,7 @@ public class SupplierFactory {
         String preForkStr = nameStr;
         //  System.out.println("get nameStr: " + nameStr);
         if (nameStr.matches(matchStr(".*" + Fork.matchStrStatic()))) {
-            Supplier<ProcessingResult.Processing> forkSupplier = null;
+            Supplier<ProcessingResult.Processing> forkSupplier;
             String[] forkStrs = Fork.splitFirst(nameStr);
             //   System.out.println("len: " + forkStrs.length);
             preForkStr = forkStrs[0];
@@ -65,20 +65,20 @@ public class SupplierFactory {
         }
 
         if (preForkStr.matches(matchStr(NoProcessing.nameStatic()))) {
-            return () -> new NoProcessing();
+            return NoProcessing::new;
         }
 
         if (preForkStr.matches(matchStr(UnitMaxZeroMin.nameStatic()))) {
-            return () -> new UnitMaxZeroMin();
+            return UnitMaxZeroMin::new;
         }
 
 
         if (preForkStr.matches(matchStr(LogScale.nameStatic()))) {
-            return () -> new LogScale();
+            return LogScale::new;
         }
 
         if (preForkStr.matches(matchStr(UnitStdZeroMean.nameStatic()))) {
-            return () -> new UnitStdZeroMean();
+            return UnitStdZeroMean::new;
         }
 
         if (preForkStr.matches(matchStr(Mfsc.nameStatic()))) {
@@ -86,7 +86,7 @@ public class SupplierFactory {
         }
 
         if (preForkStr.matches(matchStr(Dct.nameStatic()))) {
-            return () -> new Dct();
+            return Dct::new;
         }
 
         if (preForkStr.matches(matchStr(Spectrogram.nameStatic()))) {
@@ -95,14 +95,14 @@ public class SupplierFactory {
         }
 
         if (preForkStr.matches(matchStr(ZeroMean.nameStatic()))) {
-            return () -> new ZeroMean();
+            return ZeroMean::new;
         }
 
         if (preForkStr.matches(matchStr(Log10.nameStatic()))) {
-            return () -> new Log10();
+            return Log10::new;
         }
 
-        return () -> new UnitMaxZeroMean();
+        return UnitMaxZeroMean::new;
     }
 
     @Nullable

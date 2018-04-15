@@ -4,12 +4,14 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 
+import static org.junit.Assert.*;
+
 /**
  * Test cases for {@link ResNetConv2DFactory}
  *
  * @author Christian Skärby
  */
-public class StackedConv2DFactoryTest {
+public class ResNetConv2DFactoryTest {
 
     /**
      * Just a smoke test...
@@ -18,7 +20,7 @@ public class StackedConv2DFactoryTest {
     public void addModelData() {
         new FactoryInitializer()
                 .initialize(
-                        ((tr, ev, is, np, md) -> new StackedConv2DFactory(tr,ev,is,np,md).addModelData(new ArrayList<>()))
+                        ((tr, ev, is, np, md) -> new ResNetConv2DFactory(tr,ev,is,np,md).addModelData(new ArrayList<>()))
                 );
     }
 }
