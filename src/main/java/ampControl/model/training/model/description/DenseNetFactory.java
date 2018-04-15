@@ -198,7 +198,7 @@ public class DenseNetFactory {
 //        });
 
         final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
-        IntStream.of(4, 8, 16, 32).forEach(denseStackSize -> {
+        IntStream.of(4, 8, 16).forEach(denseStackSize -> {
             DoubleStream.of(0).forEach(dropOutProb -> {
                 //Better than prev ~0.96
                 BlockBuilder bBuilder = new BlockBuilder()
