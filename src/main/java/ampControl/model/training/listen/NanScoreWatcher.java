@@ -16,21 +16,8 @@ public class NanScoreWatcher implements IterationListener {
         this.nanCallback = nanCallback;
     }
 
-    private boolean invoked = false;
-
     @Override
-    public boolean invoked() {
-        return invoked;
-    }
-
-    @Override
-    public void invoke() {
-    invoked = true;
-    }
-
-    @Override
-    public void iterationDone(Model model, int iteration) {
-        invoke();
+    public void iterationDone(Model model, int iteration, int epoch) {
         if(!Double.isFinite(model.score())) {
             nanCallback.run();
         }

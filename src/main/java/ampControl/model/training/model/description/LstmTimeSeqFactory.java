@@ -9,6 +9,8 @@ import ampControl.model.training.model.layerblocks.Output;
 import ampControl.model.training.model.layerblocks.RnnType;
 import ampControl.model.training.model.layerblocks.graph.LastStep;
 import org.nd4j.linalg.learning.config.Nesterovs;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -41,8 +43,7 @@ public class LstmTimeSeqFactory {
     public void addModelData(List<ModelHandle> modelData) {
         IntStream.of(1, 2, 4).forEach(nrofLstmLayers -> {
             BlockBuilder bBuilder = new BlockBuilder()
-                    .setStartingLearningRate(0.05)
-                    .setUpdater(new Nesterovs(0.9))
+                    .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.05, 0.1, 40000)))
                     .setNamePrefix(namePrefix)
                     .first(new RnnType(inputShape))//.setTbpttLength(2000)
                     .andThenStack(nrofLstmLayers)

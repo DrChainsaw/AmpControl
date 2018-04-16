@@ -56,7 +56,7 @@ public class ForkAgg implements LayerBlockConfig {
         for(LayerBlockConfig blockConf: forkPaths) {
             blockConf.addLayers(graphBuilder, info);
 
-            Arrays.stream(gpInfo.getInputsNames()).forEach(layerName -> nextInputNameBuilder.accept(layerName));
+            Arrays.stream(gpInfo.getInputsNames()).forEach(nextInputNameBuilder);
         }
         // TODO: Mergevertex of StreamBuilder array
 

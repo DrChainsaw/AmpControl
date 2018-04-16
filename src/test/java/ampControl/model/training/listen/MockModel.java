@@ -99,11 +99,6 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void applyLearningRateScoreDecay() {
-
-    }
-
-    @Override
     public void fit(INDArray data) {
 
     }
@@ -185,6 +180,11 @@ public class MockModel implements Model {
 
     @Override
     public void clear() {
+
+    }
+
+    @Override
+    public void applyConstraints(int iteration, int epoch) {
 
     }
 }

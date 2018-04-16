@@ -44,8 +44,6 @@ public class SoundnetFactory {
         DoubleStream.of(0).forEach(dropOutProb -> {
             BlockBuilder bBuilder = new BlockBuilder()
                     .setNamePrefix(namePrefix)
-                    // .setUpdater(nesterovs)
-                    .setStartingLearningRate(0.001)
                     .first(new ConvTimeType(inputShape))
                     .andThen(new PreprocVertex()
                             .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))

@@ -40,17 +40,7 @@ public class TrainEvaluator implements IterationListener {
     private boolean invoked = false;
 
     @Override
-    public boolean invoked() {
-        return invoked;
-    }
-
-    @Override
-    public void invoke() {
-        invoked = true;
-    }
-
-    @Override
-    public void iterationDone(Model model, int iteration) {
+    public void iterationDone(Model model, int iteration, int epoch) {
 
         if (model instanceof MultiLayerNetwork) {
             BaseOutputLayer ol = (BaseOutputLayer) ((MultiLayerNetwork) model).getOutputLayer();

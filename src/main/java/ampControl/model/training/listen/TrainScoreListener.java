@@ -27,21 +27,10 @@ public class TrainScoreListener implements IterationListener {
     private boolean invoked = false;
 
     @Override
-    public boolean invoked() {
-        return invoked;
-    }
-
-    @Override
-    public void invoke() {
-        invoked = true;
-    }
-
-    @Override
-    public void iterationDone(Model model, int iteration) {
+    public void iterationDone(Model model, int iteration, int epoch) {
 
         resultSum += model.score();
         if (iterCount % printIterations == 0) {
-            invoke();
             iterAndScoreListener.accept(iteration, resultSum / Math.max(iterCount,1));
             iterCount = 0;
             resultSum = 0;

@@ -57,7 +57,7 @@ public class MultiLevelAgg implements LayerBlockConfig {
         BlockInfo nextInfo = info;
         for(LayerBlockConfig blockConf: sequence) {
             nextInfo = blockConf.addLayers(builder, nextInfo);
-            Arrays.stream(nextInfo.getInputsNames()).forEach(layerName -> nextInputNameBuilder.accept(layerName));
+            Arrays.stream(nextInfo.getInputsNames()).forEach(nextInputNameBuilder);
             sumInputSize += nextInfo.getPrevNrofOutputs();
         }
         return new SimpleBlockInfo.Builder(nextInfo)

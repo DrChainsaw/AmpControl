@@ -21,7 +21,7 @@ public class NanScoreWatcherTest {
         final ProbeCallback callback = new ProbeCallback();
         final NanScoreWatcher watcher = new NanScoreWatcher(callback);
 
-        watcher.iterationDone(finiteScoreModel, 1);
+        watcher.iterationDone(finiteScoreModel, 1,1);
         callback.assertWasCalled(false);
     }
 
@@ -34,7 +34,7 @@ public class NanScoreWatcherTest {
         final ProbeCallback callback = new ProbeCallback();
         final NanScoreWatcher watcher = new NanScoreWatcher(callback);
 
-        watcher.iterationDone(posInifinteScoreModel, 1);
+        watcher.iterationDone(posInifinteScoreModel, 1,1);
         callback.assertWasCalled(true);
     }
 
@@ -47,7 +47,7 @@ public class NanScoreWatcherTest {
         final ProbeCallback callback = new ProbeCallback();
         final NanScoreWatcher watcher = new NanScoreWatcher(callback);
 
-        watcher.iterationDone(negInifinteScoreModel, 1);
+        watcher.iterationDone(negInifinteScoreModel, 1,1);
         callback.assertWasCalled(true);
     }
 
@@ -60,7 +60,7 @@ public class NanScoreWatcherTest {
         final ProbeCallback callback = new ProbeCallback();
         final NanScoreWatcher watcher = new NanScoreWatcher(callback);
 
-        watcher.iterationDone(nanScoreModel, 1);
+        watcher.iterationDone(nanScoreModel, 1,1);
         callback.assertWasCalled(true);
     }
 

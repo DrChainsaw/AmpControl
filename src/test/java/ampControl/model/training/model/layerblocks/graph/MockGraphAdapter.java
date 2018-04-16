@@ -4,6 +4,7 @@ import ampControl.model.training.model.layerblocks.LayerBlockConfig;
 import ampControl.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.Layer;
@@ -35,7 +36,10 @@ public class MockGraphAdapter implements GraphBuilderAdapter {
     @NotNull
     static ComputationGraph createRealComputationGraph(LayerBlockConfig toTest, int prevNrofOutputs, InputType inputType) {
         final String inputName = "input";
-        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder().graphBuilder()
+        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder()
+                .inferenceWorkspaceMode(WorkspaceMode.NONE) // TODO: remove once dl4j issue #4931 is resolved
+                .trainingWorkspaceMode(WorkspaceMode.NONE)
+                .graphBuilder()
                 .addInputs(inputName)
                 .setInputTypes(inputType);
         final LayerBlockConfig.BlockInfo seb = toTest

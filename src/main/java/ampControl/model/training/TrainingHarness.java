@@ -70,25 +70,7 @@ public class TrainingHarness {
         private int currIter = 0;
 
         private ModelInfo(ModelHandle mdh) {
-            mdh.getModel().addListeners(new IterationListener() {
-                boolean invoked = false;
-
-                @Override
-                public boolean invoked() {
-                    return invoked;
-                }
-
-                @Override
-                public void invoke() {
-                    invoked = true;
-                }
-
-                @Override
-                public void iterationDone(Model model, int iteration) {
-                    invoke();
-                    currIter = iteration;
-                }
-            });
+            mdh.getModel().addListeners((IterationListener) (model, iteration, epoch) -> currIter = iteration);
         }
     }
 

@@ -1,14 +1,13 @@
 package ampControl.model.inference;
 
+import ampControl.audio.ClassifierInputProvider;
+import ampControl.audio.ClassifierInputProviderFactory;
+import com.beust.jcommander.Parameter;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import com.beust.jcommander.Parameter;
-
-import ampControl.audio.ClassifierInputProvider;
-import ampControl.audio.ClassifierInputProviderFactory;
 
 /**
  * Factory for creating a {@link Classifier}. Parameterized through {@link com.beust.jcommander.JCommander}.
@@ -63,7 +62,7 @@ public class ClassifierFromParameters {
 		}
 
 		Classifier ret;
-		if(classifierList.size() > 0) {
+		if(classifierList.size() > 1) {
 			ret = new EnsembleWeightedSumClassifier(classifierList, EnsembleWeightedSumClassifier.avgNormalizer);
 		} else {
 			ret = classifierList.get(0);

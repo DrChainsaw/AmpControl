@@ -9,26 +9,24 @@ import ampControl.model.training.model.layerblocks.graph.MultiLevelAgg;
 import ampControl.model.training.model.layerblocks.graph.ResBlock;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.LearningRatePolicy;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration.Builder;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration.ListBuilder;
 import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.util.ModelSerializer;
-import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
+import org.nd4j.linalg.schedule.ISchedule;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Wraps a {@link NeuralNetConfiguration} or a {@link ComputationGraphConfiguration} in a declarative API using
@@ -123,48 +121,13 @@ public class BlockBuilder {
 
     private AggBlock layerBlockConfig;
 
-    private double startingLearningRate = 0.01;
-
-    public interface LearningRateSchedulePolicy {
-        void apply(NeuralNetConfiguration.Builder aBuilder);
-    }
-
-    private LearningRateSchedulePolicy lrPolicy = getLearningRateSchedulePolicy(startingLearningRate);
-
-    @NotNull
-    private LearningRateSchedulePolicy getLearningRateSchedulePolicy(double startingLearningRate) {
-        return new LearningRateSchedulePolicy() {
-            private Map<Integer, Double> lrSchedule = new HashMap<>();
-
-            {
-                // Anneal learning rate by a factor 10 (roughly) every epoch
-                final int epochSize = 400000 / 16;
-                //lrSchedule.put(0, startingLearningRate);
-                double lr = startingLearningRate;
-                for (int i = 0; i < 10; i += 3) {
-                    lrSchedule.put(i * epochSize, lr);
-                    lr /= 10;
-                }
-
-            }
-
-            @Override
-            public void apply(Builder aBuilder) {
-                aBuilder
-                        //.setLearningRatePolicy(LearningRatePolicy.Schedule)
-                        .learningRateDecayPolicy(LearningRatePolicy.Schedule)
-                        .learningRateSchedule(lrSchedule);
-            }
-        };
-    }
-
     private String namePrefix = "";
     private int seed = 666;
-    private int nrofIterations = 1;
     private WorkspaceMode trainWs = WorkspaceMode.SINGLE;
     private WorkspaceMode evalWs = WorkspaceMode.SINGLE;
 
-    private IUpdater updater = new Adam(startingLearningRate, 0.9, 0.999, 1e-8);
+    private ISchedule learningRateSchedule = new StepSchedule(ScheduleType.ITERATION, 0.05, 0.1, 40000);
+    private IUpdater updater = new Adam(learningRateSchedule);
 
     private double accuracy = 0;
 
@@ -181,8 +144,8 @@ public class BlockBuilder {
         if (modelFile.exists()) {
             try {
                 log.info("restoring saved model: " + modelFile.getAbsolutePath());
-                accuracy = StoredGraphClassifier.getAccuracy(modelFile.getAbsolutePath());
-                boolean loadUpdater = updater instanceof Adam ? false : true; // load updater with Adam results in score NaN for some unknown reason
+                accuracy = StoredGraphClassifier.getAccuracy(modelFile.getAbsolutePath()+ "_best");
+                boolean loadUpdater = !(updater instanceof Adam); // load updater with Adam results in score NaN for some unknown reason
                 return ModelSerializer.restoreMultiLayerNetwork(modelFile, loadUpdater);
 
             } catch (IOException e) {
@@ -245,17 +208,14 @@ public class BlockBuilder {
     }
 
     private NeuralNetConfiguration.Builder initBuilder() {
-        final NeuralNetConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
+        return new NeuralNetConfiguration.Builder()
                 .seed(seed)
-                .iterations(nrofIterations)
                 .weightInit(WeightInit.RELU_UNIFORM)
                 .activation(Activation.IDENTITY) // Will be set later on
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(updater)
                 .trainingWorkspaceMode(trainWs)
                 .inferenceWorkspaceMode(evalWs);
-        lrPolicy.apply(builder);
-        return builder;
     }
 
 
@@ -291,29 +251,6 @@ public class BlockBuilder {
     }
 
     /**
-     * Sets the initial learning rate
-     *
-     * @param startingLearningRate
-     * @return the {@link BlockBuilder}
-     */
-    public BlockBuilder setStartingLearningRate(double startingLearningRate) {
-        this.startingLearningRate = startingLearningRate;
-        lrPolicy = getLearningRateSchedulePolicy(startingLearningRate);
-        return this;
-    }
-
-    /**
-     * Sets the {@link LearningRateSchedulePolicy}
-     *
-     * @param lrPolicy
-     * @return the {@link BlockBuilder}
-     */
-    public BlockBuilder setLrPolicy(LearningRateSchedulePolicy lrPolicy) {
-        this.lrPolicy = lrPolicy;
-        return this;
-    }
-
-    /**
      * Sets the seed
      *
      * @param seed
@@ -321,17 +258,6 @@ public class BlockBuilder {
      */
     public BlockBuilder setSeed(int seed) {
         this.seed = seed;
-        return this;
-    }
-
-    /**
-     * Sets the number of iterations
-     *
-     * @param nrofIterations
-     * @return the {@link BlockBuilder}
-     */
-    public BlockBuilder setNrofIterations(int nrofIterations) {
-        this.nrofIterations = nrofIterations;
         return this;
     }
 

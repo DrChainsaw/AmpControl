@@ -9,6 +9,8 @@ import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.PreprocVertex;
 import org.nd4j.linalg.learning.config.Nesterovs;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -44,8 +46,7 @@ public class SampleCnn2DFactory {
         DoubleStream.of(0).forEach(dropOutProb -> {
             BlockBuilder bBuilder = new BlockBuilder()
                     .setNamePrefix(namePrefix)
-                    .setUpdater(new Nesterovs(0.9))
-                    .setStartingLearningRate(0.0005)
+                    .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.0005, 0.1, 40000)))
                     .first(new ConvType(inputShape))
                     .andThen(new PreprocVertex().setPreProcessor(new CnnHeightWidthSwapInputPreprocessor()))
 

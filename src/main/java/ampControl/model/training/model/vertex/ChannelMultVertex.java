@@ -24,9 +24,7 @@ public class ChannelMultVertex extends GraphVertex {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof ChannelMultVertex))
-            return false;
-        return true; //??
+        return o instanceof ChannelMultVertex;
     }
 
     @Override

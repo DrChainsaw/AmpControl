@@ -43,9 +43,8 @@ public class DenseStack implements LayerBlockConfig {
     public BlockInfo addLayers(GraphBuilderAdapter graphBuilder, BlockInfo info) {
 
         log.info("Create dense block: " + info);
-        List<String> mergeVertexInputs = new ArrayList<>();
 
-        mergeVertexInputs.addAll(Arrays.asList(info.getInputsNames()));
+        List<String> mergeVertexInputs = new ArrayList<>(Arrays.asList(info.getInputsNames()));
         int nrofOutputs = info.getPrevNrofOutputs();
         BlockInfo nextInfo = info;
         for (int i = 0; i < nrofStacks; i++) {
