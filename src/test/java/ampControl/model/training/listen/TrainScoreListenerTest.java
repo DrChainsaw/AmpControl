@@ -31,20 +31,20 @@ public class TrainScoreListenerTest {
         final ProbeConsumer probe = new ProbeConsumer();
         final TrainScoreListener listener = new TrainScoreListener(reportInterval, probe);
 
-        listener.iterationDone(new ScoreModel(score0), iter0);
+        listener.iterationDone(new ScoreModel(score0), iter0,0);
         probe.assertValues(iter0, score0);
 
-        listener.iterationDone(new ScoreModel(score1), iter1);
+        listener.iterationDone(new ScoreModel(score1), iter1,0);
         probe.assertValues(iter0, score0);
 
-        listener.iterationDone(new ScoreModel(score2), iter2);
+        listener.iterationDone(new ScoreModel(score2), iter2,0);
         final double expectedScore = DoubleStream.of(score1, score2).summaryStatistics().getAverage();
         probe.assertValues(iter2, expectedScore);
 
-        listener.iterationDone(new ScoreModel(score0), iter0);
+        listener.iterationDone(new ScoreModel(score0), iter0,0);
         probe.assertValues(iter2, expectedScore);
 
-        listener.iterationDone(new ScoreModel(score1), iter1);
+        listener.iterationDone(new ScoreModel(score1), iter1,0);
         probe.assertValues(iter1, DoubleStream.of(score0, score1).summaryStatistics().getAverage());
 
     }

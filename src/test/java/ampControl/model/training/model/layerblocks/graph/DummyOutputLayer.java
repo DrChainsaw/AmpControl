@@ -27,8 +27,7 @@ public class DummyOutputLayer implements LayerBlockConfig {
                 .nOut(info.getPrevNrofOutputs())
                 .activation(new ActivationIdentity())
                 .biasInit(0)
-                .weightInit(WeightInit.DISTRIBUTION)
-                .dist(new BinomialDistribution(1,1)) // 100% probability of 1
+                .weightInit(WeightInit.ONES)
                 .build();
         return builder.layer(info,output);
     }

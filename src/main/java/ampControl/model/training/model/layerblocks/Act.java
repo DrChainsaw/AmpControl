@@ -16,8 +16,7 @@ public class Act implements  LayerBlockConfig {
 
     @Override
     public String name() {
-        String actStr = LayerBlockConfig.actToStr(activation);
-        return actStr;
+        return LayerBlockConfig.actToStr(activation);
     }
 
     @Override

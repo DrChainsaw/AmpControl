@@ -39,7 +39,7 @@ public class PlotSpectrogram {
 
 
 		@Override
-		public void init() throws Exception {
+		public void init() {
 
 		        // Define range and precision for the function to plot
 		        final int stepsFreq = (int)rangeFreq.getMax()+1;

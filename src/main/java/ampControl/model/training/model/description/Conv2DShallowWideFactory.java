@@ -8,6 +8,8 @@ import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.layerblocks.*;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.learning.config.Nesterovs;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -68,8 +70,7 @@ public class Conv2DShallowWideFactory {
            // int kernelSizeHalf = inputShape[1] / 2;
             int poolSizeTime = inputShape[0] / 2;
             BlockBuilder bBuilder = new BlockBuilder()
-                    .setStartingLearningRate(0.0005)
-                    .setUpdater(new Nesterovs(0.9))
+                    .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.0005, 0.1, 40000)))
                     .setNamePrefix(namePrefix)
                     .first(new ConvType(inputShape))
                     //.multiLevel()

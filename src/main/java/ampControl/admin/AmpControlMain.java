@@ -1,18 +1,17 @@
 package ampControl.admin;
 
-import java.util.Map;
-
-import com.beust.jcommander.JCommander;
-
 import ampControl.admin.service.classifiction.AudioClassificationService;
-import ampControl.amp.PublishingClassificationListener;
 import ampControl.admin.service.control.mqtt.MqttAppControlService;
 import ampControl.amp.ClassificationListener;
+import ampControl.amp.PublishingClassificationListener;
 import ampControl.audio.asio.AsioClassifierInputFactory;
 import ampControl.model.inference.Classifier;
 import ampControl.model.inference.ClassifierFromParameters;
+import com.beust.jcommander.JCommander;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
+
+import java.util.Map;
 
 /**
  * Main class for doing AmpControl. Just does initialization. Actual main loop is handled by the {@link Engine}.
@@ -42,7 +41,7 @@ public class AmpControlMain {
                         mqttClassificationListenerFactory});
 
         Map<String, ClassificationListener.Factory> ampFactoryCommands = ClassificationListener.getFactoryCommands();
-        ampFactoryCommands.entrySet().forEach(entry -> jcBuilder.addCommand(entry.getKey(), entry.getValue()));
+        ampFactoryCommands.forEach((key, value) -> jcBuilder.addCommand(key, value));
 
         JCommander jc = jcBuilder.build();
         jc.parse(args);

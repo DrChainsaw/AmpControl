@@ -28,11 +28,15 @@ public class Output implements LayerBlockConfig {
 
     @Override
     public String name() {
-        return "out_w_" + weights.toString()
-                .replace("[", "")
-                .replaceAll("\\.", "p")
-                .replaceAll("0,\\s*", "_")
-                .replace("0]", "");
+        final String wString = weights.sum().getInt(0) == weights.length() ? "" : "_w_" + weights.toString()
+                .replaceAll("\\[", "")
+                .replaceAll("0+", "")
+                .replaceAll(",\\s+", "_")
+                .replaceAll(",", "p")
+                .replaceAll("]*", "")
+                .replaceAll("\\s*", "");
+
+        return "out" + wString;
 
     }
 

@@ -1,24 +1,19 @@
 package ampControl.audio.asio;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.Supplier;
-
-import com.beust.jcommander.Parameter;
-import com.synthbot.jasiohost.AsioChannel;
-import com.synthbot.jasiohost.AsioDriver;
-
 import ampControl.audio.AudioInputBuffer;
 import ampControl.audio.ClassifierInputProvider;
 import ampControl.audio.ClassifierInputProviderFactory;
 import ampControl.audio.Cnn2DInputProvider;
 import ampControl.audio.processing.ProcessingResult;
 import ampControl.audio.processing.SupplierFactory;
+import com.beust.jcommander.Parameter;
+import com.synthbot.jasiohost.AsioChannel;
+import com.synthbot.jasiohost.AsioDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * {@link ClassifierInputProviderFactory} which creates input from a given channel on a given ASIO device.
@@ -65,11 +60,7 @@ public class AsioClassifierInputFactory implements ClassifierInputProviderFactor
     @Override
     public ClassifierInputProvider createInputProvider(String inputDescriptionString) {
         AudioInputBuffer audioInput = createAudioBuffer(inputDescriptionString);
-        Map<String, ClassifierInputProvider.Updatable> processingToInputProvider = inputProviderCache.get(audioInput);
-        if(processingToInputProvider == null) {
-            processingToInputProvider = new HashMap<>();
-            inputProviderCache.put(audioInput, processingToInputProvider);
-        }
+        Map<String, ClassifierInputProvider.Updatable> processingToInputProvider = inputProviderCache.computeIfAbsent(audioInput, k -> new HashMap<>());
         Supplier<ProcessingResult.Processing> resultSupplier = new SupplierFactory(driver.getSampleRate()).get(inputDescriptionString);
         ClassifierInputProvider.Updatable inputProvider = processingToInputProvider.get(resultSupplier.get().name());
         if(inputProvider == null) {

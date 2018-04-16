@@ -1,9 +1,6 @@
 package ampControl.model.training.model.vertex;
 
 
-import org.nd4j.linalg.api.memory.MemoryWorkspace;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.primitives.Pair;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.MaskState;
 import org.deeplearning4j.nn.gradient.Gradient;
@@ -11,6 +8,7 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.BaseGraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.primitives.Pair;
 
 /**
  * {@link BaseGraphVertex} which multiplies each channel in a convolutional activation of size [b,c,h,w] with a scalar
@@ -91,8 +89,8 @@ public class ChannelMultVertexImpl extends BaseGraphVertex {
         final int nrofChannelBatch = channelActivations.tensorssAlongDimension(2, 3); // view each channel and each batch
         final int nrofFeaturesInActivation = channelActivations.tensorssAlongDimension(0, 1); // view each h and w activation for all batches
 
-        try (MemoryWorkspace wsB = Nd4j.getWorkspaceManager()
-                .getWorkspaceForCurrentThread(ComputationGraph.workspaceExternal).notifyScopeBorrowed()) {
+       // try (MemoryWorkspace wsB = Nd4j.getWorkspaceManager()
+       //         .getWorkspaceForCurrentThread(ComputationGraph.workspaceExternal).notifyScopeBorrowed()) {
             // From empiric testing: Whatever makes the fewest number of loops is fastest
             if (nrofChannelBatch < nrofFeaturesInActivation) {
                 //  double time1 = System.nanoTime();
@@ -114,7 +112,7 @@ public class ChannelMultVertexImpl extends BaseGraphVertex {
                 //  double time2 = System.nanoTime();
                 // System.out.println("loop vec mult: " + (time2 - time1) / 1e6);
             }
-        }
+       // }
 
         return channelActivations;
     }

@@ -45,8 +45,6 @@ public class SampleCnnFactory {
             // .95 with potential room for improvment after 70k iters
             BlockBuilder bBuilder = new BlockBuilder()
                     .setNamePrefix(namePrefix)
-                    //.setUpdater(new Nesterovs(0.9))
-                    .setStartingLearningRate(0.01)
                     .first(new ConvTimeType(inputShape))
                     .andThen(new PreprocVertex()
                             .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))
@@ -114,8 +112,6 @@ public class SampleCnnFactory {
             // Very heavy 93.5% after 70k iters with potential improvement
             BlockBuilder bBuilder = new BlockBuilder()
                     .setNamePrefix(namePrefix)
-                    //.setUpdater(new Nesterovs(0.9))
-                    .setStartingLearningRate(0.01)
                     .first(new ConvTimeType(inputShape))
                     .andThen(new PreprocVertex()
                             .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))

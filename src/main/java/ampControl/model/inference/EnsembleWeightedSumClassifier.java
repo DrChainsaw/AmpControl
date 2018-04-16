@@ -1,12 +1,12 @@
 package ampControl.model.inference;
 
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.api.ops.impl.transforms.OldSoftMax;
+import org.nd4j.linalg.factory.Nd4j;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
-
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ops.impl.transforms.SoftMax;
-import org.nd4j.linalg.factory.Nd4j;
 
 /**
  * Ensemble classifier which sums the accuracy weighted probabilities from a list of {@link Classifier Classifiers}
@@ -49,7 +49,7 @@ class EnsembleWeightedSumClassifier implements Classifier {
             	ret.addi(classifier.classify().mul(classifier.getAccuracy()));
             }
         }
-        return normalizer.apply(sumAcc, ret);//ret.div(sumAcc);
+        return normalizer.apply(sumAcc, ret);
     }
 
 	@Override
@@ -59,5 +59,5 @@ class EnsembleWeightedSumClassifier implements Classifier {
 
 	public final static BiFunction<Double, INDArray, INDArray>  avgNormalizer = (sumAcc, aggClass) -> aggClass.div(sumAcc);
 
-    public final static BiFunction<Double, INDArray, INDArray> softMaxNormalizer =  (sumAcc, aggClass) -> Nd4j.getExecutioner().execAndReturn(new SoftMax(aggClass));
+    public final static BiFunction<Double, INDArray, INDArray> softMaxNormalizer =  (sumAcc, aggClass) -> Nd4j.getExecutioner().execAndReturn(new OldSoftMax(aggClass));
 }

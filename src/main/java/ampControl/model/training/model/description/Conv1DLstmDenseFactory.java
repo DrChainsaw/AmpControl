@@ -56,8 +56,6 @@ public class Conv1DLstmDenseFactory {
             DoubleStream.of(0).forEach(dropOutProb -> {
                 BlockBuilder bBuilder = new BlockBuilder()
                         .setNamePrefix(namePrefix)
-                        // .setUpdater(nesterovs)
-                        .setStartingLearningRate(0.05)
                         .first(new RnnType(inputShape))
                         .andThen(new Conv1D()
                                 .setNrofKernels(256))

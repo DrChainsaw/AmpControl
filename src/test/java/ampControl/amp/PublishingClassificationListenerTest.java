@@ -39,16 +39,26 @@ public class PublishingClassificationListenerTest {
                         " " + prohibPar + prohib;
 
         final int nrofLabels = 10;
-        for(int i = 0; i < nrofLabels; i++ ) {
-            final LabelProbe probe = new LabelProbe(topic, String.valueOf(i));
-            final ClassificationListener pubListener = createClassificationListener(argStr, probe);
-            final INDArray probs = Nd4j.zeros(nrofLabels);
-            probs.putScalar(i, probThresh*1.001);
-            pubListener.indicateAudioClassification(probs);
-            pubListener.indicateAudioClassification(probs);
-            pubListener.indicateAudioClassification(probs);
+        try {
+            for (int i = 0; i < nrofLabels; i++) {
+                final LabelProbe probe = new LabelProbe(topic, String.valueOf(i));
+                final ClassificationListener pubListener = createClassificationListener(argStr, probe);
+                final INDArray probs = Nd4j.zeros(nrofLabels);
+                probs.putScalar(i, probThresh * 1.001);
 
-            probe.assertWasCalled();
+                // Need to pause between each indication or else PacingLabelMapping might discard even if interval is set to 0
+                Thread.sleep(2);
+                pubListener.indicateAudioClassification(probs);
+                Thread.sleep(2);
+                pubListener.indicateAudioClassification(probs);
+                Thread.sleep(2);
+                pubListener.indicateAudioClassification(probs);
+
+
+                probe.assertWasCalled();
+            }
+        } catch (InterruptedException e) {
+            fail("Testcase interrupted");
         }
     }
 

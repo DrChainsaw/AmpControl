@@ -1,11 +1,21 @@
 package ampControl.model.training.model.layerblocks.graph;
 
 import ampControl.model.training.model.layerblocks.LayerBlockConfig;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.WorkspaceMode;
+import org.deeplearning4j.nn.conf.graph.ScaleVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
+
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
@@ -21,6 +31,7 @@ public class MinMaxPoolTest {
      */
     @Test
     public void addLayers() {
+        final int poolSize = 3;
         final double[] inputArr = {-1, 1, 2, 3};
         final double[] expected = {2, 3, -1, 1}; // max(inputArr[0:2]), max(inputArr[1:3]), min(inputArr[0:2]), min(inputArr[1:3])
         final INDArray input = Nd4j.create(1, 1, inputArr.length, 1);
@@ -28,14 +39,13 @@ public class MinMaxPoolTest {
             input.putScalar(new int[]{0, 0, i, 0}, inputArr[i]);
         }
 
-
         final LayerBlockConfig toTest = new MinMaxPool()
-                .setSize_h(3)
+                .setSize_h(poolSize)
                 .setSize_w(1)
                 .setStride(1);
         final ComputationGraph graph = MockGraphAdapter.createRealComputationGraph(toTest,
                 2, // Bit of a hack to make it four outputs since pooling layer does not figure out number of outputs for dense
-                InputType.convolutional(input.size(2), input.size(3), input.size(1)));
+                InputType.inferInputType(input));
 
         DummyOutputLayer.setEyeOutput(graph);
 
