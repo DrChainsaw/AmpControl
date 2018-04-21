@@ -1,32 +1,25 @@
 package ampControl.model.training;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.Random;
-import java.util.function.Supplier;
-
 import ampControl.audio.processing.*;
-import ampControl.model.training.data.*;
-import ampControl.model.training.model.*;
-import ampControl.model.training.model.description.*;
-import org.nd4j.jita.conf.CudaEnvironment;
-import org.nd4j.linalg.api.buffer.DataBuffer;
-import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
-
 import ampControl.model.training.data.AudioDataProvider.AudioProcessorBuilder;
+import ampControl.model.training.data.*;
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampControl.model.training.data.processing.SilenceProcessor;
+import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.description.ResNetConv2DFactory;
+import org.nd4j.jita.conf.CudaEnvironment;
+import org.nd4j.linalg.api.buffer.DataBuffer;
+import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Main "app" for training. Describes what models to use and how they shall be trained.
@@ -46,7 +39,7 @@ public class TrainingDescription {
     private final static int trainingIterations = 10; // 10
     private final static int trainBatchSize = 20;   // 32 64
     private final static int evalBatchSize = 20;
-    private final static double evalSetPercentage = 3;
+    private final static double evalSetPercentage = 5;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -179,11 +172,11 @@ public class TrainingDescription {
 
         String prefix = "ws_" + timeWindowSize + SupplierFactory.prefix() + audioPostProcessingSupplier.get().name() + "_";
 
-        //new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-         new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
         // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);

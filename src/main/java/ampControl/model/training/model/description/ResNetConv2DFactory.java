@@ -4,11 +4,10 @@ import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.model.BlockBuilder;
 import ampControl.model.training.model.GenericModelHandle;
 import ampControl.model.training.model.GraphModelAdapter;
-import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
 import ampControl.model.training.model.layerblocks.graph.SeBlock;
-import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.learning.config.Nesterovs;
 
 import java.nio.file.Path;
@@ -119,7 +118,7 @@ public class ResNetConv2DFactory {
 //            });
 //        });
 
-        IntStream.of(50,75).forEach(resDepth -> {
+        IntStream.of(5,10,25,50).forEach(resDepth -> {
             DoubleStream.of(0).forEach(dropOutProb -> {
                 BlockBuilder bBuilder = new BlockBuilder()
                         .setNamePrefix(namePrefix)

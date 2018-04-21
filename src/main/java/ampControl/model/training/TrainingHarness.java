@@ -1,24 +1,16 @@
 package ampControl.model.training;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-
 import ampControl.audio.ClassifierInputProviderFactory;
 import ampControl.audio.processing.ProcessingResult;
 import ampControl.audio.processing.SupplierFactory;
 import ampControl.model.training.data.*;
+import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampControl.model.training.data.processing.SilenceProcessor;
 import ampControl.model.training.listen.TrainScoreListener;
-import ampControl.model.training.model.*;
+import ampControl.model.training.model.GenericModelHandle;
+import ampControl.model.training.model.GraphModelAdapter;
+import ampControl.model.training.model.ModelHandle;
 import ampControl.model.visualize.RealTimePlot;
 import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.eval.Evaluation;
@@ -34,10 +26,19 @@ import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.factory.Nd4j;
-
-import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Harness for training and evaluation of {@link ModelHandle ModelHandles}. Models will take turn in doing fitting. Will
@@ -151,7 +152,7 @@ public class TrainingHarness {
                 long endtime = System.nanoTime();
                 double time = (endtime - starttime) / 1000000d;
                 printSynchronized("Training took " + time + " ms for " + md.getNrofTrainingExamplesPerBatch() + " examples, " + time / (double) md.getNrofTrainingExamplesPerBatch() + " ms per example");
-                if (trainingStep % evalEveryNrofSteps == evalEveryNrofSteps - 1) {
+                if (trainingStep % evalEveryNrofSteps == evalEveryNrofSteps - 39) {
                     if (modelInfoMap.get(md).skipEval > 0) {
                         modelInfoMap.get(md).skipEval--;
                         printSynchronized("Skip eval! " + modelInfoMap.get(md).skipEval);

@@ -1,9 +1,9 @@
 package ampControl.amp;
 
+import org.nd4j.linalg.api.ndarray.INDArray;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import org.nd4j.linalg.api.ndarray.INDArray;
 
 /**
  * Interface to receive a classification in the form of a vector where each element corresponds to the estimated
@@ -40,6 +40,7 @@ public interface ClassificationListener {
     static Map<String, Factory> getFactoryCommands() {
         Map<String, Factory> factoryMap = new LinkedHashMap<>();
         factoryMap.put("-podXt", new PodXtFactory());
+        factoryMap.put("-midiPrgChange", new MidiProgChangeFactory());
         factoryMap.put("-dummy", () -> new DummyClassifictionListener());
         factoryMap.put("-print", new PrintClassificationListener.Factory());
 
