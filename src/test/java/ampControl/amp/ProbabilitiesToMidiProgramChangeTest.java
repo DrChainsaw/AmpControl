@@ -17,9 +17,9 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.*;
 
 /**
- * Test cases for {@link PodXtFactory}.
+ * Test cases for {@link ProbabilitiesToMidiProgramChange}.
  */
-public class PodXtFactoryTest {
+public class ProbabilitiesToMidiProgramChangeTest {
 
     private final static String midiChannelPar = "-midiChannel ";
     private final static String labelToProgPar = "-ltp ";
@@ -39,19 +39,18 @@ public class PodXtFactoryTest {
         final int switchMomThresh = 3;
         final int updateProhibitTimeMs = 0;
         final String argStr = midiChannelPar + midiChan +
-                " " + labelToProgPar + programChanges.stream().map(pc -> pc.name()).collect(Collectors.joining(",")) +
                 " " + labelToThreshPar + IntStream.range(0, pThresholds.size()).mapToObj(lab -> lab + ":" + pThresholds.get(lab)).collect(Collectors.joining(",")) +
                 " " + labelMaskPar + labelMask +
                 " " + switchMomThreshPar + switchMomThresh +
                 " " + updateProhibitPar + updateProhibitTimeMs;
 
 
-        PodXtFactory factory = new PodXtFactory();
-        JCommander.newBuilder().addObject(factory)
+        ProbabilitiesToMidiProgramChange programChangeMapping = new ProbabilitiesToMidiProgramChange();
+        JCommander.newBuilder().addObject(programChangeMapping)
                 .build()
                 .parse(argStr.split(" "));
 
-        Function<INDArray, List<ShortMessage>> probMapping = factory.getProbabilitiesToMessageMapping();
+        Function<INDArray, List<ShortMessage>> probMapping = programChangeMapping.createProbabilitiesToMessageMapping(programChanges);
 
         final INDArray nothing = Nd4j.create(new double[]{0.333, 0.333, 0.333});
         final INDArray lab0 = Nd4j.create(new double[]{0.6, 0.2, 0.2});

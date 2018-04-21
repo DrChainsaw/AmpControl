@@ -1,10 +1,5 @@
 package ampControl.model.training.model;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
 import ampControl.model.inference.StoredGraphClassifier;
 import ampControl.model.training.model.layerblocks.AggBlock;
 import ampControl.model.training.model.layerblocks.BlockStack;
@@ -13,9 +8,12 @@ import ampControl.model.training.model.layerblocks.graph.DenseStack;
 import ampControl.model.training.model.layerblocks.graph.MultiLevelAgg;
 import ampControl.model.training.model.layerblocks.graph.ResBlock;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
-import org.deeplearning4j.nn.conf.*;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.LearningRatePolicy;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration.Builder;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration.ListBuilder;
+import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
@@ -26,6 +24,11 @@ import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Wraps a {@link NeuralNetConfiguration} or a {@link ComputationGraphConfiguration} in a declarative API using
@@ -245,7 +248,7 @@ public class BlockBuilder {
         final NeuralNetConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
                 .seed(seed)
                 .iterations(nrofIterations)
-                .weightInit(WeightInit.XAVIER)
+                .weightInit(WeightInit.RELU_UNIFORM)
                 .activation(Activation.IDENTITY) // Will be set later on
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(updater)
