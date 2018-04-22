@@ -46,7 +46,7 @@ public class AudioFileProcessor implements AudioProcessor {
         boolean ok = false;
         while (!ok) {
             final Path next = fileSupplier.get();
-            System.out.println("next file: " + next);
+            //System.out.println("next file: " + next);
             final AudioSamplingInfo info = samplingInfoMapper.apply(next);
             Wave wav = new Wave(next.toAbsolutePath().toString());
             short[] ampData = wav.getSampleAmplitudes();
