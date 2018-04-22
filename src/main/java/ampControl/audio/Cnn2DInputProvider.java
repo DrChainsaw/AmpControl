@@ -7,6 +7,7 @@ import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * {@link ClassifierInputProvider} for 2D CNN. Takes samples from an audio buffer and runs them through supplied
@@ -53,7 +54,7 @@ public class Cnn2DInputProvider implements ClassifierInputProvider.Updatable {
         ProcessingResult.Factory next = resultSupplier.get();
         double[] audioFrame = audioBuffer.getAudio();
         ProcessingResult res = next.create(new SingletonDoubleInput(audioFrame));
-        return res.get();
+        return res.stream().collect(Collectors.toList());
 
     }
 }

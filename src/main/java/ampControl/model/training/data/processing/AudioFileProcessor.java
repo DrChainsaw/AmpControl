@@ -7,7 +7,6 @@ import org.datavec.audio.Wave;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -100,8 +99,7 @@ public class AudioFileProcessor implements AudioProcessor {
         for(int i = 0; i < 4; i++) {
             ProcessingResult result = proc.getResult();
             System.out.println("result: " + result);
-            List<double[][]> dataList = result.get();
-            dataList.forEach(data -> {
+            result.stream().forEach(data -> {
                 System.out.println(": time: " + data.length + " freq: " + data[0].length);
                 PlotSpectrogram.plot(data);
                 //System.out.println("Sum: " + Stream.of(data).mapToDouble(timeFr -> DoubleStream.of(timeFr).sum()).sum());

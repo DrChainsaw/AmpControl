@@ -1,7 +1,6 @@
 package ampControl.audio.processing;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Input {@link ProcessingResult} created from a single double array
@@ -21,7 +20,7 @@ public class SingletonDoubleInput implements ProcessingResult {
     }
 
     @Override
-    public List<double[][]> get() {
-        return Collections.singletonList(data);
+    public Stream<double[][]> stream() {
+        return Stream.<double[][]>builder().add(data).build();
     }
 }

@@ -1,8 +1,7 @@
 package ampControl.audio.processing;
 
-import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Does random scaling of input. Useful for data augmentation. Obviously useless if normalization is applied. Should also
@@ -56,8 +55,8 @@ public class RandScale implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 final int nrofFrames = inputArr.length;
                 final int nrofSamplesPerFrame = inputArr[0].length;
                 final double[][] result = new double[nrofFrames][nrofSamplesPerFrame];
@@ -69,7 +68,7 @@ public class RandScale implements ProcessingResult.Factory {
                     }
                 }
                 return result;
-            }).collect(Collectors.toList());
+            });
         }
     }
 }

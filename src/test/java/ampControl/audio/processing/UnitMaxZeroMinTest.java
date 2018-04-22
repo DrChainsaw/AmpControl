@@ -23,10 +23,10 @@ public class UnitMaxZeroMinTest {
 
         final ProcessingResult.Factory norm = new UnitMaxZeroMin();
         final ProcessingResult res = norm.create(new SingletonDoubleInput(test));
-        final double[][] result = res.get().get(0);
+        final double[][] result = res.stream().findFirst().get();
 
-        assertEquals("Not unit max!", 1, Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).max().orElseThrow(() -> new RuntimeException("no output!")), 1e-10);
-        assertEquals("Not zero min!", 0, Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).min().orElseThrow(() -> new RuntimeException("no output!")), 1e-10);
+        assertEquals("Not unit max!", 1, Stream.of(result).flatMapToDouble(DoubleStream::of).max().orElseThrow(() -> new RuntimeException("no output!")), 1e-10);
+        assertEquals("Not zero min!", 0, Stream.of(result).flatMapToDouble(DoubleStream::of).min().orElseThrow(() -> new RuntimeException("no output!")), 1e-10);
     }
 
     /**

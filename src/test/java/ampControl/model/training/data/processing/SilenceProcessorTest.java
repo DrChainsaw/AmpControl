@@ -5,7 +5,7 @@ import org.junit.Test;
 
 import java.util.stream.DoubleStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
 
 /**
  * Test cases for {@link SilenceProcessor}
@@ -21,7 +21,7 @@ public class SilenceProcessorTest {
     public void getResult() {
         final int size = 7;
         double[][] expected = new double[][] {DoubleStream.generate(()->0).limit(size).toArray()};
-        final AudioProcessor sp = new SilenceProcessor(7, ()-> new NoProcessing());
-        assertArrayEquals("Inorrect result!", expected, sp.getResult().get().get(0));
+        final AudioProcessor sp = new SilenceProcessor(7, NoProcessing::new);
+        assertArrayEquals("Inorrect result!", expected, sp.getResult().stream().findFirst().get());
     }
 }

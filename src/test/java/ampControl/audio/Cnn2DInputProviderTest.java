@@ -8,8 +8,8 @@ import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 
@@ -36,7 +36,7 @@ public class Cnn2DInputProviderTest {
 
         inputProvider.updateInput();
         final ProcessingResult res0 = proc.create(new SingletonDoubleInput(audioFrames[0]));
-        final INDArray expected0 = Nd4j.create(res0.get().get(0));
+        final INDArray expected0 = Nd4j.create(res0.stream().findFirst().get());
         for(int channel = 0; channel < nrofChannels; channel++) {
             assertEquals("Incorrect model input!", expected0, inputProvider.getModelInput().get(NDArrayIndex.point(0), NDArrayIndex.point(channel)));
         }
@@ -44,7 +44,7 @@ public class Cnn2DInputProviderTest {
         mockBuffer.advance();
         inputProvider.updateInput();
         final ProcessingResult res1 = proc.create(new SingletonDoubleInput(audioFrames[1]));
-        final INDArray expected1 = Nd4j.create(res1.get().get(0));
+        final INDArray expected1 = Nd4j.create(res1.stream().findFirst().get());
         for(int channel = 0; channel < nrofChannels; channel++) {
             assertEquals("Incorrect model input!", expected1, inputProvider.getModelInput().get(NDArrayIndex.point(0), NDArrayIndex.point(channel)));
         }
@@ -93,8 +93,8 @@ public class Cnn2DInputProviderTest {
             }
 
             @Override
-            public List<double[][]> get() {
-                return Collections.nCopies(nrofOutputDupes, input.get().stream().map(inputArr -> {
+            public Stream<double[][]> stream() {
+                return Collections.nCopies(nrofOutputDupes, input.stream().map(inputArr -> {
                     final int nrofSamplesPerFrame = inputArr[0].length / splitSize;
                     final double[][] result = new double[splitSize][nrofSamplesPerFrame];
                     for (int i = 0; i < splitSize; i++) {
@@ -103,7 +103,7 @@ public class Cnn2DInputProviderTest {
                         }
                     }
                     return result;
-                }).findFirst().orElseThrow(() -> new RuntimeException("No inputs!")));
+                }).findFirst().orElseThrow(() -> new RuntimeException("No inputs!"))).stream();
             }
         }
 

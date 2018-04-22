@@ -8,8 +8,7 @@ package ampControl.audio.processing;
   Blog : http://ganeshtiwaridotcomdotnp.blogspot.com/
  */
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Mel-Frequency Spectrum Coefficients.
@@ -53,8 +52,8 @@ public class Mfsc implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 final int nrofFrames = inputArr.length;
                 final int nrofSamplesPerFrame = inputArr[0].length;
                 final double[][] mfcc = new double[nrofFrames][nrofSamplesPerFrame];
@@ -64,7 +63,7 @@ public class Mfsc implements ProcessingResult.Factory {
                     mfcc[i] = process(inputArr[i], numMelFilters, samplesPerFrame);
                 }
                 return mfcc;
-            }).collect(Collectors.toList());
+            });
         }
     }
 

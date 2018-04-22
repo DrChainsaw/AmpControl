@@ -1,8 +1,6 @@
 package ampControl.audio.processing;
 
 import java.util.DoubleSummaryStatistics;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
@@ -37,14 +35,14 @@ public class LogScale implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 final int nrofFrames = inputArr.length;
                 final int nrofSamplesPerBin = inputArr[0].length;
                 final double[][] scaled = new double[nrofFrames][nrofSamplesPerBin];
 
 
-                final DoubleSummaryStatistics stats = Stream.of(inputArr).flatMapToDouble(dVec -> DoubleStream.of(dVec)).summaryStatistics();
+                final DoubleSummaryStatistics stats = Stream.of(inputArr).flatMapToDouble(DoubleStream::of).summaryStatistics();
                 final double min = stats.getMin() != 0 ? stats.getMin() : 0.00000000001F;
                 final double max = stats.getMax();
 
@@ -59,7 +57,7 @@ public class LogScale implements ProcessingResult.Factory {
                     }
                 }
                 return scaled;
-            }).collect(Collectors.toList());
+            });
         }
     }
 }

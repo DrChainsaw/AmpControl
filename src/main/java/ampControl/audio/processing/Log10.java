@@ -1,7 +1,6 @@
 package ampControl.audio.processing;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Does base 10 logarithm of input.
@@ -36,8 +35,8 @@ public class Log10 implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
             final int nrofFrames = inputArr.length;
             final int nrofSamplesPerBin = inputArr[0].length;
             double[][] result = new double[nrofFrames][nrofSamplesPerBin];
@@ -52,7 +51,7 @@ public class Log10 implements ProcessingResult.Factory {
                 }
             }
             return result;
-            }).collect(Collectors.toList());
+            });
         }
     }
 }

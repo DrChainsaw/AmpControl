@@ -37,7 +37,7 @@ public class SpectrogramTest {
         final ProcessingResult.Factory specgram = new Spectrogram(fftWindowSize, fftWindowSize);
         final ProcessingResult res = specgram.create(new SingletonDoubleInput(new double[][]{cosSum}));
 
-        final double[][] specgramData = res.get().get(0);
+        final double[][] specgramData = res.stream().findFirst().get();
         assertEquals("Incorrect number of frames!", nrofFrames, specgramData.length);
 
         for(int frameNr = 0; frameNr < nrofFrames; frameNr++) {
@@ -64,7 +64,7 @@ public class SpectrogramTest {
         final ProcessingResult.Factory specgram = new Spectrogram(fftSize, stride);
         final ProcessingResult res = specgram.create(new SingletonDoubleInput(new double[][]{signal}));
 
-        final double[][] specgramData = res.get().get(0);
+        final double[][] specgramData = res.stream().findFirst().get();
         assertEquals("Incorrect number of frames!", expectedNrofFrames, specgramData.length);
     }
 

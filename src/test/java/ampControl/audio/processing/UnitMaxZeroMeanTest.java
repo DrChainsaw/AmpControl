@@ -21,10 +21,10 @@ public class UnitMaxZeroMeanTest {
 
         final ProcessingResult.Factory umzm = new UnitMaxZeroMean();
         final ProcessingResult res = umzm.create(new SingletonDoubleInput(test));
-        final double[][] result = res.get().get(0);
+        final double[][] result = res.stream().findFirst().get();
 
-        assertEquals("Not unit max!", 1, Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).max().orElseThrow(() -> new RuntimeException("no output!")), 1e-10);
-        assertEquals("Not zero mean!", 0, Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).sum(), 1e-10);
+        assertEquals("Not unit max!", 1, Stream.of(result).flatMapToDouble(DoubleStream::of).max().orElseThrow(() -> new RuntimeException("no output!")), 1e-10);
+        assertEquals("Not zero mean!", 0, Stream.of(result).flatMapToDouble(DoubleStream::of).sum(), 1e-10);
     }
 
     /**

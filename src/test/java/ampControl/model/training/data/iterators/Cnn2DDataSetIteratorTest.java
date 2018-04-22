@@ -1,5 +1,6 @@
 package ampControl.model.training.data.iterators;
 
+import ampControl.audio.processing.SingletonDoubleInput;
 import ampControl.model.training.data.DataProvider;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -8,12 +9,12 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test cases for {@link Cnn2DDataSetIterator}
@@ -70,8 +71,8 @@ public class Cnn2DDataSetIteratorTest {
 
         @Override
         public synchronized Stream<DataProvider.TrainingData> generateData() {
-            return Stream.generate( () ->  Collections.singletonList(new double[][] {{cnt++, cnt++}, {cnt++, cnt++}}))
-                    .map(result ->new TrainingData(labels.get(labelCnt++ % labels.size()), () -> result));
+            return Stream.generate( () ->  new double[][] {{cnt++, cnt++}, {cnt++, cnt++}})
+                    .map(result ->new TrainingData(labels.get(labelCnt++ % labels.size()), new SingletonDoubleInput(result)));
         }
     }
 
@@ -86,11 +87,11 @@ public class Cnn2DDataSetIteratorTest {
 
         @Override
         public synchronized Stream<TrainingData> generateData() {
-            return dp.generateData().peek(td -> collect(td));
+            return dp.generateData().peek(this::collect);
         }
 
         private void collect(TrainingData td) {
-            checkSum += td.result().get().stream().flatMap(dVec -> Stream.of(dVec)).flatMapToDouble(dVec -> DoubleStream.of(dVec)).sum();
+            checkSum += td.result().stream().flatMap(Stream::of).flatMapToDouble(DoubleStream::of).sum();
             labels.add(td.getLabel());
         }
     }

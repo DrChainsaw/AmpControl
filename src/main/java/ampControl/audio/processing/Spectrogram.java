@@ -20,12 +20,10 @@ import org.datavec.audio.dsp.WindowFunction;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Computes spectrogram of input. Ripped from {@link org.datavec.audio.extension.Spectrogram}.
@@ -92,8 +90,8 @@ public class Spectrogram implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 final int nrofFrames = inputArr.length;
                 final int nrofSamplesInFrame = inputArr[0].length;
                 double[][] specgram = null;
@@ -107,7 +105,7 @@ public class Spectrogram implements ProcessingResult.Factory {
                     }
                 }
                 return specgram;
-            }).collect(Collectors.toList());
+            });
         }
 
         /**
@@ -174,7 +172,7 @@ public class Spectrogram implements ProcessingResult.Factory {
     public static void main(String[] args) {
         Spectrogram spec = new Spectrogram(16, 2);
         double[] testVec = IntStream.rangeClosed(0, 2 * 16).mapToDouble(i -> i).toArray();
-        ProcessingResult res = spec.create(() -> Collections.singletonList(new double[][]{testVec}));
-        System.out.println(Arrays.deepToString(res.get().get(0)));
+        ProcessingResult res = spec.create(new SingletonDoubleInput(testVec));
+        System.out.println(Arrays.deepToString(res.stream().findAny().get()));
     }
 }

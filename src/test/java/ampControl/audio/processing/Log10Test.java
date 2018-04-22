@@ -2,6 +2,9 @@ package ampControl.audio.processing;
 
 import org.junit.Test;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -26,8 +29,10 @@ public class Log10Test {
         final double[] expected = {-10, -10,   0,   1,   2,   3,   4};
         final ProcessingResult.Factory proc = new Log10();
         final ProcessingResult res = proc.create(new SingletonDoubleInput(input));
-        assertEquals("Incorrect output size!", 1, res.get().size());
-        assertEquals("Incorrect output size!", 1, res.get().get(0).length);
-        assertArrayEquals("Incorrect ouput!", expected, res.get().get(0)[0], 1e-10);
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
+
+        assertEquals("Incorrect output size!", 1, resList.size());
+        assertEquals("Incorrect output size!", 1, resList.get(0).length);
+        assertArrayEquals("Incorrect ouput!", expected, resList.get(0)[0], 1e-10);
     }
 }

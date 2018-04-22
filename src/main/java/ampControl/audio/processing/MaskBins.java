@@ -1,8 +1,8 @@
 package ampControl.audio.processing;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Masks out indexes along the second dimension, setting them to 0.
@@ -50,8 +50,8 @@ public class MaskBins implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 double[][] result = inputArr.clone();
                 for (int i = 0; i < result.length; i++) {
                     for (int j : binsToMask) {
@@ -59,7 +59,7 @@ public class MaskBins implements ProcessingResult.Factory {
                     }
                 }
                 return result;
-            }).collect(Collectors.toList());
+            });
         }
     }
 

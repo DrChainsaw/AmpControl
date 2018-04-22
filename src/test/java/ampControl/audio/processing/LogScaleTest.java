@@ -25,7 +25,7 @@ public class LogScaleTest {
         final double[] tenPows = DoubleStream.of(expected).map(pow -> Math.pow(10, pow*maxPow)).toArray();
         final ProcessingResult.Factory logScale = new LogScale();
         final ProcessingResult res = logScale.create(new SingletonDoubleInput(tenPows));
-        assertArrayEquals("Incorrect output!", expected, res.get().get(0)[0], 1e-10);
+        assertArrayEquals("Incorrect output!", expected, res.stream().findFirst().get()[0], 1e-10);
     }
 
     /**
@@ -38,7 +38,7 @@ public class LogScaleTest {
         final double[] tenPows = DoubleStream.of(expected).map(pow -> Math.pow(10, pow*maxPow)).toArray();
         final ProcessingResult.Factory logScale = new LogScale();
         final ProcessingResult res = logScale.create(new SingletonDoubleInput(tenPows));
-        assertArrayEquals("Incorrect output!", expected, res.get().get(0)[0], 1e-10);
+        assertArrayEquals("Incorrect output!", expected, res.stream().findFirst().get()[0], 1e-10);
     }
 
     /**

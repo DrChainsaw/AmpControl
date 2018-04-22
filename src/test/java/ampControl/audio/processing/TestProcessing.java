@@ -1,9 +1,8 @@
 package ampControl.audio.processing;
 
-import java.util.List;
 import java.util.function.DoubleUnaryOperator;
-import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 public class TestProcessing implements ProcessingResult.Factory {
 
@@ -28,15 +27,15 @@ public class TestProcessing implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 final double[][] result = new double[inputArr.length][];
                 for (int i = 0; i < inputArr.length; i++) {
                     result[i] = DoubleStream.of(inputArr[i]).map(resultFunction).toArray();
                 }
                 return result;
 
-            }).collect(Collectors.toList());
+            });
         }
     }
 

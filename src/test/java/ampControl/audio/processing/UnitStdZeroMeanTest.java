@@ -24,10 +24,10 @@ public class UnitStdZeroMeanTest {
 
         final ProcessingResult.Factory uszm = new UnitStdZeroMean();
         final ProcessingResult res = uszm.create(new SingletonDoubleInput(test));
-        final double[][] result = res.get().get(0);
+        final double[][] result = res.stream().findFirst().get();
 
-        assertEquals("Not unit std!" , 1,Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).map(d -> d*d).sum() / nrofSamples, 1e-10);
-        assertEquals("Not zero mean!", 0, Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).sum(), 1e-10);
+        assertEquals("Not unit std!" , 1,Stream.of(result).flatMapToDouble(DoubleStream::of).map(d -> d*d).sum() / nrofSamples, 1e-10);
+        assertEquals("Not zero mean!", 0, Stream.of(result).flatMapToDouble(DoubleStream::of).sum(), 1e-10);
     }
 
     /**

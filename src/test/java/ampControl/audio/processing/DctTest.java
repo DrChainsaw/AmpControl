@@ -31,7 +31,7 @@ public class DctTest {
         final Dct dct = new Dct();
         final ProcessingResult res = dct.create(new SingletonDoubleInput(cosSinSum));
 
-        final double[] dctData = res.get().get(0)[0];
+        final double[] dctData = res.stream().findFirst().get()[0];
 
         for(int i = 0; i < freqs.size(); i++) {
             final int argmax = argMax(dctData);

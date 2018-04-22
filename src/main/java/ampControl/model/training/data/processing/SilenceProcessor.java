@@ -35,7 +35,8 @@ public class SilenceProcessor implements AudioProcessor {
 		double[][] data = new SilenceProcessor(44100 * 1000 / (1000/200) / 1000,
 				() -> new Pipe(
 						new Spectrogram(512, 32),
-						new UnitStdZeroMean())).getResult().get().get(0);
+						new UnitStdZeroMean())).getResult().stream().findFirst()
+				.orElseThrow(() -> new RuntimeException("No output!"));
 
 		System.out.println("shape: " + data.length + ", " + data[0].length);
 		System.out.println("data: " + Arrays.deepToString(data));

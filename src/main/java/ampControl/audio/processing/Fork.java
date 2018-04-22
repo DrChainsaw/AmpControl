@@ -2,8 +2,7 @@ package ampControl.audio.processing;
 
 import ampControl.audio.processing.ProcessingResult.Factory;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Forks the processing path, resulting in two paths. The result of each unique path
@@ -39,11 +38,8 @@ public class Fork implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            List<double[][]> result = new ArrayList<>();
-            result.addAll(result1.get());
-            result.addAll(result2.get());
-            return result;
+        public Stream<double[][]> stream() {
+            return Stream.concat(result1.stream(), result2.stream());
         }
     }
 

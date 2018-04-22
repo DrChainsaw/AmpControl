@@ -22,7 +22,7 @@ public class MaskBinsTest {
         final int[] toMask = {0, 2};
         final ProcessingResult.Factory mask = new MaskBins(toMask);
         final ProcessingResult res = mask.create(new SingletonDoubleInput(test));
-        assertArrayEquals("Masking was not applied correctly", expected, res.get().get(0));
+        assertArrayEquals("Masking was not applied correctly", expected, res.stream().findFirst().get());
     }
 
     /**

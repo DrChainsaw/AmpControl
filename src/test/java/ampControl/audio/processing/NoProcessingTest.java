@@ -20,7 +20,7 @@ public class NoProcessingTest {
         final double[][] expected = new double[][]{{1, 2, 3}, {4, 5, 6}};
         final ProcessingResult.Factory nopp = new NoProcessing();
         final ProcessingResult res = nopp.create(new SingletonDoubleInput(expected));
-        assertArrayEquals("Incorrect output!", expected, res.get().get(0));
+        assertArrayEquals("Incorrect output!", expected, res.stream().findFirst().get());
     }
 
     /**

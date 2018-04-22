@@ -1,16 +1,16 @@
 package ampControl.model.training.data.iterators;
 
-import java.util.List;
-import java.util.function.Consumer;
-
 import ampControl.model.training.data.DataProvider;
+import ampControl.model.training.data.DataProvider.TrainingData;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 
-import ampControl.model.training.data.DataProvider.TrainingData;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * "Main" {@link DataSetIterator} for training and offline evaluation. Transforms {@link TrainingData} from an
@@ -46,7 +46,7 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
 
         @Override
         public synchronized void accept(TrainingData data) {
-            List<double[][]> features = data.result().get();
+            List<double[][]> features = data.result().stream().collect(Collectors.toList());
             for(int featureInd = 0; featureInd < features.size(); featureInd++) {
                 double[][] feature = features.get(featureInd);
                 if (featureArr == null) {

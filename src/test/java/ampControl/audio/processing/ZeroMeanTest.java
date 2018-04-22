@@ -23,9 +23,9 @@ public class ZeroMeanTest {
 
         final ProcessingResult.Factory proc = new UnitMaxZeroMean();
         final ProcessingResult res = proc.create(new SingletonDoubleInput(test));
-        final double[][] result = res.get().get(0);
+        final double[][] result = res.stream().findFirst().get();
 
-        assertEquals("Not zero mean!", 0, Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).sum(), 1e-10);
+        assertEquals("Not zero mean!", 0, Stream.of(result).flatMapToDouble(DoubleStream::of).sum(), 1e-10);
     }
 
     /**

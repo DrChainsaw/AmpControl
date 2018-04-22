@@ -25,10 +25,11 @@ public class ForkTest {
         final ProcessingResult.Factory fork = new Fork(mock0, mock1);
         final ProcessingResult input = new SingletonDoubleInput(new double[][] {{0.1, 0.2}, {0.3, 0.4}});
         final ProcessingResult res = fork.create(input);
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
 
-        assertEquals("Incorrect size!", 2, res.get().size());
-        assertArrayEquals("Incorrect output path 1!", mock0.create(input).get().get(0), res.get().get(0));
-        assertArrayEquals("Incorrect output path 2!", mock1.create(input).get().get(0), res.get().get(1));
+        assertEquals("Incorrect size!", 2, resList.size());
+        assertArrayEquals("Incorrect output path 1!", mock0.create(input).stream().findFirst().get(), resList.get(0));
+        assertArrayEquals("Incorrect output path 2!", mock1.create(input).stream().findFirst().get(), resList.get(1));
     }
 
     /**
@@ -47,10 +48,11 @@ public class ForkTest {
         }
         final ProcessingResult input = new SingletonDoubleInput(new double[][]{{0.1, 0.2}, {0.3, 0.4}});
         final ProcessingResult res = last.create(input);
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
 
-        assertEquals("Incorrect size!", mocks.size(), res.get().size());
+        assertEquals("Incorrect size!", mocks.size(), resList.size());
         for (int i = 0; i < mocks.size(); i++) {
-            assertArrayEquals("Incorrect output path "+ i +"!", mocks.get(i).create(input).get().get(0), res.get().get(i));
+            assertArrayEquals("Incorrect output path "+ i +"!", mocks.get(i).create(input).stream().findFirst().get(), resList.get(i));
         }
     }
 
@@ -69,10 +71,11 @@ public class ForkTest {
         );
         final ProcessingResult input = new SingletonDoubleInput(new double[][]{{4, 9, 16}, {25, 36, 49}});
         final ProcessingResult res = fork.create(input);
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
 
-        assertEquals("Incorrect number of outputs!", 2, res.get().size());
-        assertArrayEquals("Incorrect output!", path0.create(input).get().get(0), res.get().get(0));
-        assertArrayEquals("Incorrect output!", path1.create(input).get().get(0), res.get().get(1));
+        assertEquals("Incorrect number of outputs!", 2, resList.size());
+        assertArrayEquals("Incorrect output!", path0.create(input).stream().findFirst().get(), resList.get(0));
+        assertArrayEquals("Incorrect output!", path1.create(input).stream().findFirst().get(), resList.get(1));
     }
 
     /**

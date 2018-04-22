@@ -1,8 +1,6 @@
 package ampControl.audio.processing;
 
 import java.util.DoubleSummaryStatistics;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
@@ -37,13 +35,13 @@ public class UnitMaxZeroMean implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 final int nrofFrames = inputArr.length;
                 final int nrofSamplesPerFrame = inputArr[0].length;
                 final double[][] scaled = new double[nrofFrames][nrofSamplesPerFrame];
 
-                final DoubleSummaryStatistics stats = Stream.of(inputArr).flatMapToDouble(dVec -> DoubleStream.of(dVec)).summaryStatistics();
+                final DoubleSummaryStatistics stats = Stream.of(inputArr).flatMapToDouble(DoubleStream::of).summaryStatistics();
                 final double min = stats.getMin();
                 final double max = stats.getMax();
                 final double avg = stats.getAverage();
@@ -55,7 +53,7 @@ public class UnitMaxZeroMean implements ProcessingResult.Factory {
                     }
                 }
                 return scaled;
-            }).collect(Collectors.toList());
+            });
         }
     }
 }

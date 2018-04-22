@@ -4,10 +4,9 @@ import ampControl.model.visualize.RealTimePlot;
 import org.jtransforms.dct.DoubleDCT_1D;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Does discrete cosine transform of input
@@ -39,20 +38,19 @@ public class Dct implements ProcessingResult.Factory {
         }
 
         @Override
-        public List<double[][]> get() {
-            return input.get().stream().map(inputArr -> {
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
                 final int nrofFrames = inputArr.length;
                 final int nrofSamplesPerBin = inputArr[0].length;
                 final double[][] dct = new double[nrofFrames][nrofSamplesPerBin];
-                // Could be cached or initialized in some factory but it does not seem to be worth it.
+                // Could be cached or initialized in the factory but it does not seem to be worth it.
                 final DoubleDCT_1D dct1d = new DoubleDCT_1D(nrofSamplesPerBin);
                 for (int i = 0; i < dct.length; i++) {
                     dct[i] = inputArr[i].clone();
                     dct1d.forward(dct[i], false);
                 }
                 return dct;
-            })
-                    .collect(Collectors.toList());
+            });
         }
     }
 
@@ -64,8 +62,8 @@ public class Dct implements ProcessingResult.Factory {
                 .mapToDouble(i -> i * 2 * Math.PI / size)
                 .map(d -> freqs.stream().mapToDouble(freq -> Math.cos(freq*d)).sum() + Math.sin(5*d))
                 .toArray();
-        ProcessingResult res = dct.create(() -> Collections.singletonList(new double[][] {cosSinSum}));
-        double[] dctData = res.get().get(0)[0];
+        ProcessingResult res = dct.create(new SingletonDoubleInput(cosSinSum));
+        double[] dctData = res.stream().findAny().get()[0];
         RealTimePlot<Integer, Double> rtp = new RealTimePlot<>("dct", "dummy");
         for(int i = 0; i < cosSinSum.length; i++) {
            rtp.plotData("dct", i, dctData[i]/size);

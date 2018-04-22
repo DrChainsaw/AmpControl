@@ -23,7 +23,7 @@ public class MfscTest {
 
         final ProcessingResult.Factory mfsc = new Mfsc(10000);
         final ProcessingResult res = mfsc.create(new SingletonDoubleInput(test));
-        double[][] result = res.get().get(0);
+        double[][] result = res.stream().findFirst().get();
         assertEquals("Incorrect size!", expected.length, result.length);
         for(int i = 0; i < expected.length; i++) {
             assertArrayEquals("Incorrect output!", expected[i], result[i], 1e-3);
