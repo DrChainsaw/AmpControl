@@ -216,7 +216,7 @@ public class BlockBuilder {
         if (modelFile.exists()) {
             try {
                 log.info("restoring saved model: " + modelFile.getAbsolutePath());
-                accuracy = StoredGraphClassifier.getAccuracy(modelDir + File.separator + getName());
+                accuracy = StoredGraphClassifier.getAccuracy(modelDir + File.separator + getName() + "_best");
                 boolean loadUpdater = updater instanceof Adam ? false : true; // load updater with Adam results in score NaN for some unknown reason
                 return ModelSerializer.restoreComputationGraph(modelFile, loadUpdater);
 
