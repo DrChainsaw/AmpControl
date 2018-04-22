@@ -30,6 +30,9 @@ public class AsioClassifierInputFactory implements ClassifierInputProviderFactor
     @Parameter(names = "-channel", description = "Input channel to classify")
     private int channelInd = 0;
 
+    @Parameter(names = "-samplingRate", description = "Sample rate used when training model")
+    private int sampleRate = 44100;
+
     // Should be final but can't thanks to JCommander...
     private AsioDriver driver;
 
@@ -41,8 +44,10 @@ public class AsioClassifierInputFactory implements ClassifierInputProviderFactor
         // Effectively untestable as Asio stuff is not mockable
         AsioDriver.getDriverNames().forEach(name -> log.info("Found ASIO driver with name: " + name));
         driver = AsioDriver.getDriver(driverName);
+
         // No matter what, we must shut down the driver when program ends!
         setShutdownHook(driver);
+        driver.setSampleRate(sampleRate);
     }
 
     private void setShutdownHook(AsioDriver driver) {
