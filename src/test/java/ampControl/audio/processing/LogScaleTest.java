@@ -5,7 +5,8 @@ import org.junit.Test;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link LogScale}
@@ -22,9 +23,9 @@ public class LogScaleTest {
         final int maxPow = 10;
         final double[] expected = IntStream.rangeClosed(0,maxPow).mapToDouble(i -> i/maxPow).toArray();
         final double[] tenPows = DoubleStream.of(expected).map(pow -> Math.pow(10, pow*maxPow)).toArray();
-        final ProcessingResult.Processing logScale = new LogScale();
-        logScale.receive(new double[][] {tenPows});
-        assertArrayEquals("Incorrect output!", expected, logScale.get().get(0)[0], 1e-10);
+        final ProcessingResult.Factory logScale = new LogScale();
+        final ProcessingResult res = logScale.create(new SingletonDoubleInput(tenPows));
+        assertArrayEquals("Incorrect output!", expected, res.get().get(0)[0], 1e-10);
     }
 
     /**
@@ -35,9 +36,9 @@ public class LogScaleTest {
         final int maxPow = 10;
         final double[] expected = IntStream.rangeClosed(0,maxPow).map(i -> maxPow-i).mapToDouble(i -> i/maxPow).toArray();
         final double[] tenPows = DoubleStream.of(expected).map(pow -> Math.pow(10, pow*maxPow)).toArray();
-        final ProcessingResult.Processing logScale = new LogScale();
-        logScale.receive(new double[][] {tenPows});
-        assertArrayEquals("Incorrect output!", expected, logScale.get().get(0)[0], 1e-10);
+        final ProcessingResult.Factory logScale = new LogScale();
+        final ProcessingResult res = logScale.create(new SingletonDoubleInput(tenPows));
+        assertArrayEquals("Incorrect output!", expected, res.get().get(0)[0], 1e-10);
     }
 
     /**

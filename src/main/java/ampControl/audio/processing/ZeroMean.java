@@ -1,7 +1,7 @@
 package ampControl.audio.processing;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
@@ -10,24 +10,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class ZeroMean implements ProcessingResult.Processing {
-
-    private double[][] result;
-
-    @Override
-    public void receive(double[][] input) {
-        final int nrofFrames = input.length;
-        final int nrofSamplesPerFrame = input[0].length;
-
-        this.result= new double[nrofFrames][nrofSamplesPerFrame];
-        final double avg = Stream.of(input).flatMapToDouble(dVec -> DoubleStream.of(dVec)).summaryStatistics().getAverage();
-
-        for (int i = 0; i < nrofFrames; i++) {
-            for (int j = 0; j < nrofSamplesPerFrame; j++) {
-                this.result[i][j] = input[i][j] - avg;
-            }
-        }
-    }
+public class ZeroMean implements ProcessingResult.Factory {
 
     @Override
     public String name() {
@@ -39,7 +22,34 @@ public class ZeroMean implements ProcessingResult.Processing {
     }
 
     @Override
-    public List<double[][]> get() {
-        return Collections.singletonList(result);
+    public ProcessingResult create(ProcessingResult input) {
+        return new Result(input);
+    }
+
+    private final class Result implements ProcessingResult {
+
+        private final ProcessingResult input;
+
+        public Result(ProcessingResult input) {
+            this.input = input;
+        }
+
+        @Override
+        public List<double[][]> get() {
+            return input.get().stream().map(inputArr -> {
+                final int nrofFrames = inputArr.length;
+                final int nrofSamplesPerFrame = inputArr[0].length;
+
+                final double[][] result = new double[nrofFrames][nrofSamplesPerFrame];
+                final double avg = Stream.of(inputArr).flatMapToDouble(dVec -> DoubleStream.of(dVec)).summaryStatistics().getAverage();
+
+                for (int i = 0; i < nrofFrames; i++) {
+                    for (int j = 0; j < nrofSamplesPerFrame; j++) {
+                        result[i][j] = inputArr[i][j] - avg;
+                    }
+                }
+                return result;
+            }).collect(Collectors.toList());
+        }
     }
 }

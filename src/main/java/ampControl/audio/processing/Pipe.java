@@ -1,33 +1,25 @@
 package ampControl.audio.processing;
 
-import java.util.ArrayList;
-import java.util.List;
+import ampControl.audio.processing.ProcessingResult.Factory;
 
 /**
- * Connects two {@link Processing} so that output from the first is input to the second
+ * Connects two {@link Factory} so that output from the first is input to the second
  *
  * @author Christian Skärby
  */
-public class Pipe implements ProcessingResult.Processing {
+public class Pipe implements ProcessingResult.Factory {
 
-    final Processing first;
-    final ProcessingResult.Processing second;
+    final Factory first;
+    final Factory second;
 
-    private final List<double[][]> result = new ArrayList<>();
-
-    public Pipe(ProcessingResult.Processing first, ProcessingResult.Processing second) {
+    public Pipe(ProcessingResult.Factory first, Factory second) {
         this.first = first;
         this.second = second;
     }
 
     @Override
-    public void receive(double[][] input) {
-        result.clear();
-        first.receive(input);
-        first.get().forEach(midRes -> {
-            second.receive(midRes);
-            result.addAll(second.get());
-        });
+    public ProcessingResult create(ProcessingResult input) {
+        return second.create(first.create(input));
     }
 
     @Override
@@ -39,8 +31,4 @@ public class Pipe implements ProcessingResult.Processing {
         return "_pipe_";
     }
 
-    @Override
-    public List<double[][]> get() {
-        return result;
-    }
 }

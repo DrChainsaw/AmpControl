@@ -1,8 +1,8 @@
 package ampControl.audio.processing;
 
-import java.util.Collections;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
@@ -12,37 +12,7 @@ import java.util.stream.Stream;
  *
  * @author Jacquet Wong
  */
-public class LogScale implements ProcessingResult.Processing {
-
-    private double[][] scaled;
-
-    @Override
-    public void receive(double[][] input) {
-        final int nrofFrames = input.length;
-        final int nrofSamplesPerBin = input[0].length;
-        this.scaled = new double[nrofFrames][nrofSamplesPerBin];
-
-
-        final DoubleSummaryStatistics stats = Stream.of(input).flatMapToDouble(dVec -> DoubleStream.of(dVec)).summaryStatistics();
-        final double min = stats.getMin() != 0 ? stats.getMin() :  0.00000000001F;
-        final double max = stats.getMax();
-
-        final double diff = Math.log10(max / min); // perceptual difference
-        for (int i = 0; i < nrofFrames; i++) {
-            for (int j = 0; j < nrofSamplesPerBin; j++) {
-                if (input[i][j] < min) {
-                    scaled[i][j] = 0;
-                } else {
-                    scaled[i][j] = Math.log10(input[i][j] / min) / diff;
-                }
-            }
-        }
-    }
-
-    @Override
-    public List<double[][]> get() {
-        return Collections.singletonList(scaled);
-    }
+public class LogScale implements ProcessingResult.Factory {
 
     @Override
     public String name() {
@@ -51,5 +21,45 @@ public class LogScale implements ProcessingResult.Processing {
 
     public static String nameStatic() {
         return "lgsc";
+    }
+
+    @Override
+    public ProcessingResult create(ProcessingResult input) {
+        return new Result(input);
+    }
+
+    private final static class Result implements ProcessingResult {
+
+        private final ProcessingResult input;
+
+        public Result(ProcessingResult input) {
+            this.input = input;
+        }
+
+        @Override
+        public List<double[][]> get() {
+            return input.get().stream().map(inputArr -> {
+                final int nrofFrames = inputArr.length;
+                final int nrofSamplesPerBin = inputArr[0].length;
+                final double[][] scaled = new double[nrofFrames][nrofSamplesPerBin];
+
+
+                final DoubleSummaryStatistics stats = Stream.of(inputArr).flatMapToDouble(dVec -> DoubleStream.of(dVec)).summaryStatistics();
+                final double min = stats.getMin() != 0 ? stats.getMin() : 0.00000000001F;
+                final double max = stats.getMax();
+
+                final double diff = Math.log10(max / min); // perceptual difference
+                for (int i = 0; i < nrofFrames; i++) {
+                    for (int j = 0; j < nrofSamplesPerBin; j++) {
+                        if (inputArr[i][j] < min) {
+                            scaled[i][j] = 0;
+                        } else {
+                            scaled[i][j] = Math.log10(inputArr[i][j] / min) / diff;
+                        }
+                    }
+                }
+                return scaled;
+            }).collect(Collectors.toList());
+        }
     }
 }

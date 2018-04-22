@@ -152,7 +152,7 @@ public class TrainingHarness {
                 long endtime = System.nanoTime();
                 double time = (endtime - starttime) / 1000000d;
                 printSynchronized("Training took " + time + " ms for " + md.getNrofTrainingExamplesPerBatch() + " examples, " + time / (double) md.getNrofTrainingExamplesPerBatch() + " ms per example");
-                if (trainingStep % evalEveryNrofSteps == evalEveryNrofSteps - 39) {
+                if (trainingStep % evalEveryNrofSteps == evalEveryNrofSteps - 1) {
                     if (modelInfoMap.get(md).skipEval > 0) {
                         modelInfoMap.get(md).skipEval--;
                         printSynchronized("Skip eval! " + modelInfoMap.get(md).skipEval);
@@ -304,7 +304,7 @@ public class TrainingHarness {
         int evalBatchSize = 1;
         double evalSetPercentage = 5;
 
-        Supplier<ProcessingResult.Processing> audioPostProcSupplier = new SupplierFactory(clipSamplingRate).get(model);
+        Supplier<ProcessingResult.Factory> audioPostProcSupplier = new SupplierFactory(clipSamplingRate).get(model);
         final int timeWindowSize = ClassifierInputProviderFactory.parseWindowSize(model);
         final SilenceProcessor silence = new SilenceProcessor(clipSamplingRate * clipLengthMs / (1000 / timeWindowSize) / 1000, audioPostProcSupplier);
         Map<String, AudioDataProvider.AudioProcessorBuilder> labelToBuilder = new LinkedHashMap<>();

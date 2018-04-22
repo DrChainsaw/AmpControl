@@ -1,6 +1,7 @@
 package ampControl.audio;
 
 import ampControl.audio.processing.ProcessingResult;
+import ampControl.audio.processing.SingletonDoubleInput;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -9,7 +10,7 @@ import java.util.function.Supplier;
 
 /**
  * {@link ClassifierInputProvider} for 2D CNN. Takes samples from an audio buffer and runs them through supplied
- * {@link ProcessingResult.Processing} and puts the output in an {@link INDArray}.
+ * {@link ProcessingResult.Factory} and puts the output in an {@link INDArray}.
  *
  * @author Christian Skärby
  */
@@ -17,11 +18,11 @@ public class Cnn2DInputProvider implements ClassifierInputProvider.Updatable {
 
     private final AudioInputBuffer audioBuffer;
     private final INDArray output;
-    private final Supplier<ProcessingResult.Processing> resultSupplier;
+    private final Supplier<ProcessingResult.Factory> resultSupplier;
 
     public Cnn2DInputProvider(
             AudioInputBuffer audioBuffer,
-            Supplier<ProcessingResult.Processing> resultSupplier) {
+            Supplier<ProcessingResult.Factory> resultSupplier) {
         this.audioBuffer = audioBuffer;
         this.resultSupplier = resultSupplier;
 
@@ -49,10 +50,10 @@ public class Cnn2DInputProvider implements ClassifierInputProvider.Updatable {
 
     private List<double[][]> getPostProcessedInput() {
 
-        ProcessingResult.Processing next = resultSupplier.get();
+        ProcessingResult.Factory next = resultSupplier.get();
         double[] audioFrame = audioBuffer.getAudio();
-        next.receive(new double[][] {audioFrame});
-        return next.get();
+        ProcessingResult res = next.create(new SingletonDoubleInput(audioFrame));
+        return res.get();
 
     }
 }

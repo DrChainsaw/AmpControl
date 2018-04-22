@@ -17,12 +17,12 @@ package ampControl.model.training.model.vertex;/*-
  */
 
 import lombok.Data;
+import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.inputs.InvalidInputTypeException;
 import org.deeplearning4j.nn.conf.memory.LayerMemoryReport;
 import org.deeplearning4j.nn.conf.memory.MemoryReport;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
@@ -93,6 +93,9 @@ public class ElementWiseVertexLatest extends GraphVertex {
     public org.deeplearning4j.nn.graph.vertex.GraphVertex instantiate(ComputationGraph graph, String name, int idx,
                                                                       INDArray paramsView, boolean initializeParams) {
         ElementWiseVertexLatestImpl.Op op;
+        if(this.op == null) {
+            this.op = Op.Add;
+        }
         switch (this.op) {
             case Add:
                 op = ElementWiseVertexLatestImpl.Op.Add;

@@ -23,16 +23,16 @@ public class RandScaleTest {
         final int minScaling = 77;
         final double [] input = {-2, 0, 3};
         final double [] expected = DoubleStream.of(input).map(d -> d * maxScaling / 1e2).toArray();
-        final ProcessingResult.Processing proc = new RandScale(maxScaling, minScaling, new Random() {
+        final ProcessingResult.Factory proc = new RandScale(maxScaling, minScaling, new Random() {
             @Override
             public int nextInt(int bound) {
                 return bound;
             }
         });
-        proc.receive(new double[][] {input});
-        assertEquals("Incorrect output size!", 1, proc.get().size());
-        assertEquals("Incorrect output size!", 1, proc.get().get(0).length);
-        assertArrayEquals("Incorrect ouput!", expected, proc.get().get(0)[0], 1e-10);
+        final ProcessingResult res = proc.create(new SingletonDoubleInput(new double[][] {input}));
+        assertEquals("Incorrect output size!", 1, res.get().size());
+        assertEquals("Incorrect output size!", 1, res.get().get(0).length);
+        assertArrayEquals("Incorrect ouput!", expected, res.get().get(0)[0], 1e-10);
     }
 
     /**
@@ -44,16 +44,16 @@ public class RandScaleTest {
         final int minScaling = 13;
         final double [] input = {-2, 0, 3};
         final double [] expected = DoubleStream.of(input).map(d -> d * minScaling / 1e2).toArray();
-        final ProcessingResult.Processing proc = new RandScale(maxScaling, minScaling, new Random() {
+        final ProcessingResult.Factory proc = new RandScale(maxScaling, minScaling, new Random() {
             @Override
             public int nextInt(int bound) {
                 return 0;
             }
         });
-        proc.receive(new double[][] {input});
-        assertEquals("Incorrect output size!", 1, proc.get().size());
-        assertEquals("Incorrect output size!", 1, proc.get().get(0).length);
-        assertArrayEquals("Incorrect ouput!", expected, proc.get().get(0)[0], 1e-10);
+        final ProcessingResult res = proc.create(new SingletonDoubleInput(new double[][] {input}));
+        assertEquals("Incorrect output size!", 1, res.get().size());
+        assertEquals("Incorrect output size!", 1, res.get().get(0).length);
+        assertArrayEquals("Incorrect ouput!", expected, res.get().get(0)[0], 1e-10);
     }
 
     /**

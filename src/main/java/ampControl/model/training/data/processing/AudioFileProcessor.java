@@ -1,15 +1,15 @@
 package ampControl.model.training.data.processing;
 
+import ampControl.audio.processing.*;
+import ampControl.model.visualize.PlotSpectrogram;
+import org.datavec.audio.Wave;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import ampControl.audio.processing.*;
-import ampControl.model.visualize.PlotSpectrogram;
-import org.datavec.audio.Wave;
 
 /**
  * {@link AudioProcessor} which reads a portion of the audio data from a file and produces a {@link ProcessingResult}.
@@ -21,7 +21,7 @@ public class AudioFileProcessor implements AudioProcessor {
 
     private final Supplier<Path> fileSupplier;
     private final Function<Path, AudioSamplingInfo> samplingInfoMapper;
-    private final Supplier<ProcessingResult.Processing> resultSupplier;
+    private final Supplier<ProcessingResult.Factory> resultSupplier;
 
 
     /**
@@ -29,12 +29,12 @@ public class AudioFileProcessor implements AudioProcessor {
      *
      * @param fileSupplier Supplies {@link Path Paths} to process
      * @param samplingInfoMapper Maps a {@link Path} to an {@link AudioSamplingInfo}
-     * @param resultSupplier Provides {@link ProcessingResult.Processing}
+     * @param resultSupplier Provides {@link ProcessingResult.Factory}
      */
     AudioFileProcessor(
             Supplier<Path> fileSupplier,
             Function<Path, AudioSamplingInfo> samplingInfoMapper,
-            Supplier<ProcessingResult.Processing> resultSupplier) {
+            Supplier<ProcessingResult.Factory> resultSupplier) {
         this.fileSupplier = fileSupplier;
         this.samplingInfoMapper = samplingInfoMapper;
         this.resultSupplier = resultSupplier;
@@ -64,9 +64,8 @@ public class AudioFileProcessor implements AudioProcessor {
                 ampDataTrim[i] = ampData[i + start];
             }
 
-            ProcessingResult.Processing result = resultSupplier.get();
-            result.receive(new double[][]{ampDataTrim});
-            return result;
+            ProcessingResult.Factory factory = resultSupplier.get();
+            return factory.create(new SingletonDoubleInput(ampDataTrim));
         }
         return null;
     }

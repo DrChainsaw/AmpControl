@@ -1,5 +1,7 @@
 package ampControl.audio.processing;
 
+import ampControl.audio.processing.ProcessingResult.Factory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,29 +13,38 @@ import java.util.List;
  *
  * @author Christian Skärby
  */
-public class Fork implements ProcessingResult.Processing {
+public class Fork implements ProcessingResult.Factory {
 
-    private final ProcessingResult.Processing path1;
-    private final Processing path2;
+    private final Factory path1;
+    private final Factory path2;
 
-    public Fork(Processing path1, Processing path2) {
+    public Fork(Factory path1, ProcessingResult.Factory path2) {
         this.path1 = path1;
         this.path2 = path2;
     }
 
     @Override
-    public void receive(double[][] input) {
-        path1.receive(input);
-        path2.receive(input);
+    public ProcessingResult create(ProcessingResult input) {
+        return new Result(path1.create(input), path2.create(input));
     }
 
+    private final static class Result implements ProcessingResult {
 
-    @Override
-    public List<double[][]> get() {
-        List<double[][]> result = new ArrayList<>();
-        result.addAll(path1.get());
-        result.addAll(path2.get());
-        return result;
+        private final ProcessingResult result1;
+        private final ProcessingResult result2;
+
+        public Result(ProcessingResult result1, ProcessingResult result2) {
+            this.result1 = result1;
+            this.result2 = result2;
+        }
+
+        @Override
+        public List<double[][]> get() {
+            List<double[][]> result = new ArrayList<>();
+            result.addAll(result1.get());
+            result.addAll(result2.get());
+            return result;
+        }
     }
 
     @Override

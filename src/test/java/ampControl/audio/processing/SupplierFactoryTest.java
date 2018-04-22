@@ -2,7 +2,7 @@ package ampControl.audio.processing;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link SupplierFactory}.
@@ -11,11 +11,11 @@ import static org.junit.Assert.*;
 public class SupplierFactoryTest {
 
     /**
-     * Tests that a created {@link ProcessingResult.Processing} can be recreated
+     * Tests that a created {@link ProcessingResult.Factory} can be recreated
      */
     @Test
     public void get() {
-        ProcessingResult.Processing pp = new Pipe(
+        ProcessingResult.Factory pp = new Pipe(
                 new Pipe(
                         new Mfsc(100),
                         new Dct()),
@@ -38,7 +38,7 @@ public class SupplierFactoryTest {
                         )));
 
         String str = "weewf21_23fd_" + SupplierFactory.prefix() + pp.name() + "_f5re5r7_hy6t8juy45";
-        ProcessingResult.Processing pps = new SupplierFactory(44100).get(str).get();
-        assertEquals("Processing was not restored correctly!", pp.name(), pps.name());
+        ProcessingResult.Factory pps = new SupplierFactory(44100).get(str).get();
+        assertEquals("Factory was not restored correctly!", pp.name(), pps.name());
     }
 }

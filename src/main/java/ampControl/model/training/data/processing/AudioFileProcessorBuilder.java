@@ -1,17 +1,17 @@
 package ampControl.model.training.data.processing;
 
+import ampControl.audio.processing.Pipe;
+import ampControl.audio.processing.ProcessingResult;
+import ampControl.audio.processing.Spectrogram;
+import ampControl.audio.processing.UnitMaxZeroMean;
+import ampControl.model.training.data.AudioDataProvider.AudioProcessorBuilder;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import ampControl.audio.processing.Pipe;
-import ampControl.audio.processing.ProcessingResult;
-import ampControl.audio.processing.Spectrogram;
-import ampControl.audio.processing.UnitMaxZeroMean;
-import ampControl.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 
 /**
  * Builder for {@link AudioFileProcessor}.
@@ -21,7 +21,7 @@ import ampControl.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 public class AudioFileProcessorBuilder implements AudioProcessorBuilder {
 	
 	private final List<Path> fileList = new ArrayList<>();
-	private Supplier<ProcessingResult.Processing> audioPostProcSupplier = () -> new Pipe(new Spectrogram(512, 32), new UnitMaxZeroMean());
+	private Supplier<ProcessingResult.Factory> audioPostProcSupplier = () -> new Pipe(new Spectrogram(512, 32), new UnitMaxZeroMean());
 	private Function<Path, AudioSamplingInfo> samplingInfoMapper = new WindowedConsecutiveSamplingInfo(1000, 100);
 	private Function<List<Path>, Supplier<Path>> fileSupplierFactory = fileList -> new RandomFileSupplier(new Random(666), fileList);
 	
@@ -36,7 +36,7 @@ public class AudioFileProcessorBuilder implements AudioProcessorBuilder {
 		fileList.add(file); return this;
 	}
 	
-	public AudioFileProcessorBuilder setPostProcSupplier(Supplier<ProcessingResult.Processing> audioPostProcSupplier) {
+	public AudioFileProcessorBuilder setPostProcSupplier(Supplier<ProcessingResult.Factory> audioPostProcSupplier) {
 		this.audioPostProcSupplier = audioPostProcSupplier; return this;
 	}
 	

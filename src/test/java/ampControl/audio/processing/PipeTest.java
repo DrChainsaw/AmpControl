@@ -16,12 +16,13 @@ public class PipeTest {
      */
     @Test
     public void receive() {
-        final ProcessingResult.Processing second = new TestProcessing(d -> 2 * d, "");
-        final ProcessingResult.Processing pipe = new Pipe(
+        final ProcessingResult.Factory pipe = new Pipe(
                 new TestProcessing(d -> Math.sqrt(d), ""),
-                second);
-        pipe.receive(new double[][]{{4, 9, 16}, {25, 36, 49}});
-        assertArrayEquals("Incorrect output!", second.get().get(0), pipe.get().get(0));
+                new TestProcessing(d -> 2 * d, ""));
+        final ProcessingResult input = new SingletonDoubleInput(new double[][]{{4, 9, 16}, {25, 36, 49}});
+        final double[][] expected = new double[][]{{4, 6, 8}, {10, 12, 14}};
+        final ProcessingResult res = pipe.create(input);
+        assertArrayEquals("Incorrect output!", expected, res.get().get(0));
     }
 
     /**
@@ -29,15 +30,17 @@ public class PipeTest {
      */
     @Test
     public void beforeFork() {
-        final ProcessingResult.Processing path0 = new TestProcessing(d -> 2 * d, "");
-        final ProcessingResult.Processing path1 = new TestProcessing(d -> 3 * d, "");
-        final ProcessingResult.Processing pipe = new Pipe(
+        final ProcessingResult.Factory path0 = new TestProcessing(d -> 2 * d, "");
+        final ProcessingResult.Factory path1 = new TestProcessing(d -> 3 * d, "");
+        final ProcessingResult.Factory pipe = new Pipe(
                 new TestProcessing(d -> Math.sqrt(d), ""),
                 new Fork(path0, path1));
-        pipe.receive(new double[][]{{4, 9, 16}, {25, 36, 49}});
-        assertEquals("Incorrect number of outputs!", 2, pipe.get().size());
-        assertArrayEquals("Incorrect output!", path0.get().get(0), pipe.get().get(0));
-        assertArrayEquals("Incorrect output!", path1.get().get(0), pipe.get().get(1));
+        final ProcessingResult res = pipe.create(new SingletonDoubleInput(new double[][]{{4, 9, 16}, {25, 36, 49}}));
+        final double[][] expected0 = new double[][]{{4, 6, 8}, {10, 12, 14}};
+        final double[][] expected1 = new double[][]{{6, 9, 12}, {15, 18, 21}};
+        assertEquals("Incorrect number of outputs!", 2, res.get().size());
+        assertArrayEquals("Incorrect output!", expected0, res.get().get(0));
+        assertArrayEquals("Incorrect output!", expected1, res.get().get(1));
     }
 
     /**
@@ -47,7 +50,7 @@ public class PipeTest {
     public void name() {
         final String nameFirst = "A";
         final String nameSecond = "B";
-        final ProcessingResult.Processing pipe = new Pipe(
+        final ProcessingResult.Factory pipe = new Pipe(
                 new TestProcessing(d -> d, nameFirst),
                 new TestProcessing(d -> d, nameSecond));
 

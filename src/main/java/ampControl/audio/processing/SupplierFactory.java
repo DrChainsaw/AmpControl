@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Supplier;
 
 /**
- * Creates a {@link Supplier} for {@link ProcessingResult.Processing} based on a name string. Used for persistence since
+ * Creates a {@link Supplier} for {@link ProcessingResult.Factory} based on a name string. Used for persistence since
  * all preprocessing needs be recreated when restoring a saved model.
  * <br><br>
  * This class, like much else in this project is the result of passing time while training.
@@ -22,13 +22,13 @@ public class SupplierFactory {
         this.samplingFreq = samplingFreq;
     }
 
-    public Supplier<ProcessingResult.Processing> get(String nameStr) {
+    public Supplier<ProcessingResult.Factory> get(String nameStr) {
         // System.out.println("Post proc factory got " + nameStr);
 
         String preForkStr = nameStr;
         //  System.out.println("get nameStr: " + nameStr);
         if (nameStr.matches(matchStr(".*" + Fork.matchStrStatic()))) {
-            Supplier<ProcessingResult.Processing> forkSupplier;
+            Supplier<ProcessingResult.Factory> forkSupplier;
             String[] forkStrs = Fork.splitFirst(nameStr);
             //   System.out.println("len: " + forkStrs.length);
             preForkStr = forkStrs[0];
@@ -43,8 +43,8 @@ public class SupplierFactory {
                 //  System.out.println("get paths: " + paths[0] + " " + paths[1]);
                 // System.out.println("ask for: " + prefix() + paths[0]);
                 //  System.out.println("ask for: " + prefix() + paths[1]);
-                final Supplier<ProcessingResult.Processing> finalFirst = get(prefix() + paths[0]);
-                final Supplier<ProcessingResult.Processing> finalSecond = get(prefix() + paths[1]);
+                final Supplier<ProcessingResult.Factory> finalFirst = get(prefix() + paths[0]);
+                final Supplier<ProcessingResult.Factory> finalSecond = get(prefix() + paths[1]);
                 forkSupplier = () -> new Fork(finalFirst.get(), finalSecond.get());
 
                 if (endSplit.length == 2 && endSplit[1].contains(Pipe.nameStatic())) {
@@ -106,11 +106,11 @@ public class SupplierFactory {
     }
 
     @Nullable
-    private Supplier<ProcessingResult.Processing> getPipedSupplier(
+    private Supplier<ProcessingResult.Factory> getPipedSupplier(
             String nameStr,
-            Supplier<ProcessingResult.Processing> first,
-            Supplier<ProcessingResult.Processing> last) {
-        Supplier<ProcessingResult.Processing> ret = null;
+            Supplier<ProcessingResult.Factory> first,
+            Supplier<ProcessingResult.Factory> last) {
+        Supplier<ProcessingResult.Factory> ret = null;
         for (String pipeStr : nameStr.split(Pipe.nameStatic())) {
             if (!pipeStr.isEmpty()) {
                 if (first == null) {
@@ -119,8 +119,8 @@ public class SupplierFactory {
                     first = ret;
                 } else {
                     // System.out.println("do pipe for: " + first.get().name() + " and " + pipeStr);
-                    final Supplier<ProcessingResult.Processing> finalFirst = first;
-                    final Supplier<ProcessingResult.Processing> finalSecond = get(prefix() + pipeStr);
+                    final Supplier<ProcessingResult.Factory> finalFirst = first;
+                    final Supplier<ProcessingResult.Factory> finalSecond = get(prefix() + pipeStr);
                     // System.out.println("Got second: " + finalSecond.get().name());
                     ret = () -> new Pipe(finalFirst.get(), finalSecond.get());
                     first = ret;
@@ -129,8 +129,8 @@ public class SupplierFactory {
         }
 
         if (last != null) {
-            final Supplier<ProcessingResult.Processing> finalFirst = ret;
-            final Supplier<ProcessingResult.Processing> finalSecond = last;
+            final Supplier<ProcessingResult.Factory> finalFirst = ret;
+            final Supplier<ProcessingResult.Factory> finalSecond = last;
             ret = () -> new Pipe(finalFirst.get(), finalSecond.get());
         }
         return ret;
@@ -147,7 +147,7 @@ public class SupplierFactory {
     public static void main(String[] args) {
         //System.out.println("Got: " + new SupplierFactory(44100).get("_sgpp_fork_uszm_split_mfcc_krof_aswa_gtht_vrvrre33").get().name());
         //System.out.println("Got: " + new SupplierFactory(44100).get("_sgpp_fork_uszm_pipe_norm_split_mfcc_pipe_lgsc_krof_aswa_gtht_vrvrre33").get().name());
-        ProcessingResult.Processing pp = new Pipe(
+        ProcessingResult.Factory pp = new Pipe(
                 new Pipe(
                         new Mfsc(100),
                         new Dct()),
@@ -171,7 +171,7 @@ public class SupplierFactory {
 
         String str = prefix() + pp.name();//"_sgpp_mfsc_pipe_fork_uszm_pipe_fork_norm_split_mfsc_krof_pipe_mfsc_pipe_mfcc_split_norm_pipe_mfsc_krof_aswa_gtht_vrvrre33";
         //String str = "_sgpp_fork_fork_fork_norm_split_mfcc_krof__split_mfcc_krof__split_uszm_krof_aswa_gtht_vrvrre33";
-        Supplier<ProcessingResult.Processing> pps = new SupplierFactory(44100).get(str);
+        Supplier<ProcessingResult.Factory> pps = new SupplierFactory(44100).get(str);
         System.out.println("Created: " + prefix() + pp.name());
         System.out.println("Wanted:  " + str);
         System.out.println("Got:     " + prefix() + pps.get().name());

@@ -39,7 +39,7 @@ public class ValidateCachingIter {
 
         final int timeWindowSize = 100;
 
-        final Supplier<ProcessingResult.Processing> audioPostProcSupplier = () -> new Pipe(
+        final Supplier<ProcessingResult.Factory> audioPostProcSupplier = () -> new Pipe(
                 new Spectrogram(512, 32),
                 new UnitMaxZeroMean()
         );

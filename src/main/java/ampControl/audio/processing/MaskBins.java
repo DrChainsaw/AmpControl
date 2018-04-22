@@ -1,19 +1,17 @@
 package ampControl.audio.processing;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Masks out indexes aling the second dimension, setting them to 0.
+ * Masks out indexes along the second dimension, setting them to 0.
  *
  * @author Christian Skärby
  */
-public class MaskBins implements ProcessingResult.Processing {
+public class MaskBins implements ProcessingResult.Factory {
 
     private final int[] binsToMask;
-    private double[][] result;
 
     public MaskBins(int[] binsToMask) {
         this.binsToMask = binsToMask;
@@ -30,13 +28,38 @@ public class MaskBins implements ProcessingResult.Processing {
 
     }
 
+    public static String nameStatic() {
+        return "mask";
+    }
+
+    private static String delim() {
+        return "c";
+    }
+
     @Override
-    public void receive(double[][] input) {
-        result = input.clone();
-        for(int i = 0; i < result.length; i++) {
-            for(int j: binsToMask) {
-                result[i][j] = 0;
-            }
+    public ProcessingResult create(ProcessingResult input) {
+        return new Result(input);
+    }
+
+    private final class Result implements ProcessingResult {
+
+        private final ProcessingResult input;
+
+        public Result(ProcessingResult input) {
+            this.input = input;
+        }
+
+        @Override
+        public List<double[][]> get() {
+            return input.get().stream().map(inputArr -> {
+                double[][] result = inputArr.clone();
+                for (int i = 0; i < result.length; i++) {
+                    for (int j : binsToMask) {
+                        result[i][j] = 0;
+                    }
+                }
+                return result;
+            }).collect(Collectors.toList());
         }
     }
 
@@ -47,18 +70,6 @@ public class MaskBins implements ProcessingResult.Processing {
                 .collect(Collectors.joining(delim()));
     }
 
-    public static String nameStatic() {
-        return "mask";
-    }
-
-    private static String delim() {
-        return "c";
-    }
-
-    @Override
-    public List<double[][]> get() {
-        return Collections.singletonList(result);
-    }
 
     public static void main(String[] args) {
         System.out.println("Created: " + new MaskBins("mask0c1c2c3c4").name());

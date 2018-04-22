@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -31,20 +32,17 @@ import java.util.stream.IntStream;
  *
  * @author Jacquet Wong
  */
-public class Spectrogram implements ProcessingResult.Processing {
+public class Spectrogram implements ProcessingResult.Factory {
 
     private final int fftWindowSize; // number of sample in fft, the value needed to be a number to power of 2
     private final int overlapFactor; // 1/overlapFactor overlapping, e.g. 1/4=25% overlapping
     private final double[] window;
     private final DoubleFFT_1D fft;
 
-    private double[][] specgram;
-
     public Spectrogram(int fftWindowSize, int spectrogramTimeStride) {
         this.fftWindowSize = fftWindowSize;
         this.overlapFactor = spectrogramTimeStride > 0 ? fftWindowSize / spectrogramTimeStride : 0;
 
-        // Stuff below could be cached or initialized in some factory but it does not seem to be worth it.
         WindowFunction window = new WindowFunction();
         window.setWindowType("Hamming");
         this.window = window.generate(fftWindowSize);
@@ -72,88 +70,6 @@ public class Spectrogram implements ProcessingResult.Processing {
     }
 
     @Override
-    public void receive(double[][] input) {
-        final int nrofFrames = input.length;
-        final int nrofSamplesInFrame = input[0].length;
-        for (int i = 0; i < nrofFrames; i++) {
-            double[][] specgramPart = buildSpectrogram(input[i]);
-            if (specgram == null) {
-                specgram = new double[nrofFrames * specgramPart.length][nrofSamplesInFrame];
-            }
-            for (int j = 0; j < specgramPart.length; j++) {
-                specgram[i * specgramPart.length + j] = specgramPart[j];
-            }
-        }
-
-    }
-
-    /**
-     * Build spectrogram
-     */
-    private double[][] buildSpectrogram(double[] amplitudes) {
-        int numSamples = amplitudes.length;
-
-        int pointer = 0;
-        // overlapping
-        if (overlapFactor > 1) {
-            int numOverlappedSamples = numSamples * overlapFactor;
-            int backSamples = fftWindowSize * (overlapFactor - 1) / overlapFactor;
-            double[] overlapAmp = new double[numOverlappedSamples];
-            pointer = 0;
-            for (int i = 0; i < amplitudes.length; i++) {
-                overlapAmp[pointer++] = amplitudes[i];
-                if (pointer % fftWindowSize == 0) {
-                    // overlap
-                    i -= backSamples;
-                }
-            }
-            numSamples = pointer;
-            amplitudes = overlapAmp;
-        }
-        // end overlapping
-
-        final int nrofFrames = numSamples / fftWindowSize;
-
-        // Apply window
-        double[][] signals = new double[nrofFrames][];
-        for (int f = 0; f < nrofFrames; f++) {
-            signals[f] = new double[fftWindowSize];
-            int startSample = f * fftWindowSize;
-            for (int n = 0; n < fftWindowSize; n++) {
-                signals[f][n] = amplitudes[startSample + n] * window[n];
-            }
-        }
-        // end apply window
-
-        return calculateFftMagnitudes(nrofFrames, signals);
-    }
-
-    private double[][] calculateFftMagnitudes(int nrofFrames, double[][] signals) {
-        final double[][] absoluteSpectrogram = new double[nrofFrames][];
-        final int fftSize = fftWindowSize / 2;
-        for (int i = 0; i < nrofFrames; i++) {
-            double[] transform = signals[i].clone();
-
-            fft.realForward(transform);
-
-            double[] mag = new double[fftSize];
-            mag[0] = Math.abs(transform[0]);
-            // transform[1] is for some reason equal to real part at bin fftSize -> Useless, discard it
-            for (int j = 2; j < fftWindowSize; j += 2) {
-                mag[j / 2] = Math.sqrt(transform[j] * transform[j] + transform[j + 1] * transform[j + 1]);
-            }
-            absoluteSpectrogram[i] = mag;
-        }
-        return absoluteSpectrogram;
-    }
-
-
-    @Override
-    public List<double[][]> get() {
-        return Collections.singletonList(specgram);
-    }
-
-    @Override
     public String name() {
         return nameStatic() + "_" + fftStr + fftWindowSize + ol + overlapFactor;
     }
@@ -162,11 +78,103 @@ public class Spectrogram implements ProcessingResult.Processing {
         return "spgr";
     }
 
+    @Override
+    public ProcessingResult create(ProcessingResult input) {
+        return new Result(input);
+    }
+
+    private final class Result implements ProcessingResult {
+
+        private final ProcessingResult input;
+
+        public Result(ProcessingResult input) {
+            this.input = input;
+        }
+
+        @Override
+        public List<double[][]> get() {
+            return input.get().stream().map(inputArr -> {
+                final int nrofFrames = inputArr.length;
+                final int nrofSamplesInFrame = inputArr[0].length;
+                double[][] specgram = null;
+                for (int i = 0; i < nrofFrames; i++) {
+                    double[][] specgramPart = buildSpectrogram(inputArr[i]);
+                    if (specgram == null) {
+                        specgram = new double[nrofFrames * specgramPart.length][nrofSamplesInFrame];
+                    }
+                    for (int j = 0; j < specgramPart.length; j++) {
+                        specgram[i * specgramPart.length + j] = specgramPart[j];
+                    }
+                }
+                return specgram;
+            }).collect(Collectors.toList());
+        }
+
+        /**
+         * Build spectrogram
+         */
+        private double[][] buildSpectrogram(double[] amplitudes) {
+            int numSamples = amplitudes.length;
+
+            int pointer = 0;
+            // overlapping
+            if (overlapFactor > 1) {
+                int numOverlappedSamples = numSamples * overlapFactor;
+                int backSamples = fftWindowSize * (overlapFactor - 1) / overlapFactor;
+                double[] overlapAmp = new double[numOverlappedSamples];
+                pointer = 0;
+                for (int i = 0; i < amplitudes.length; i++) {
+                    overlapAmp[pointer++] = amplitudes[i];
+                    if (pointer % fftWindowSize == 0) {
+                        // overlap
+                        i -= backSamples;
+                    }
+                }
+                numSamples = pointer;
+                amplitudes = overlapAmp;
+            }
+            // end overlapping
+
+            final int nrofFrames = numSamples / fftWindowSize;
+
+            // Apply window
+            double[][] signals = new double[nrofFrames][];
+            for (int f = 0; f < nrofFrames; f++) {
+                signals[f] = new double[fftWindowSize];
+                int startSample = f * fftWindowSize;
+                for (int n = 0; n < fftWindowSize; n++) {
+                    signals[f][n] = amplitudes[startSample + n] * window[n];
+                }
+            }
+            // end apply window
+
+            return calculateFftMagnitudes(nrofFrames, signals);
+        }
+
+        private double[][] calculateFftMagnitudes(int nrofFrames, double[][] signals) {
+            final double[][] absoluteSpectrogram = new double[nrofFrames][];
+            final int fftSize = fftWindowSize / 2;
+            for (int i = 0; i < nrofFrames; i++) {
+                double[] transform = signals[i].clone();
+
+                fft.realForward(transform);
+
+                double[] mag = new double[fftSize];
+                mag[0] = Math.abs(transform[0]);
+                // transform[1] is for some reason equal to real part at bin fftSize -> Useless, discard it
+                for (int j = 2; j < fftWindowSize; j += 2) {
+                    mag[j / 2] = Math.sqrt(transform[j] * transform[j] + transform[j + 1] * transform[j + 1]);
+                }
+                absoluteSpectrogram[i] = mag;
+            }
+            return absoluteSpectrogram;
+        }
+    }
+
     public static void main(String[] args) {
         Spectrogram spec = new Spectrogram(16, 2);
         double[] testVec = IntStream.rangeClosed(0, 2 * 16).mapToDouble(i -> i).toArray();
-        spec.receive(new double[][]{testVec});
-        System.out.println(Arrays.deepToString(spec.get().get(0)));
-
+        ProcessingResult res = spec.create(() -> Collections.singletonList(new double[][]{testVec}));
+        System.out.println(Arrays.deepToString(res.get().get(0)));
     }
 }

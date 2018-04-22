@@ -1,12 +1,9 @@
 package ampControl.model.training.data.processing;
 
+import ampControl.audio.processing.*;
+
 import java.util.Arrays;
 import java.util.function.Supplier;
-
-import ampControl.audio.processing.Pipe;
-import ampControl.audio.processing.ProcessingResult;
-import ampControl.audio.processing.Spectrogram;
-import ampControl.audio.processing.UnitStdZeroMean;
 
 /**
  * {@link AudioProcessor} which returns silence (all zeroes)
@@ -20,14 +17,13 @@ public class SilenceProcessor implements AudioProcessor {
 	/**
 	 * Constructor
 	 * @param windowSize Size of an audio sample in number if samples
-	 * @param resultSupplier Supplier of {@link ProcessingResult.Processing}.
+	 * @param resultSupplier Supplier of {@link ProcessingResult.Factory}.
 	 */
-	public SilenceProcessor(int windowSize, final Supplier<ProcessingResult.Processing> resultSupplier) {
+	public SilenceProcessor(int windowSize, final Supplier<ProcessingResult.Factory> resultSupplier) {
 		final double[] silenceSample = new double[windowSize];
 		Arrays.fill(silenceSample, 0);
-		ProcessingResult.Processing res = resultSupplier.get();
-		res.receive(new double[][] {silenceSample});
-		silence = res;
+		ProcessingResult.Factory factory = resultSupplier.get();
+		silence = factory.create(new SingletonDoubleInput(silenceSample));
 	}
 
 	@Override

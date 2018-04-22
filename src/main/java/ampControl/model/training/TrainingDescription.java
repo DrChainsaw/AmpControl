@@ -82,7 +82,7 @@ public class TrainingDescription {
         final int timeWindowSizeMs = 50;
 
 
-//        final Supplier<ProcessingResult.Processing> audioPostProcessingSupplier = () -> new Pipe(
+//        final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new Pipe(
 //                //      new Pipe(
 //                new Spectrogram(256, 32),
 //                //new Mfsc(clipSamplingRate)),
@@ -92,7 +92,7 @@ public class TrainingDescription {
 //                //  new UnitStdZeroMean()
 //        );
 
-        final Supplier<ProcessingResult.Processing> audioPostProcessingSupplier = () -> new Pipe(
+        final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new Pipe(
                 new Spectrogram(256, 16),
                 new Fork(
                         new Pipe(
@@ -105,7 +105,7 @@ public class TrainingDescription {
                 )
         );
 
-        //  final Supplier<ProcessingResult.Processing> audioPostProcessingSupplier = () -> new UnitMaxZeroMean();
+        //  final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new UnitMaxZeroMean();
 
 
 //                () -> new Pipe(
@@ -126,7 +126,7 @@ public class TrainingDescription {
         harness.startTraining();
     }
 
-    private static void createModels(final Supplier<ProcessingResult.Processing> audioPostProcessingSupplier, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {
+    private static void createModels(final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {
         final SilenceProcessor silence = new SilenceProcessor(clipSamplingRate * clipLengthMs / (1000 / timeWindowSize) / 1000, audioPostProcessingSupplier);
         Map<String, AudioProcessorBuilder> labelToBuilder = new LinkedHashMap<>();
         labelToBuilder.put("silence", () -> silence);
@@ -140,7 +140,7 @@ public class TrainingDescription {
                 .addExpansion("lead", 100);
 
         final Random volScaleRng = new Random(trainingSeed + 1);
-        final Supplier<ProcessingResult.Processing> trainSupplier = () -> new Pipe(
+        final Supplier<ProcessingResult.Factory> trainSupplier = () -> new Pipe(
                 new RandScale(1000, 10, volScaleRng),
                 audioPostProcessingSupplier.get()
         );

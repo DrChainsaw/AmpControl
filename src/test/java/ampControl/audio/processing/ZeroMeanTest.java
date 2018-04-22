@@ -5,7 +5,7 @@ import org.junit.Test;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link ZeroMean}
@@ -21,9 +21,9 @@ public class ZeroMeanTest {
     public void receive() {
         final double[][] test = {{1, 2, 3}, {4, 5, 6}};
 
-        final ProcessingResult.Processing proc = new UnitMaxZeroMean();
-        proc.receive(test);
-        final double[][] result = proc.get().get(0);
+        final ProcessingResult.Factory proc = new UnitMaxZeroMean();
+        final ProcessingResult res = proc.create(new SingletonDoubleInput(test));
+        final double[][] result = res.get().get(0);
 
         assertEquals("Not zero mean!", 0, Stream.of(result).flatMapToDouble(dArr -> DoubleStream.of(dArr)).sum(), 1e-10);
     }
