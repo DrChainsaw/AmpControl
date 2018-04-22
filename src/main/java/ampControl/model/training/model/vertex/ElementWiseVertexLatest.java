@@ -93,9 +93,6 @@ public class ElementWiseVertexLatest extends GraphVertex {
     public org.deeplearning4j.nn.graph.vertex.GraphVertex instantiate(ComputationGraph graph, String name, int idx,
                                                                       INDArray paramsView, boolean initializeParams) {
         ElementWiseVertexLatestImpl.Op op;
-        if(this.op == null) {
-            this.op = Op.Add;
-        }
         switch (this.op) {
             case Add:
                 op = ElementWiseVertexLatestImpl.Op.Add;

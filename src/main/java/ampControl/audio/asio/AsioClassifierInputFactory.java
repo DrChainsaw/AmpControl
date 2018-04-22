@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.function.Supplier;
 
 /**
  * {@link ClassifierInputProviderFactory} which creates input from a given channel on a given ASIO device.
@@ -65,11 +64,11 @@ public class AsioClassifierInputFactory implements ClassifierInputProviderFactor
             processingToInputProvider = new HashMap<>();
             inputProviderCache.put(audioInput, processingToInputProvider);
         }
-        Supplier<ProcessingResult.Factory> resultSupplier = new SupplierFactory(driver.getSampleRate()).get(inputDescriptionString);
-        ClassifierInputProvider.Updatable inputProvider = processingToInputProvider.get(resultSupplier.get().name());
+        final ProcessingResult.Factory resultSupplier = new SupplierFactory(driver.getSampleRate()).get(inputDescriptionString);
+        ClassifierInputProvider.Updatable inputProvider = processingToInputProvider.get(resultSupplier.name());
         if(inputProvider == null) {
-            inputProvider = new Cnn2DInputProvider(audioInput, resultSupplier);
-            processingToInputProvider.put(resultSupplier.get().name(), inputProvider);
+            inputProvider = new Cnn2DInputProvider(audioInput, () -> resultSupplier);
+            processingToInputProvider.put(resultSupplier.name(), inputProvider);
         }
         return inputProvider;
     }
