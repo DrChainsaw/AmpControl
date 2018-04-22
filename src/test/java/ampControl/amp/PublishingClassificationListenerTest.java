@@ -1,7 +1,7 @@
 package ampControl.amp;
 
-import com.beust.jcommander.JCommander;
 import ampControl.admin.service.control.TopicPublisher;
+import com.beust.jcommander.JCommander;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -39,16 +39,23 @@ public class PublishingClassificationListenerTest {
                         " " + prohibPar + prohib;
 
         final int nrofLabels = 10;
-        for(int i = 0; i < nrofLabels; i++ ) {
-            final LabelProbe probe = new LabelProbe(topic, String.valueOf(i));
-            final ClassificationListener pubListener = createClassificationListener(argStr, probe);
-            final INDArray probs = Nd4j.zeros(nrofLabels);
-            probs.putScalar(i, probThresh*1.001);
-            pubListener.indicateAudioClassification(probs);
-            pubListener.indicateAudioClassification(probs);
-            pubListener.indicateAudioClassification(probs);
+        try {
+            for (int i = 0; i < nrofLabels; i++) {
+                final LabelProbe probe = new LabelProbe(topic, String.valueOf(i));
+                final ClassificationListener pubListener = createClassificationListener(argStr, probe);
+                final INDArray probs = Nd4j.zeros(nrofLabels);
+                probs.putScalar(i, probThresh * 1.001);
+                Thread.sleep(2);
+                pubListener.indicateAudioClassification(probs);
+                Thread.sleep(2);
+                pubListener.indicateAudioClassification(probs);
+                Thread.sleep(2);
+                pubListener.indicateAudioClassification(probs);
 
-            probe.assertWasCalled();
+                probe.assertWasCalled();
+            }
+        } catch (InterruptedException e) {
+            fail("Test aborted!");
         }
     }
 

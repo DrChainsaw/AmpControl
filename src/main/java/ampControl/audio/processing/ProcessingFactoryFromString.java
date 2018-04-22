@@ -2,10 +2,8 @@ package ampControl.audio.processing;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.function.Supplier;
-
 /**
- * Creates a {@link Supplier} for {@link ProcessingResult.Processing} based on a name string. Used for persistence since
+ * Creates a {@link ProcessingResult.Factory} based on a name string. Used for persistence since
  * all preprocessing needs be recreated when restoring a saved model.
  * <br><br>
  * This class, like much else in this project is the result of passing time while training.
@@ -13,22 +11,22 @@ import java.util.function.Supplier;
  *
  * @author Christian Skärby
  */
-public class SupplierFactory {
+public class ProcessingFactoryFromString {
 
     private final double samplingFreq;
     private final static String prefix = "_sgpp_";
 
-    public SupplierFactory(double samplingFreq) {
+    public ProcessingFactoryFromString(double samplingFreq) {
         this.samplingFreq = samplingFreq;
     }
 
-    public Supplier<ProcessingResult.Processing> get(String nameStr) {
+    public ProcessingResult.Factory get(String nameStr) {
         // System.out.println("Post proc factory got " + nameStr);
 
         String preForkStr = nameStr;
         //  System.out.println("get nameStr: " + nameStr);
         if (nameStr.matches(matchStr(".*" + Fork.matchStrStatic()))) {
-            Supplier<ProcessingResult.Processing> forkSupplier;
+            ProcessingResult.Factory forkSupplier;
             String[] forkStrs = Fork.splitFirst(nameStr);
             //   System.out.println("len: " + forkStrs.length);
             preForkStr = forkStrs[0];
@@ -43,9 +41,9 @@ public class SupplierFactory {
                 //  System.out.println("get paths: " + paths[0] + " " + paths[1]);
                 // System.out.println("ask for: " + prefix() + paths[0]);
                 //  System.out.println("ask for: " + prefix() + paths[1]);
-                final Supplier<ProcessingResult.Processing> finalFirst = get(prefix() + paths[0]);
-                final Supplier<ProcessingResult.Processing> finalSecond = get(prefix() + paths[1]);
-                forkSupplier = () -> new Fork(finalFirst.get(), finalSecond.get());
+                final ProcessingResult.Factory finalFirst = get(prefix() + paths[0]);
+                final ProcessingResult.Factory finalSecond = get(prefix() + paths[1]);
+                forkSupplier = new Fork(finalFirst, finalSecond);
 
                 if (endSplit.length == 2 && endSplit[1].contains(Pipe.nameStatic())) {
                     //    System.out.println("Append pipes " + endSplit[1]);
@@ -65,52 +63,51 @@ public class SupplierFactory {
         }
 
         if (preForkStr.matches(matchStr(NoProcessing.nameStatic()))) {
-            return NoProcessing::new;
+            return new NoProcessing();
         }
 
         if (preForkStr.matches(matchStr(UnitMaxZeroMin.nameStatic()))) {
-            return UnitMaxZeroMin::new;
+            return new UnitMaxZeroMin();
         }
 
 
         if (preForkStr.matches(matchStr(LogScale.nameStatic()))) {
-            return LogScale::new;
+            return new LogScale();
         }
 
         if (preForkStr.matches(matchStr(UnitStdZeroMean.nameStatic()))) {
-            return UnitStdZeroMean::new;
+            return new UnitStdZeroMean();
         }
 
         if (preForkStr.matches(matchStr(Mfsc.nameStatic()))) {
-            return () -> new Mfsc(samplingFreq);
+            return new Mfsc(samplingFreq);
         }
 
         if (preForkStr.matches(matchStr(Dct.nameStatic()))) {
-            return Dct::new;
+            return new Dct();
         }
 
         if (preForkStr.matches(matchStr(Spectrogram.nameStatic()))) {
-            final String specParStr = preForkStr;
-            return () -> new Spectrogram(specParStr);
+            return new Spectrogram(preForkStr);
         }
 
         if (preForkStr.matches(matchStr(ZeroMean.nameStatic()))) {
-            return ZeroMean::new;
+            return new ZeroMean();
         }
 
         if (preForkStr.matches(matchStr(Log10.nameStatic()))) {
-            return Log10::new;
+            return new Log10();
         }
 
-        return UnitMaxZeroMean::new;
+        return new UnitMaxZeroMean();
     }
 
     @Nullable
-    private Supplier<ProcessingResult.Processing> getPipedSupplier(
+    private ProcessingResult.Factory getPipedSupplier(
             String nameStr,
-            Supplier<ProcessingResult.Processing> first,
-            Supplier<ProcessingResult.Processing> last) {
-        Supplier<ProcessingResult.Processing> ret = null;
+            ProcessingResult.Factory first,
+            ProcessingResult.Factory last) {
+        ProcessingResult.Factory ret = null;
         for (String pipeStr : nameStr.split(Pipe.nameStatic())) {
             if (!pipeStr.isEmpty()) {
                 if (first == null) {
@@ -119,19 +116,16 @@ public class SupplierFactory {
                     first = ret;
                 } else {
                     // System.out.println("do pipe for: " + first.get().name() + " and " + pipeStr);
-                    final Supplier<ProcessingResult.Processing> finalFirst = first;
-                    final Supplier<ProcessingResult.Processing> finalSecond = get(prefix() + pipeStr);
+                    final ProcessingResult.Factory second = get(prefix() + pipeStr);
                     // System.out.println("Got second: " + finalSecond.get().name());
-                    ret = () -> new Pipe(finalFirst.get(), finalSecond.get());
+                    ret = new Pipe(first, second);
                     first = ret;
                 }
             }
         }
 
         if (last != null) {
-            final Supplier<ProcessingResult.Processing> finalFirst = ret;
-            final Supplier<ProcessingResult.Processing> finalSecond = last;
-            ret = () -> new Pipe(finalFirst.get(), finalSecond.get());
+            ret = new Pipe(ret, last);
         }
         return ret;
     }
@@ -145,9 +139,9 @@ public class SupplierFactory {
     }
 
     public static void main(String[] args) {
-        //System.out.println("Got: " + new SupplierFactory(44100).get("_sgpp_fork_uszm_split_mfcc_krof_aswa_gtht_vrvrre33").get().name());
-        //System.out.println("Got: " + new SupplierFactory(44100).get("_sgpp_fork_uszm_pipe_norm_split_mfcc_pipe_lgsc_krof_aswa_gtht_vrvrre33").get().name());
-        ProcessingResult.Processing pp = new Pipe(
+        //System.out.println("Got: " + new ProcessingFactoryFromString(44100).get("_sgpp_fork_uszm_split_mfcc_krof_aswa_gtht_vrvrre33").get().name());
+        //System.out.println("Got: " + new ProcessingFactoryFromString(44100).get("_sgpp_fork_uszm_pipe_norm_split_mfcc_pipe_lgsc_krof_aswa_gtht_vrvrre33").get().name());
+        ProcessingResult.Factory pp = new Pipe(
                 new Pipe(
                         new Mfsc(100),
                         new Dct()),
@@ -171,10 +165,10 @@ public class SupplierFactory {
 
         String str = prefix() + pp.name();//"_sgpp_mfsc_pipe_fork_uszm_pipe_fork_norm_split_mfsc_krof_pipe_mfsc_pipe_mfcc_split_norm_pipe_mfsc_krof_aswa_gtht_vrvrre33";
         //String str = "_sgpp_fork_fork_fork_norm_split_mfcc_krof__split_mfcc_krof__split_uszm_krof_aswa_gtht_vrvrre33";
-        Supplier<ProcessingResult.Processing> pps = new SupplierFactory(44100).get(str);
+        ProcessingResult.Factory pps = new ProcessingFactoryFromString(44100).get(str);
         System.out.println("Created: " + prefix() + pp.name());
         System.out.println("Wanted:  " + str);
-        System.out.println("Got:     " + prefix() + pps.get().name());
+        System.out.println("Got:     " + prefix() + pps.name());
 
         //Lets try something I can imagine might happen....
         pp = new Fork(
@@ -188,18 +182,18 @@ public class SupplierFactory {
                 )
 
         );
-        pps = new SupplierFactory(44100).get(prefix() + pp.name());
+        pps = new ProcessingFactoryFromString(44100).get(prefix() + pp.name());
         System.out.println("Created: " + pp.name());
-        System.out.println("Got:     " + pps.get().name());
+        System.out.println("Got:     " + pps.name());
 
         //Or perhaps even...
         pp = new Fork(
                 pp,
                 new UnitMaxZeroMin()
         );
-        pps = new SupplierFactory(44100).get(prefix() + pp.name());
+        pps = new ProcessingFactoryFromString(44100).get(prefix() + pp.name());
         System.out.println("Created: " + pp.name());
-        System.out.println("Got:     " + pps.get().name());
+        System.out.println("Got:     " + pps.name());
 
     }
 }

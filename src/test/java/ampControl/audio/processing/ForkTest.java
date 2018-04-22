@@ -20,15 +20,16 @@ public class ForkTest {
      */
     @Test
     public void receiveSingle() {
-        final ProcessingResult.Processing mock0 = createMock("A", 2);
-        final ProcessingResult.Processing mock1 = createMock("B", 666);
-        final ProcessingResult.Processing fork = new Fork(mock0, mock1);
-        fork.receive(new double[][]{{0.1, 0.2}, {0.3, 0.4}});
+        final ProcessingResult.Factory mock0 = createMock("A", 2);
+        final ProcessingResult.Factory mock1 = createMock("B", 666);
+        final ProcessingResult.Factory fork = new Fork(mock0, mock1);
+        final ProcessingResult input = new SingletonDoubleInput(new double[][] {{0.1, 0.2}, {0.3, 0.4}});
+        final ProcessingResult res = fork.create(input);
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
 
-        assertEquals("Incorrect size!", 2, fork.get().size());
-
-        assertArrayEquals("Incorrect output path 1!", mock0.get().get(0), fork.get().get(0));
-        assertArrayEquals("Incorrect output path 2!", mock1.get().get(0), fork.get().get(1));
+        assertEquals("Incorrect size!", 2, resList.size());
+        assertArrayEquals("Incorrect output path 1!", mock0.create(input).stream().findFirst().get(), resList.get(0));
+        assertArrayEquals("Incorrect output path 2!", mock1.create(input).stream().findFirst().get(), resList.get(1));
     }
 
     /**
@@ -36,20 +37,22 @@ public class ForkTest {
      */
     @Test
     public void receiveMulti() {
-        List<ProcessingResult.Processing> mocks = IntStream.range(0, 10).mapToObj(i -> createMock("mock" + i, i)).collect(Collectors.toList());
-        ProcessingResult.Processing last = null;
-        for (ProcessingResult.Processing mock : mocks) {
+        List<ProcessingResult.Factory> mocks = IntStream.range(0, 10).mapToObj(i -> createMock("mock" + i, i)).collect(Collectors.toList());
+        ProcessingResult.Factory last = null;
+        for (ProcessingResult.Factory mock : mocks) {
             if (last == null) {
                 last = mock;
             } else {
                 last = new Fork(last, mock);
             }
         }
-        last.receive(new double[][]{{0.1, 0.2}, {0.3, 0.4}});
+        final ProcessingResult input = new SingletonDoubleInput(new double[][]{{0.1, 0.2}, {0.3, 0.4}});
+        final ProcessingResult res = last.create(input);
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
 
-        assertEquals("Incorrect size!", mocks.size(), last.get().size());
+        assertEquals("Incorrect size!", mocks.size(), resList.size());
         for (int i = 0; i < mocks.size(); i++) {
-            assertArrayEquals("Incorrect output path "+ i +"!", mocks.get(i).get().get(0), last.get().get(i));
+            assertArrayEquals("Incorrect output path "+ i +"!", mocks.get(i).create(input).stream().findFirst().get(), resList.get(i));
         }
     }
 
@@ -58,16 +61,21 @@ public class ForkTest {
      */
     @Test
     public void withPipe() {
-        final ProcessingResult.Processing path0 = new TestProcessing(d -> 2 * d, "");
-        final ProcessingResult.Processing path1 = new TestProcessing(d -> 3 * d, "");
-        final ProcessingResult.Processing fork = new Fork(
-                new Pipe(new TestProcessing(d -> Math.sqrt(d), ""), path0),
+        final ProcessingResult.Factory path0 = new Pipe(
+                new TestProcessing(d -> Math.sqrt(d), ""),
+                new TestProcessing(d -> 2 * d, ""));
+        final ProcessingResult.Factory path1 = new TestProcessing(d -> 3 * d, "");
+        final ProcessingResult.Factory fork = new Fork(
+                path0,
                 path1
         );
-        fork.receive(new double[][]{{4, 9, 16}, {25, 36, 49}});
-        assertEquals("Incorrect number of outputs!", 2, fork.get().size());
-        assertArrayEquals("Incorrect output!", path0.get().get(0), fork.get().get(0));
-        assertArrayEquals("Incorrect output!", path1.get().get(0), fork.get().get(1));
+        final ProcessingResult input = new SingletonDoubleInput(new double[][]{{4, 9, 16}, {25, 36, 49}});
+        final ProcessingResult res = fork.create(input);
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
+
+        assertEquals("Incorrect number of outputs!", 2, resList.size());
+        assertArrayEquals("Incorrect output!", path0.create(input).stream().findFirst().get(), resList.get(0));
+        assertArrayEquals("Incorrect output!", path1.create(input).stream().findFirst().get(), resList.get(1));
     }
 
     /**
@@ -76,9 +84,9 @@ public class ForkTest {
      */
     @Test
     public void name() {
-        final ProcessingResult.Processing mock0 = createMock("A", 2);
-        final ProcessingResult.Processing mock1 = createMock("B", 666);
-        final ProcessingResult.Processing fork = new Fork(mock0, mock1);
+        final ProcessingResult.Factory mock0 = createMock("A", 2);
+        final ProcessingResult.Factory mock1 = createMock("B", 666);
+        final ProcessingResult.Factory fork = new Fork(mock0, mock1);
 
         assertTrue("Name mismatch!", fork.name().matches(Fork.matchStrStatic()));
         final String first = Fork.splitFirst(fork.name())[1];
@@ -88,7 +96,7 @@ public class ForkTest {
     }
 
 
-    private static ProcessingResult.Processing createMock(final String name, final double resultScale) {
+    private static ProcessingResult.Factory createMock(final String name, final double resultScale) {
         return new TestProcessing(d -> d*resultScale, name);
     }
 

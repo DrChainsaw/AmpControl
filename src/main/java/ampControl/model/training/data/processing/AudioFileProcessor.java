@@ -1,15 +1,15 @@
 package ampControl.model.training.data.processing;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.Random;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import ampControl.audio.processing.*;
 import ampControl.model.visualize.PlotSpectrogram;
 import org.datavec.audio.Wave;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Random;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * {@link AudioProcessor} which reads a portion of the audio data from a file and produces a {@link ProcessingResult}.
@@ -21,7 +21,7 @@ public class AudioFileProcessor implements AudioProcessor {
 
     private final Supplier<Path> fileSupplier;
     private final Function<Path, AudioSamplingInfo> samplingInfoMapper;
-    private final Supplier<ProcessingResult.Processing> resultSupplier;
+    private final Supplier<ProcessingResult.Factory> resultSupplier;
 
 
     /**
@@ -29,12 +29,12 @@ public class AudioFileProcessor implements AudioProcessor {
      *
      * @param fileSupplier Supplies {@link Path Paths} to process
      * @param samplingInfoMapper Maps a {@link Path} to an {@link AudioSamplingInfo}
-     * @param resultSupplier Provides {@link ProcessingResult.Processing}
+     * @param resultSupplier Provides {@link ProcessingResult.Factory}
      */
     AudioFileProcessor(
             Supplier<Path> fileSupplier,
             Function<Path, AudioSamplingInfo> samplingInfoMapper,
-            Supplier<ProcessingResult.Processing> resultSupplier) {
+            Supplier<ProcessingResult.Factory> resultSupplier) {
         this.fileSupplier = fileSupplier;
         this.samplingInfoMapper = samplingInfoMapper;
         this.resultSupplier = resultSupplier;
@@ -64,25 +64,26 @@ public class AudioFileProcessor implements AudioProcessor {
                 ampDataTrim[i] = ampData[i + start];
             }
 
-            ProcessingResult.Processing result = resultSupplier.get();
-            result.receive(new double[][]{ampDataTrim});
-            return result;
+            ProcessingResult.Factory factory = resultSupplier.get();
+            return factory.create(new SingletonDoubleInput(ampDataTrim));
         }
         return null;
     }
 
 
     public static void main(String[] args) {
-        final Path wavfile =
-               // Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\noise\\Ackord left_149_nohash_2.wav");
-         Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\lead\\sawsmashedface_56_nohash_13.wav");
-        //Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\rythm\\temp left_45_nohash_9.wav");
-       // System.out.println(Arrays.toString(new Wave(wavfile.toAbsolutePath().toString()).getSampleAmplitudes()));
+
+        final Supplier<Path> pathSupplier = new SequentialHoldFileSupplier(Arrays.asList(
+                Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\noise\\Ackord left_149_nohash_2.wav"),
+                Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\lead\\sawsmashedface_56_nohash_13.wav"),
+                Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\rythm\\temp left_45_nohash_9.wav")
+        ), 1);
+        // System.out.println(Arrays.toString(new Wave(wavfile.toAbsolutePath().toString()).getSampleAmplitudes()));
         final AudioSamplingInfo aInfo = new AudioSamplingInfo(0.3, 0.05);
 
-        AudioProcessor proc = new AudioFileProcessor(() -> wavfile, file -> aInfo, () -> new Pipe(
+        final ProcessingResult.Factory fac = new Pipe(
                 new Pipe(new RandScale(400, 10, new Random()),
-                new Spectrogram(256, 16)),
+                        new Spectrogram(256, 16)),
 
                 new Fork(
                         new Pipe(
@@ -92,15 +93,18 @@ public class AudioFileProcessor implements AudioProcessor {
                                 new Log10(),
                                 new ZeroMean()
                         )
-                )));
-        ProcessingResult result = proc.getResult();
-        System.out.println("result: " + result);
-        List<double[][]> dataList = result.get();
-        dataList.forEach(data -> {
-            System.out.println(": time: " + data.length + " freq: " + data[0].length);
-            PlotSpectrogram.plot(data);
-            //System.out.println("Sum: " + Stream.of(data).mapToDouble(timeFr -> DoubleStream.of(timeFr).sum()).sum());
-        });
+                ));
+        final AudioProcessor proc = new AudioFileProcessor(pathSupplier, file -> aInfo, () -> fac);
+
+        for(int i = 0; i < 4; i++) {
+            ProcessingResult result = proc.getResult();
+            System.out.println("result: " + result);
+            result.stream().forEach(data -> {
+                System.out.println(": time: " + data.length + " freq: " + data[0].length);
+                PlotSpectrogram.plot(data);
+                //System.out.println("Sum: " + Stream.of(data).mapToDouble(timeFr -> DoubleStream.of(timeFr).sum()).sum());
+            });
+        }
     }
 
 }

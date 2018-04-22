@@ -1,8 +1,7 @@
 package ampControl.audio.processing;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
+import java.util.stream.Stream;
 
 /**
  * Does random scaling of input. Useful for data augmentation. Obviously useless if normalization is applied. Should also
@@ -10,7 +9,7 @@ import java.util.Random;
  *
  * @author Christian Skärby
  */
-public class RandScale implements ProcessingResult.Processing {
+public class RandScale implements ProcessingResult.Factory {
 
     private final static String name = "rdsc";
     private final static String upperPrefix = "_u";
@@ -20,7 +19,6 @@ public class RandScale implements ProcessingResult.Processing {
     private final int minScalingPerc;
     private final Random rng;
 
-    private double[][] result;
 
     /**
      * Constructor
@@ -39,26 +37,38 @@ public class RandScale implements ProcessingResult.Processing {
     }
 
     @Override
-    public void receive(double[][] input) {
-        final int nrofFrames = input.length;
-        final int nrofSamplesPerFrame = input[0].length;
-        this.result= new double[nrofFrames][nrofSamplesPerFrame];
-        final double scalingFactor = (minScalingPerc + rng.nextInt(maxScalingPerc - minScalingPerc)) / 1e2;
-
-        for (int i = 0; i < nrofFrames; i++) {
-            for (int j = 0; j < nrofSamplesPerFrame; j++) {
-                this.result[i][j] = input[i][j]*scalingFactor;
-            }
-        }
-    }
-
-    @Override
     public String name() {
         return name + upperPrefix + maxScalingPerc + lowerPrefix + minScalingPerc;
     }
 
     @Override
-    public List<double[][]> get() {
-        return Collections.singletonList(result);
+    public ProcessingResult create(ProcessingResult input) {
+        return new Result(input);
+    }
+
+    private final class Result implements ProcessingResult {
+
+        private final ProcessingResult input;
+
+        public Result(ProcessingResult input) {
+            this.input = input;
+        }
+
+        @Override
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
+                final int nrofFrames = inputArr.length;
+                final int nrofSamplesPerFrame = inputArr[0].length;
+                final double[][] result = new double[nrofFrames][nrofSamplesPerFrame];
+                final double scalingFactor = (minScalingPerc + rng.nextInt(maxScalingPerc - minScalingPerc)) / 1e2;
+
+                for (int i = 0; i < nrofFrames; i++) {
+                    for (int j = 0; j < nrofSamplesPerFrame; j++) {
+                        result[i][j] = inputArr[i][j] * scalingFactor;
+                    }
+                }
+                return result;
+            });
+        }
     }
 }

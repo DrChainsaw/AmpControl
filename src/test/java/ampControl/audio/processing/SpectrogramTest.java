@@ -6,7 +6,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test cases for Spectrogram
@@ -33,10 +34,10 @@ public class SpectrogramTest {
                 .toArray();
 
 
-        final ProcessingResult.Processing specgram = new Spectrogram(fftWindowSize, fftWindowSize);
-        specgram.receive(new double[][]{cosSum});
+        final ProcessingResult.Factory specgram = new Spectrogram(fftWindowSize, fftWindowSize);
+        final ProcessingResult res = specgram.create(new SingletonDoubleInput(new double[][]{cosSum}));
 
-        final double[][] specgramData = specgram.get().get(0);
+        final double[][] specgramData = res.stream().findFirst().get();
         assertEquals("Incorrect number of frames!", nrofFrames, specgramData.length);
 
         for(int frameNr = 0; frameNr < nrofFrames; frameNr++) {
@@ -60,10 +61,10 @@ public class SpectrogramTest {
         final int signalSize = (expectedNrofFrames - 1) * stride + fftSize;
         double[] signal = IntStream.range(0, signalSize).mapToDouble(i -> i).toArray();
 
-        final ProcessingResult.Processing specgram = new Spectrogram(fftSize, stride);
-        specgram.receive(new double[][]{signal});
+        final ProcessingResult.Factory specgram = new Spectrogram(fftSize, stride);
+        final ProcessingResult res = specgram.create(new SingletonDoubleInput(new double[][]{signal}));
 
-        final double[][] specgramData = specgram.get().get(0);
+        final double[][] specgramData = res.stream().findFirst().get();
         assertEquals("Incorrect number of frames!", expectedNrofFrames, specgramData.length);
     }
 

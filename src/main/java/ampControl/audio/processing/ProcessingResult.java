@@ -1,6 +1,7 @@
 package ampControl.audio.processing;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Result from input processing
@@ -10,16 +11,9 @@ import java.util.List;
 public interface ProcessingResult {
 
     /**
-     * The processing to create a ProcessingResult
+     * The factory to create a ProcessingResult
      */
-    interface Processing extends ProcessingResult {
-
-        /**
-         * Receive input to process
-         *
-         * @param input
-         */
-        void receive(double[][] input);
+    interface Factory {
 
         /**
          * Return the name of this post processing.
@@ -27,6 +21,14 @@ public interface ProcessingResult {
          * @return name of this post processing.
          */
         String name();
+
+        /**
+         * Receive input to process
+         *
+         * @param input
+         */
+        ProcessingResult create(ProcessingResult input);
+
     }
 
     /**
@@ -35,5 +37,5 @@ public interface ProcessingResult {
      *
      * @return the result
      */
-    List<double[][]> get();
+    Stream<double[][]> stream();
 }

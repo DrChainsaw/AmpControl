@@ -8,8 +8,7 @@ package ampControl.audio.processing;
   Blog : http://ganeshtiwaridotcomdotnp.blogspot.com/
  */
 
-import java.util.Collections;
-import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Mel-Frequency Spectrum Coefficients.
@@ -17,39 +16,17 @@ import java.util.List;
  * @author Ganesh Tiwari
  * @author Hanns Holger Rutz
  */
-public class Mfsc implements ProcessingResult.Processing {
+public class Mfsc implements ProcessingResult.Factory {
 
-    private double[][] mfcc;
-
-    private int numMelFilters;
     private final static double lowerFilterFreq = 80.00; // FmelLow
 
     private final double sampleRate;
     private final double upperFilterFreq;
-    private int samplesPerFrame;
+
 
     public Mfsc(double sampleRate) {
         this.sampleRate = sampleRate;
         upperFilterFreq = sampleRate / 2.0;
-    }
-
-
-    @Override
-    public void receive(
-            double[][] input) {
-        final int nrofFrames = input.length;
-        final int nrofSamplesPerFrame = input[0].length;
-        this.mfcc = new double[nrofFrames][nrofSamplesPerFrame];
-        this.numMelFilters = nrofSamplesPerFrame;
-        this.samplesPerFrame = nrofSamplesPerFrame;
-        for (int i = 0; i < nrofFrames; i++) {
-            mfcc[i] = process(input[i]);
-        }
-    }
-
-    @Override
-    public List<double[][]> get() {
-        return Collections.singletonList(mfcc);
     }
 
     @Override
@@ -61,16 +38,45 @@ public class Mfsc implements ProcessingResult.Processing {
         return "mfsc";
     }
 
-    private double[] process(double[] bin) {
+    @Override
+    public ProcessingResult create(ProcessingResult input) {
+        return new Result(input);
+    }
+
+    private final class Result implements ProcessingResult {
+
+        private final ProcessingResult input;
+
+        public Result(ProcessingResult input) {
+            this.input = input;
+        }
+
+        @Override
+        public Stream<double[][]> stream() {
+            return input.stream().map(inputArr -> {
+                final int nrofFrames = inputArr.length;
+                final int nrofSamplesPerFrame = inputArr[0].length;
+                final double[][] mfcc = new double[nrofFrames][nrofSamplesPerFrame];
+                final int numMelFilters = nrofSamplesPerFrame;
+                final int samplesPerFrame = nrofSamplesPerFrame;
+                for (int i = 0; i < nrofFrames; i++) {
+                    mfcc[i] = process(inputArr[i], numMelFilters, samplesPerFrame);
+                }
+                return mfcc;
+            });
+        }
+    }
+
+    private double[] process(double[] bin, int numMelFilters, int samplesPerFrame) {
         /*
          * cBin=frequencies of the channels in terms of FFT bin indices (cBin[i]
          * for the i -th channel)
          */
 
         // prepare filter for for melFilter
-        final int cBin[] = fftBinIndices();// same for all
+        final int cBin[] = fftBinIndices(numMelFilters, samplesPerFrame);// same for all
         // process Mel filter bank
-        final double fBank[] = melFilter(bin, cBin);
+        final double fBank[] = melFilter(bin, cBin, numMelFilters);
         // magnitudeSpectrum and bin filter indices
 
         // System.out.println("after mel filter");
@@ -88,12 +94,12 @@ public class Mfsc implements ProcessingResult.Processing {
         return f;
     }
 
-    private int[] fftBinIndices() {
+    private int[] fftBinIndices(int numMelFilters, int samplesPerFrame) {
         final int cBin[] = new int[numMelFilters + 2];
         cBin[0] = (int) Math.round(lowerFilterFreq / sampleRate * samplesPerFrame);// cBin0
         cBin[cBin.length - 1] = (samplesPerFrame / 2);// cBin24
         for (int i = 1; i <= numMelFilters; i++) {// from cBin1 to cBin23
-            final double fc = centerFreq(i);// center freq for i th filter
+            final double fc = centerFreq(i, numMelFilters);// center freq for i th filter
             cBin[i] = (int) Math.round(fc / sampleRate * samplesPerFrame);
         }
         return cBin;
@@ -106,7 +112,7 @@ public class Mfsc implements ProcessingResult.Processing {
      * @param cBin mel filter coefficients
      * @return mel filtered coefficients --> filter bank coefficients.
      */
-    private double[] melFilter(double bin[], int cBin[]) {
+    private double[] melFilter(double bin[], int cBin[], int numMelFilters) {
         final double temp[] = new double[numMelFilters + 2];
         for (int k = 1; k <= numMelFilters; k++) {
             double num1 = 0.0, num2 = 0.0;
@@ -144,7 +150,7 @@ public class Mfsc implements ProcessingResult.Processing {
         return f;
     }
 
-    private double centerFreq(int i) {
+    private double centerFreq(int i, int numMelFilters) {
         final double melFLow = freqToMel(lowerFilterFreq);
         final double melFHigh = freqToMel(upperFilterFreq);
         final double temp = melFLow + ((melFHigh - melFLow) / (numMelFilters + 1)) * i;

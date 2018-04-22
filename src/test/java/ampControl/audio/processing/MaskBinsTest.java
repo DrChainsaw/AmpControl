@@ -2,7 +2,8 @@ package ampControl.audio.processing;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link MaskBins}
@@ -19,9 +20,9 @@ public class MaskBinsTest {
         final double[][] test =     {{1,2,3}, {4,5,6}};
         final double[][] expected = {{0,2,0}, {0,5,0}};
         final int[] toMask = {0, 2};
-        final ProcessingResult.Processing mask = new MaskBins(toMask);
-        mask.receive(test);
-        assertArrayEquals("Masking was not applied correctly", expected, mask.get().get(0));
+        final ProcessingResult.Factory mask = new MaskBins(toMask);
+        final ProcessingResult res = mask.create(new SingletonDoubleInput(test));
+        assertArrayEquals("Masking was not applied correctly", expected, res.stream().findFirst().get());
     }
 
     /**
@@ -29,7 +30,7 @@ public class MaskBinsTest {
      */
     @Test
     public void name() {
-        ProcessingResult.Processing maskExpected = new MaskBins(new int[] {0,2,4,6});
+        ProcessingResult.Factory maskExpected = new MaskBins(new int[] {0,2,4,6});
         assertEquals("Incorrect instance!", new MaskBins(maskExpected.name()).name(), maskExpected.name());
     }
 

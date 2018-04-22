@@ -2,7 +2,8 @@ package ampControl.audio.processing;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link NoProcessing}
@@ -17,9 +18,9 @@ public class NoProcessingTest {
     @Test
     public void receive() {
         final double[][] expected = new double[][]{{1, 2, 3}, {4, 5, 6}};
-        final ProcessingResult.Processing nopp = new NoProcessing();
-        nopp.receive(expected);
-        assertArrayEquals("Incorrect output!", expected, nopp.get().get(0));
+        final ProcessingResult.Factory nopp = new NoProcessing();
+        final ProcessingResult res = nopp.create(new SingletonDoubleInput(expected));
+        assertArrayEquals("Incorrect output!", expected, res.stream().findFirst().get());
     }
 
     /**

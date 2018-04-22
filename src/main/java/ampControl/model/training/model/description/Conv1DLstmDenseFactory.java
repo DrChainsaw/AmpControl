@@ -43,7 +43,7 @@ public class Conv1DLstmDenseFactory {
     public void addModelData(List<ModelHandle> modelData) {
         final DataSetPreProcessor rnnPreproc = new CnnToRnnToLastStepToFfPreProcessor();
 // About 92% (maybe room for more) after 30k iterations without dropout. 3 best, then 1 then 7 then 0. 7 Seems to catch up slowly...
-// final Supplier<ProcessingResult.Processing> audioPostProcessingSupplier = () -> new Pipe(
+// final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new Pipe(
 //                new Spectrogrammm(512, 32, 1),
 //                new UnitStdZeroMean()
 //        );

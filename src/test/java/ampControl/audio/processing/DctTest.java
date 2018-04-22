@@ -4,10 +4,10 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
-
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test cases for {@link Dct}
@@ -29,9 +29,9 @@ public class DctTest {
                 .toArray();
 
         final Dct dct = new Dct();
-        dct.receive(new double[][] {cosSinSum});
+        final ProcessingResult res = dct.create(new SingletonDoubleInput(cosSinSum));
 
-        final double[] dctData = dct.get().get(0)[0];
+        final double[] dctData = res.stream().findFirst().get()[0];
 
         for(int i = 0; i < freqs.size(); i++) {
             final int argmax = argMax(dctData);

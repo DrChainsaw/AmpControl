@@ -2,7 +2,9 @@ package ampControl.audio.processing;
 
 import org.junit.Test;
 
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
 import static org.junit.Assert.*;
@@ -23,16 +25,17 @@ public class RandScaleTest {
         final int minScaling = 77;
         final double [] input = {-2, 0, 3};
         final double [] expected = DoubleStream.of(input).map(d -> d * maxScaling / 1e2).toArray();
-        final ProcessingResult.Processing proc = new RandScale(maxScaling, minScaling, new Random() {
+        final ProcessingResult.Factory proc = new RandScale(maxScaling, minScaling, new Random() {
             @Override
             public int nextInt(int bound) {
                 return bound;
             }
         });
-        proc.receive(new double[][] {input});
-        assertEquals("Incorrect output size!", 1, proc.get().size());
-        assertEquals("Incorrect output size!", 1, proc.get().get(0).length);
-        assertArrayEquals("Incorrect ouput!", expected, proc.get().get(0)[0], 1e-10);
+        final ProcessingResult res = proc.create(new SingletonDoubleInput(new double[][] {input}));
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
+        assertEquals("Incorrect output size!", 1, resList.size());
+        assertEquals("Incorrect output size!", 1, resList.get(0).length);
+        assertArrayEquals("Incorrect ouput!", expected, resList.get(0)[0], 1e-10);
     }
 
     /**
@@ -44,16 +47,17 @@ public class RandScaleTest {
         final int minScaling = 13;
         final double [] input = {-2, 0, 3};
         final double [] expected = DoubleStream.of(input).map(d -> d * minScaling / 1e2).toArray();
-        final ProcessingResult.Processing proc = new RandScale(maxScaling, minScaling, new Random() {
+        final ProcessingResult.Factory proc = new RandScale(maxScaling, minScaling, new Random() {
             @Override
             public int nextInt(int bound) {
                 return 0;
             }
         });
-        proc.receive(new double[][] {input});
-        assertEquals("Incorrect output size!", 1, proc.get().size());
-        assertEquals("Incorrect output size!", 1, proc.get().get(0).length);
-        assertArrayEquals("Incorrect ouput!", expected, proc.get().get(0)[0], 1e-10);
+        final ProcessingResult res = proc.create(new SingletonDoubleInput(new double[][] {input}));
+        final List<double[][]> resList = res.stream().collect(Collectors.toList());
+        assertEquals("Incorrect output size!", 1, resList.size());
+        assertEquals("Incorrect output size!", 1, resList.get(0).length);
+        assertArrayEquals("Incorrect ouput!", expected, resList.get(0)[0], 1e-10);
     }
 
     /**

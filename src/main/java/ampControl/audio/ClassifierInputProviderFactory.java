@@ -1,6 +1,8 @@
 package ampControl.audio;
 
 
+import ampControl.audio.processing.ProcessingResult;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,7 +17,7 @@ public interface ClassifierInputProviderFactory {
 
     /**
      * Creates a {@link ClassifierInputProvider} from the given string. String is typically expected to contain
-     * information for what {@link ampControl.audio.processing.ProcessingResult.Processing} shall be
+     * information for what {@link ProcessingResult.Factory} shall be
      * applied and how large window size.
      *
      * @param inputDescriptionString

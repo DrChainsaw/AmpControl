@@ -1,15 +1,15 @@
 package ampControl.model.training.data;
 
-import java.nio.file.Path;
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import ampControl.audio.processing.ProcessingResult;
 import ampControl.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampControl.model.training.data.processing.AudioFileProcessorBuilder;
 import ampControl.model.training.data.processing.SequentialHoldFileSupplier;
 import ampControl.model.training.data.processing.WindowedConsecutiveSamplingInfo;
+
+import java.nio.file.Path;
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * {@link DataProviderBuilder} for test set used in evaluation. Tries to ensure that all data is "covered" with as
@@ -24,7 +24,7 @@ public class EvalDataProviderBuilder implements DataProviderBuilder {
 	private final Function<Collection<String>, List<String>> labelExpander;
 	private final int clipLengthMs;
 	private final int windowSizeMs;
-	private final Supplier<ProcessingResult.Processing> audioPostProcSupplier;
+	private final Supplier<ProcessingResult.Factory> audioPostProcSupplier;
 	private int seed;	
 
 	public EvalDataProviderBuilder(
@@ -32,7 +32,7 @@ public class EvalDataProviderBuilder implements DataProviderBuilder {
 			Function<Collection<String>, List<String>> labelExpander,
 			int clipLengthMs,
 			int windowSizeMs,
-			Supplier<ProcessingResult.Processing> audioPostProcSupplier,
+			Supplier<ProcessingResult.Factory> audioPostProcSupplier,
 			int seed) {
 		this.labelToBuilder = new LinkedHashMap<>(labelToBuilder);
 		this.labelExpander = labelExpander;

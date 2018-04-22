@@ -1,5 +1,10 @@
 package ampControl.model.training.data;
 
+import ampControl.model.training.data.processing.AudioFileProcessorBuilder;
+import ampControl.model.training.data.processing.AudioProcessor;
+import ampControl.model.training.data.processing.WindowedConsecutiveSamplingInfo;
+import ampControl.model.visualize.PlotSpectrogram;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
@@ -8,11 +13,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import ampControl.model.training.data.processing.AudioFileProcessorBuilder;
-import ampControl.model.training.data.processing.AudioProcessor;
-import ampControl.model.training.data.processing.WindowedConsecutiveSamplingInfo;
-import ampControl.model.visualize.PlotSpectrogram;
 
 /**
  * Provides audio {@link TrainingData} from a list of {@link Path Paths} to files with the data to process. Assumes that
@@ -29,7 +29,7 @@ public class AudioDataProvider implements DataProvider {
 	
 	public interface AudioProcessorBuilder {
 		 AudioProcessor build();
-		 default AudioProcessorBuilder add(Path file) {return this;};
+		 default AudioProcessorBuilder add(Path file) {return this;}
 		
 	}
 
@@ -40,7 +40,7 @@ public class AudioDataProvider implements DataProvider {
 	 * @param labels Labels and the associated {@link AudioProcessorBuilder}
 	 * @param labelSupplier Supplies labels when generating {@link TrainingData}
 	 */
-	public AudioDataProvider(
+	AudioDataProvider(
 			List<Path> files,
 			Map<String, AudioProcessorBuilder> labels,
 			Supplier<String> labelSupplier) {
@@ -56,7 +56,7 @@ public class AudioDataProvider implements DataProvider {
 			labels.get(labelDir).add(file);
 		}
 		
-		labels.entrySet().forEach(entry -> processors.put(entry.getKey(), entry.getValue().build()));				
+		labels.forEach((key, value) -> processors.put(key, value.build()));
 	}
 	
 	@Override
@@ -77,7 +77,9 @@ public class AudioDataProvider implements DataProvider {
 		labels.put("lead", new AudioFileProcessorBuilder());
 		AudioDataProvider splitter = new AudioDataProvider(files, labels, () -> "lead");
 		
-		splitter.generateData().limit(10).forEach(tData -> PlotSpectrogram.plot(tData.result().get().get(0)));
+		splitter.generateData().limit(10).forEach(tData -> PlotSpectrogram.plot(tData.result().stream()
+				.findFirst()
+				.orElseThrow(() -> new RuntimeException("No output!"))));
 		
 	}
 
