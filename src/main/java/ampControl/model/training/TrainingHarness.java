@@ -1,8 +1,8 @@
 package ampControl.model.training;
 
 import ampControl.audio.ClassifierInputProviderFactory;
+import ampControl.audio.processing.ProcessingFactoryFromString;
 import ampControl.audio.processing.ProcessingResult;
-import ampControl.audio.processing.SupplierFactory;
 import ampControl.model.training.data.*;
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
@@ -303,9 +303,9 @@ public class TrainingHarness {
         int evalBatchSize = 1;
         double evalSetPercentage = 5;
 
-        final ProcessingResult.Factory audioPostProcSupplier = new SupplierFactory(clipSamplingRate).get(model);
+        final ProcessingResult.Factory audioPostProcFactory = new ProcessingFactoryFromString(clipSamplingRate).get(model);
         final int timeWindowSize = ClassifierInputProviderFactory.parseWindowSize(model);
-        final SilenceProcessor silence = new SilenceProcessor(clipSamplingRate * clipLengthMs / (1000 / timeWindowSize) / 1000, () -> audioPostProcSupplier);
+        final SilenceProcessor silence = new SilenceProcessor(clipSamplingRate * clipLengthMs / (1000 / timeWindowSize) / 1000, () -> audioPostProcFactory);
         Map<String, AudioDataProvider.AudioProcessorBuilder> labelToBuilder = new LinkedHashMap<>();
         labelToBuilder.put("silence", () -> silence);
         labelToBuilder = Collections.unmodifiableMap(labelToBuilder);
@@ -313,8 +313,8 @@ public class TrainingHarness {
                 .addExpansion("noise", 20)
                 .addExpansion("rythm", 100)
                 .addExpansion("lead", 100);
-        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> audioPostProcSupplier, new Random().nextInt());
-        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> audioPostProcSupplier, 666);
+        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> audioPostProcFactory, new Random().nextInt());
+        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> audioPostProcFactory, 666);
 
         try {
             DataSetFileParser.parseFileProperties(baseDir, new TrainingDescription.DataSetMapper(train, eval, evalSetPercentage));

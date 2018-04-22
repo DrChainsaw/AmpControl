@@ -9,10 +9,10 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test cases for {@link SupplierFactory}.
+ * Test cases for {@link ProcessingFactoryFromString}.
  *
  */
-public class SupplierFactoryTest {
+public class ProcessingFactoryFromStringTest {
 
     /**
      * Tests that a created {@link ProcessingResult.Factory} can be recreated
@@ -42,8 +42,8 @@ public class SupplierFactoryTest {
                                 new Mfsc(sampleRate)
                         )));
 
-        final String str = "weewf21_23fd_" + SupplierFactory.prefix() + pp.name() + "_f5re5r7_hy6t8juy45";
-        final ProcessingResult.Factory pps = new SupplierFactory(sampleRate).get(str);
+        final String str = "weewf21_23fd_" + ProcessingFactoryFromString.prefix() + pp.name() + "_f5re5r7_hy6t8juy45";
+        final ProcessingResult.Factory pps = new ProcessingFactoryFromString(sampleRate).get(str);
         assertEquals("Factory was not restored correctly!", pp.name(), pps.name());
 
         final ProcessingResult input = new SingletonDoubleInput(IntStream.range(0, 128).mapToDouble(i -> i).toArray());

@@ -11,12 +11,12 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author Christian Skärby
  */
-public class SupplierFactory {
+public class ProcessingFactoryFromString {
 
     private final double samplingFreq;
     private final static String prefix = "_sgpp_";
 
-    public SupplierFactory(double samplingFreq) {
+    public ProcessingFactoryFromString(double samplingFreq) {
         this.samplingFreq = samplingFreq;
     }
 
@@ -139,8 +139,8 @@ public class SupplierFactory {
     }
 
     public static void main(String[] args) {
-        //System.out.println("Got: " + new SupplierFactory(44100).get("_sgpp_fork_uszm_split_mfcc_krof_aswa_gtht_vrvrre33").get().name());
-        //System.out.println("Got: " + new SupplierFactory(44100).get("_sgpp_fork_uszm_pipe_norm_split_mfcc_pipe_lgsc_krof_aswa_gtht_vrvrre33").get().name());
+        //System.out.println("Got: " + new ProcessingFactoryFromString(44100).get("_sgpp_fork_uszm_split_mfcc_krof_aswa_gtht_vrvrre33").get().name());
+        //System.out.println("Got: " + new ProcessingFactoryFromString(44100).get("_sgpp_fork_uszm_pipe_norm_split_mfcc_pipe_lgsc_krof_aswa_gtht_vrvrre33").get().name());
         ProcessingResult.Factory pp = new Pipe(
                 new Pipe(
                         new Mfsc(100),
@@ -165,7 +165,7 @@ public class SupplierFactory {
 
         String str = prefix() + pp.name();//"_sgpp_mfsc_pipe_fork_uszm_pipe_fork_norm_split_mfsc_krof_pipe_mfsc_pipe_mfcc_split_norm_pipe_mfsc_krof_aswa_gtht_vrvrre33";
         //String str = "_sgpp_fork_fork_fork_norm_split_mfcc_krof__split_mfcc_krof__split_uszm_krof_aswa_gtht_vrvrre33";
-        ProcessingResult.Factory pps = new SupplierFactory(44100).get(str);
+        ProcessingResult.Factory pps = new ProcessingFactoryFromString(44100).get(str);
         System.out.println("Created: " + prefix() + pp.name());
         System.out.println("Wanted:  " + str);
         System.out.println("Got:     " + prefix() + pps.name());
@@ -182,7 +182,7 @@ public class SupplierFactory {
                 )
 
         );
-        pps = new SupplierFactory(44100).get(prefix() + pp.name());
+        pps = new ProcessingFactoryFromString(44100).get(prefix() + pp.name());
         System.out.println("Created: " + pp.name());
         System.out.println("Got:     " + pps.name());
 
@@ -191,7 +191,7 @@ public class SupplierFactory {
                 pp,
                 new UnitMaxZeroMin()
         );
-        pps = new SupplierFactory(44100).get(prefix() + pp.name());
+        pps = new ProcessingFactoryFromString(44100).get(prefix() + pp.name());
         System.out.println("Created: " + pp.name());
         System.out.println("Got:     " + pps.name());
 

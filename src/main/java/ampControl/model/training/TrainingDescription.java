@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Main "app" for training. Describes what models to use and how they shall be trained.
@@ -92,7 +91,7 @@ public class TrainingDescription {
 //                //  new UnitStdZeroMean()
 //        );
 
-        final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new Pipe(
+        final ProcessingResult.Factory audioPostProcessingFactory= new Pipe(
                 new Spectrogram(256, 16),
                 new Fork(
                         new Pipe(
@@ -113,7 +112,7 @@ public class TrainingDescription {
 //                new UnitStdZeroMean()
 //        );
 
-        createModels(audioPostProcessingSupplier, timeWindowSizeMs, modelData, trainingSeed);
+        createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
 
 
         //NativeOpsHolder.getInstance().getDeviceNativeOps().setOmpNumThreads(1);
@@ -126,8 +125,8 @@ public class TrainingDescription {
         harness.startTraining();
     }
 
-    private static void createModels(final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {
-        final SilenceProcessor silence = new SilenceProcessor(clipSamplingRate * clipLengthMs / (1000 / timeWindowSize) / 1000, audioPostProcessingSupplier);
+    private static void createModels(final ProcessingResult.Factory audioPostProcessingFactory, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {
+        final SilenceProcessor silence = new SilenceProcessor(clipSamplingRate * clipLengthMs / (1000 / timeWindowSize) / 1000, () -> audioPostProcessingFactory);
         Map<String, AudioProcessorBuilder> labelToBuilder = new LinkedHashMap<>();
         labelToBuilder.put("silence", () -> silence);
         labelToBuilder = Collections.unmodifiableMap(labelToBuilder);
@@ -140,13 +139,13 @@ public class TrainingDescription {
                 .addExpansion("lead", 100);
 
         final Random volScaleRng = new Random(trainingSeed + 1);
-        final Supplier<ProcessingResult.Factory> trainSupplier = () -> new Pipe(
+        final ProcessingResult.Factory trainFactory =  new Pipe(
                 new RandScale(1000, 10, volScaleRng),
-                audioPostProcessingSupplier.get()
+                audioPostProcessingFactory
         );
 
-        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, trainSupplier, trainingSeed);
-        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, audioPostProcessingSupplier, 666);
+        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, ()-> trainFactory, trainingSeed);
+        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, 666);
 
         try {
             DataSetFileParser.parseFileProperties(baseDir, new DataSetMapper(train, eval, evalSetPercentage));
@@ -170,7 +169,7 @@ public class TrainingDescription {
         final double[][] inputProto = silence.getResult().get().get(0);
         final int[] inputShape = {inputProto.length, inputProto[0].length, silence.getResult().get().size()};
 
-        String prefix = "ws_" + timeWindowSize + SupplierFactory.prefix() + audioPostProcessingSupplier.get().name() + "_";
+        String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
         new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
