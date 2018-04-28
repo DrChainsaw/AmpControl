@@ -3,7 +3,7 @@ package ampControl.model.training.listen;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.layers.OutputLayer;
+import org.deeplearning4j.nn.layers.BaseOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -53,7 +53,7 @@ public class TrainEvaluator implements IterationListener {
     public void iterationDone(Model model, int iteration) {
 
         if (model instanceof MultiLayerNetwork) {
-            OutputLayer ol = (OutputLayer) ((MultiLayerNetwork) model).getOutputLayer();
+            BaseOutputLayer ol = (BaseOutputLayer) ((MultiLayerNetwork) model).getOutputLayer();
             checkEvalReset();
             resetCount += labels.get(labelsCount).shape()[0];
             eval.eval(labels.get(labelsCount), ol.output(false));
@@ -61,7 +61,7 @@ public class TrainEvaluator implements IterationListener {
             iterStore = iteration;
 
         } else if (model instanceof ComputationGraph){
-            OutputLayer ol = (OutputLayer) ((ComputationGraph) model).getOutputLayer(0);
+            BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
             checkEvalReset();
             resetCount += labels.get(labelsCount).shape()[0];
             eval.eval(labels.get(labelsCount), ol.output(false));
