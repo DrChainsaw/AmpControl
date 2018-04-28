@@ -1,19 +1,16 @@
 package ampControl.amp.midi;
 
+import ampControl.admin.service.Service;
+import ampControl.admin.service.control.SubscriptionRegistry;
+import ampControl.amp.AmpInterface;
+import ampControl.amp.ClassificationListener;
+import org.nd4j.linalg.api.ndarray.INDArray;
+
+import javax.sound.midi.*;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-
-import javax.sound.midi.MidiDevice;
-import javax.sound.midi.MidiSystem;
-import javax.sound.midi.MidiUnavailableException;
-import javax.sound.midi.Receiver;
-import javax.sound.midi.ShortMessage;
-
-import org.nd4j.linalg.api.ndarray.INDArray;
-
-import ampControl.amp.ClassificationListener;
 
 /**
  * {@link ClassificationListener} which is a MIDI interface capable of sending MIDI commands to a device based on given
@@ -21,15 +18,18 @@ import ampControl.amp.ClassificationListener;
  *
  * @author Christian Skärby
  */
-public class MidiInterface implements ClassificationListener {
+public class MidiInterface implements AmpInterface {
 
 
     private final Receiver receiver;
+    private final Service serviceDelegate;
     private final Function<INDArray, List<ShortMessage>> probabilitiesToMessageMapper;
 
-    public MidiInterface(
+    MidiInterface(
             Predicate<MidiDevice.Info> wantedDevice,
-            Function<INDArray, List<ShortMessage>> probabilitiesToMessageMapper) throws MidiUnavailableException {
+            Function<INDArray, List<ShortMessage>> probabilitiesToMessageMapper,
+            Function<Receiver, Service> serviceFactory
+    ) throws MidiUnavailableException {
         this.probabilitiesToMessageMapper = probabilitiesToMessageMapper;
 
         // Static methods in MidiSystem -> Not practically testable?? Doesn't really do much so maybe not a big deal
@@ -42,13 +42,23 @@ public class MidiInterface implements ClassificationListener {
         device.open();
 
         receiver = device.getReceiver();
+        serviceDelegate = serviceFactory.apply(receiver);
     }
 
     @Override
     public void indicateAudioClassification(INDArray probabilities) {
-        probabilitiesToMessageMapper.apply(probabilities).forEach(msg -> receiver.send(msg, System.nanoTime()/1000));
+        probabilitiesToMessageMapper.apply(probabilities).forEach(msg -> receiver.send(msg, System.nanoTime() / 1000));
     }
 
+    @Override
+    public void stop() {
+        serviceDelegate.stop();
+    }
+
+    @Override
+    public void registerTo(SubscriptionRegistry subscriptionRegistry) {
+        serviceDelegate.registerTo(subscriptionRegistry);
+    }
 
     public static void main(String[] args) {
         Stream.of(MidiSystem.getMidiDeviceInfo()).forEach(info -> System.out.println(info.getName() + ": " + info.getDescription()));

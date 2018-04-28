@@ -1,10 +1,10 @@
 package ampControl.amp;
 
-import com.beust.jcommander.Parameter;
 import ampControl.admin.param.IntToDoubleConverter;
 import ampControl.amp.probabilities.ArgMax;
 import ampControl.amp.probabilities.Interpreter;
 import ampControl.amp.probabilities.ThresholdFilter;
+import com.beust.jcommander.Parameter;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.stream.Stream;
  * {@link ClassificationListener} which prints the result of classification in the terminal.
  *
  */
-public class PrintClassificationListener implements  ClassificationListener {
+public class PrintClassificationListener implements AmpInterface {
 
     public static final String RESET = "\033[0m";      // RESET as color sticks otherwise
     public static final String RED_BOLD = "\033[1;31m";    // RED
@@ -26,7 +26,7 @@ public class PrintClassificationListener implements  ClassificationListener {
     public static final String BLUE_BOLD = "\033[1;34m";   // BLUE
 
 
-    public static class Factory implements ClassificationListener.Factory {
+    public static class Factory implements AmpInterface.Factory {
 
         @Parameter(names = {"-labelToThreshold", "-ltt"},
                 description = "Comma separated list of how to map labels programs. Syntax is <labelx>:<thredholsx>,<labely>:<thresholdy,...>",

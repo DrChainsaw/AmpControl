@@ -9,7 +9,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
  * @author Christian Skärby
  */
 @Parameters(commandDescription = "Dummy listener")
-public class DummyClassifictionListener implements  ClassificationListener {
+public class DummyClassifictionListener implements  AmpInterface {
 
     @Override
     public void indicateAudioClassification(INDArray probabilities) {

@@ -1,7 +1,8 @@
 package ampControl.amp.midi;
 
 import ampControl.admin.param.StringToMidiDevicePredicateConverter;
-import ampControl.amp.ClassificationListener;
+import ampControl.admin.service.NoService;
+import ampControl.amp.AmpInterface;
 import ampControl.amp.midi.program.MidiProgramChange;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -16,7 +17,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class MidiProgChangeFactory implements ClassificationListener.Factory {
+public class MidiProgChangeFactory implements AmpInterface.Factory {
 
     @Parameter(names = {"-midiDevice, -md"}, description = "Which midi device to send program change to based on classification",
             converter = StringToMidiDevicePredicateConverter.class)
@@ -32,17 +33,17 @@ public class MidiProgChangeFactory implements ClassificationListener.Factory {
     );
 
     @ParametersDelegate
-    ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange();
+    private final ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange();
 
     @Override
-    public ClassificationListener create() {
+    public AmpInterface create() {
         Function<INDArray, List<ShortMessage>> probabilitiesToMessageMapping = programChange.createProbabilitiesToMessageMapping(
                 programChangesList.stream()
                         .map(p -> MidiProgramChange.valueOf("p" + p))
                         .collect(Collectors.toList()));
 
         try {
-            return new MidiInterface(device, probabilitiesToMessageMapping);
+            return new MidiInterface(device, probabilitiesToMessageMapping, rec -> new NoService());
         } catch (MidiUnavailableException e) {
             throw new RuntimeException("Midi device initialization failed!", e);
         }

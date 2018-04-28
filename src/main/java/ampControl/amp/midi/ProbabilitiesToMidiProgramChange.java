@@ -7,6 +7,7 @@ import ampControl.amp.probabilities.ArgMax;
 import ampControl.amp.probabilities.Interpreter;
 import ampControl.amp.probabilities.ThresholdFilter;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import javax.sound.midi.ShortMessage;
@@ -24,8 +25,8 @@ import java.util.function.Function;
  */
 class ProbabilitiesToMidiProgramChange {
 
-    @Parameter(names = "-midiChannel", description = "midi channel to use")
-    private int midiChannel = 0;
+    @ParametersDelegate
+    private final MidiChannelPar midiChannel = new MidiChannelPar();
 
     @Parameter(names = {"-labelToThreshold", "-ltt"},
             description = "Comma separated list of how to map labels programs. Syntax is <labelx>:<thredholsx>,<labely>:<thresholdy,...>",
@@ -63,7 +64,7 @@ class ProbabilitiesToMidiProgramChange {
                         new MaskDuplicateLabelMapping<>(
                                 new PacingLabelMapping<>(updateProhibitTimeMs,
                                         new MaskingLabelMapping<>(labelsMask,
-                                                new MidiProgramChangeLabelMapping(midiChannel, programChangesList.toArray(new ProgramChange[]{})
+                                                new MidiProgramChangeLabelMapping(midiChannel.get(), programChangesList.toArray(new ProgramChange[]{})
                                                 )
                                         )
                                 )
