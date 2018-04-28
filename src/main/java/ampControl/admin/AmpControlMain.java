@@ -12,6 +12,7 @@ import com.beust.jcommander.JCommander;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -63,7 +64,10 @@ public class AmpControlMain {
                     classificationListenerAgg,
                     classifier,
                     inputProviderFactory.finalizeAndReturnUpdateHandle());
-            engine.initialize(mqttAppControlService, audioClassificationService);
+
+            engine.initialize(mqttAppControlService, Arrays.asList(
+                    audioClassificationService,
+                    ampInterface));
             engine.run();
         } catch (Exception e) {
             System.out.println("Application failed!");

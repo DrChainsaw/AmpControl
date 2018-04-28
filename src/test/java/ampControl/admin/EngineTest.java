@@ -8,6 +8,8 @@ import ampControl.admin.service.control.SubscriptionRegistry;
 import com.beust.jcommander.JCommander;
 import org.junit.Test;
 
+import java.util.Collections;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -29,7 +31,7 @@ public class EngineTest {
     public void startStopEngine() {
         final Engine engine = new Engine();
         final MockAppControl appCtrl = new MockAppControl();
-        engine.initialize(appCtrl, new MockService());
+        engine.initialize(appCtrl,  Collections.singleton(new MockService()));
         appCtrl.assertRunningState(false);
 
         new Thread(() -> engine.run()).start();
@@ -63,7 +65,7 @@ public class EngineTest {
 
         final MockService service = new MockService();
         final MockAppControl appControl = new MockAppControl();
-        engine.initialize(appControl, service);
+        engine.initialize(appControl, Collections.singleton(service));
         service.assertRunningState(false);
 
         new Thread(() -> engine.run()).start();
