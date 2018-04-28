@@ -35,7 +35,6 @@ public class Output implements LayerBlockConfig {
                 .replace("0]", "");
 
         return "out" + wString;
-
     }
 
     @Override
