@@ -10,12 +10,12 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 public interface AppControlService {
 
     /**
-     * Start the control service. Returns a {@link MessageToActionMap} for mapping messages to actions
+     * Start the control service. Returns a {@link MessageSubscriptionRegistry} for mapping messages to actions
      *
-     * @return {@link MessageToActionMap}
+     * @return {@link MessageSubscriptionRegistry}
      * @throws MqttException
      */
-    MessageToActionMap start() throws MqttException;
+    ControlRegistry start() throws MqttException;
 
     void stop() throws MqttException;
 }

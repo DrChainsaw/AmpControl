@@ -1,5 +1,7 @@
 package ampControl.amp;
 
+import ampControl.amp.midi.MidiProgChangeFactory;
+import ampControl.amp.midi.PodXtFactory;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.util.LinkedHashMap;

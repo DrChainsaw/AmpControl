@@ -3,7 +3,7 @@ package ampControl.admin.service.control.mqtt;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link MqttCallbackMap}
@@ -36,8 +36,8 @@ public class MqttCallbackMapTest {
         final MqttMessage msg2 = new MqttMessage(msg2Str.getBytes());
         final ActionProbe probe1 = new ActionProbe();
         final ActionProbe probe2 = new ActionProbe();
-        map.mapMessage(msg1Str, probe1);
-        map.mapMessage(msg2Str, probe2);
+        map.registerSubscription(msg1Str, probe1);
+        map.registerSubscription(msg2Str, probe2);
 
         probe1.assertCalled(0);
         probe2.assertCalled(0);

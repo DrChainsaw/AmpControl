@@ -1,8 +1,7 @@
-package ampControl.amp;
+package ampControl.amp.midi;
 
 import ampControl.admin.param.StringToMidiDevicePredicateConverter;
-import ampControl.amp.midi.Devices;
-import ampControl.amp.midi.MidiInterface;
+import ampControl.amp.ClassificationListener;
 import ampControl.amp.midi.program.MidiProgramChange;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;

@@ -1,11 +1,11 @@
 package ampControl.admin.service.control.mqtt;
 
 import ampControl.admin.service.control.AppControlService;
-import ampControl.admin.service.control.MessageToActionMap;
+import ampControl.admin.service.control.ControlRegistry;
+import ampControl.admin.service.control.MessageSubscriptionRegistry;
 import ampControl.admin.service.control.TopicPublisher;
-import org.eclipse.paho.client.mqttv3.*;
-
 import com.beust.jcommander.Parameter;
+import org.eclipse.paho.client.mqttv3.*;
 
 /**
  * Service for interacting with the application through MQTT.
@@ -51,14 +51,14 @@ public class MqttAppControlService implements TopicPublisher, AppControlService 
     }
 
     /**
-     * Starts the service by connecting to the broker. Returns a {@link MessageToActionMap} for users to define
+     * Starts the service by connecting to the broker. Returns a {@link MessageSubscriptionRegistry} for users to define
      * actions in response to messages on the listenTopic.
      *
-     * @return Returns a {@link MessageToActionMap}
+     * @return Returns a {@link MessageSubscriptionRegistry}
      * @throws MqttException
      */
     @Override
-    public MessageToActionMap start() throws MqttException {
+    public ControlRegistry start() throws MqttException {
 
         client = clientFactory.create(server); //new MqttClient(server, MqttClient.generateClientId());
 

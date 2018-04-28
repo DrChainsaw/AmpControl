@@ -1,15 +1,15 @@
 package ampControl.admin;
 
-import com.beust.jcommander.JCommander;
-import ampControl.admin.service.control.AppControlService;
-import ampControl.admin.service.control.MessageToActionMap;
+import ampControl.admin.service.MockControlRegistry;
 import ampControl.admin.service.Service;
+import ampControl.admin.service.control.AppControlService;
+import ampControl.admin.service.control.ControlRegistry;
+import ampControl.admin.service.control.SubscriptionRegistry;
+import com.beust.jcommander.JCommander;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Test cases for {@link Engine}
@@ -18,11 +18,9 @@ public class EngineTest {
 
     private final static long sleepTimeMs = 5;
 
-    private final static String autoActPar = "-mqttActAutoMsg";
-    private final static String autoActMsg = "frehththtyjy";
+    private final static String exitCmdPar = "-exitCmd";
+    private final static String exitCmdMsg = "frehththtyjy";
 
-    private final static String autoDeactPar = "-mqttDectAutoMsg";
-    private final static String autoDeactMsg = "fgrhjgkds";
 
     /**
      * Test that engine can be started and stopped
@@ -58,7 +56,7 @@ public class EngineTest {
     @Test
     public void startStopService() {
         final Engine engine = new Engine();
-        String argStr = autoActPar + " " + autoActMsg + " " + autoDeactPar + " " + autoDeactMsg;
+        String argStr = exitCmdPar + " " + exitCmdMsg;
         JCommander.newBuilder().addObject(engine)
                 .build()
                 .parse(argStr.split(" "));
@@ -75,23 +73,23 @@ public class EngineTest {
 
             service.assertRunningState(false);
 
-            appControl.getM2aMap().runAction(autoActMsg);
+            appControl.getM2aMap().execute(service.start);
 
             Thread.sleep(sleepTimeMs);
 
             service.assertRunningState(true);
-            appControl.getM2aMap().runAction(autoDeactMsg);
+            appControl.getM2aMap().execute(service.stop);
 
             Thread.sleep(sleepTimeMs);
 
             service.assertRunningState(false);
-            appControl.getM2aMap().runAction(autoActMsg);
+            appControl.getM2aMap().execute(service.start);
 
             Thread.sleep(sleepTimeMs);
 
             service.assertRunningState(true);
 
-            engine.stop();
+            appControl.getM2aMap().execute(exitCmdMsg);
 
             Thread.sleep(sleepTimeMs);
             service.assertRunningState(false);
@@ -103,15 +101,15 @@ public class EngineTest {
 
     private final static class MockAppControl implements AppControlService {
 
-        private final MockM2aMap m2aMap;
+        private final MockControlRegistry m2aMap;
         private boolean isStarted = false;
 
         MockAppControl() {
-            m2aMap = new MockM2aMap();
+            m2aMap = new MockControlRegistry();
         }
 
         @Override
-        public MessageToActionMap start() {
+        public ControlRegistry start() {
             isStarted = true;
             return m2aMap;
         }
@@ -121,7 +119,7 @@ public class EngineTest {
             isStarted = false;
         }
 
-        MockM2aMap getM2aMap() {
+        MockControlRegistry getM2aMap() {
             return m2aMap;
         }
 
@@ -130,38 +128,34 @@ public class EngineTest {
         }
     }
 
-    private final static class MockM2aMap implements MessageToActionMap {
-
-        private final Map<String, Runnable> actions = new HashMap<>();
-
-        @Override
-        public void mapMessage(String message, Runnable action) {
-            actions.put(message, action);
-        }
-
-        @Override
-        public void setConnectionFailedAction(Runnable action) {
-            // Ignore
-        }
-
-        void runAction(String actionMessage) {
-            actions.get(actionMessage).run();
-        }
-    }
 
     private final static class MockService implements Service {
 
-        private boolean isStarted = false;
+        private final String start;
+        private final String stop;
 
-        @Override
-        public void start() {
-            isStarted = true;
+        public MockService() {
+            this("start", "stop");
         }
+
+        public MockService(String start, String stop) {
+            this.start = start;
+            this.stop = stop;
+        }
+
+        private boolean isStarted = false;
 
         @Override
         public void stop() {
             isStarted = false;
         }
+
+        @Override
+        public void registerTo(SubscriptionRegistry subscriptionRegistry) {
+            subscriptionRegistry.registerSubscription(start, () -> isStarted = true);
+            subscriptionRegistry.registerSubscription(stop, () -> isStarted = false);
+        }
+
 
         void assertRunningState(boolean expected) {
             assertEquals("Incorrect running state!", expected, isStarted);

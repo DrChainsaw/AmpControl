@@ -1,8 +1,7 @@
-package ampControl.amp;
+package ampControl.amp.midi;
 
 import ampControl.admin.param.PodXtProgramChangeStringConverter;
-import ampControl.amp.midi.Devices;
-import ampControl.amp.midi.MidiInterface;
+import ampControl.amp.ClassificationListener;
 import ampControl.amp.midi.program.PodXtProgramChange;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;

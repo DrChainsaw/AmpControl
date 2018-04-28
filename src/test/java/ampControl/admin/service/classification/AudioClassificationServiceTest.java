@@ -1,9 +1,10 @@
 package ampControl.admin.service.classification;
 
-import com.beust.jcommander.JCommander;
+import ampControl.admin.service.MockControlRegistry;
 import ampControl.admin.service.classifiction.AudioClassificationService;
 import ampControl.amp.ClassificationListener;
 import ampControl.model.inference.Classifier;
+import com.beust.jcommander.JCommander;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
@@ -13,10 +14,13 @@ import static org.junit.Assert.*;
  * Test cases for {@link AudioClassificationService}
  *
  * @author Christian Skärby
- *
  */
 public class AudioClassificationServiceTest {
 
+    private final static long sleepTimeMs = 5;
+
+    private final static String minTimeBetweenUpdatesPar = "-minTimeBetweenUpdates ";
+    private final static String actMsgPar = "-actAutoMsg ";
 
     /**
      * Test that service can be started and stopped and resumed correctly
@@ -26,32 +30,39 @@ public class AudioClassificationServiceTest {
         final AudioClassificationService service = new AudioClassificationService();
         final int msBetweenUpdates = 2;
         final int nrofCyclesToRun = 2;
-        final String params = "-minTimeBetweenUpdates " + msBetweenUpdates;
+        final String actMsg = "gjkflghjghht";
+        final String params = minTimeBetweenUpdatesPar + msBetweenUpdates + " " + actMsgPar + actMsg;
 
         JCommander.newBuilder().addObject(service)
                 .build()
                 .parse(params.split(" "));
 
+        final MockControlRegistry registry = new MockControlRegistry();
+
         final ProbeClassificationListener listenerProbe = new ProbeClassificationListener();
         service.initialize(listenerProbe, dummyClassifier, () -> {/* Do nothing*/});
+        service.registerTo(registry);
 
         assertFalse("Service runs without being started!", service.isRunning());
 
-        service.start();
-        assertTrue("Service not running!", service.isRunning());
-
         try {
-            Thread.sleep(nrofCyclesToRun*msBetweenUpdates);
+            registry.execute(actMsg);
+            Thread.sleep(sleepTimeMs);
+            assertTrue("Service not running!", service.isRunning());
+
+
+            Thread.sleep(nrofCyclesToRun * msBetweenUpdates);
             service.stop();
             assertFalse("Service runs after stopped!", service.isRunning());
 
             listenerProbe.assertNrofCallsMoreThan(0);
             final int lastNrofCalls = listenerProbe.nrofCalls;
 
-            service.start();
+            registry.execute(actMsg);
+            Thread.sleep(sleepTimeMs);
             assertTrue("Service not running!", service.isRunning());
 
-            Thread.sleep(nrofCyclesToRun*msBetweenUpdates);
+            Thread.sleep(nrofCyclesToRun * msBetweenUpdates);
             service.stop();
             assertFalse("Service runs after stopped!", service.isRunning());
 
@@ -73,7 +84,7 @@ public class AudioClassificationServiceTest {
         }
 
         void assertNrofCallsMoreThan(int expected) {
-            assertTrue("Incorrect number of calls! Expected more than " + expected +", was " + nrofCalls,
+            assertTrue("Incorrect number of calls! Expected more than " + expected + ", was " + nrofCalls,
                     nrofCalls > expected);
         }
     }

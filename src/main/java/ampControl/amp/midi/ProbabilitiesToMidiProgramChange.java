@@ -1,4 +1,4 @@
-package ampControl.amp;
+package ampControl.amp.midi;
 
 import ampControl.admin.param.IntToDoubleConverter;
 import ampControl.amp.labelmapping.*;

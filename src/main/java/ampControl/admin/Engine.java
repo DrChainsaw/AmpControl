@@ -1,20 +1,18 @@
 package ampControl.admin;
 
+import ampControl.admin.service.Service;
+import ampControl.admin.service.classifiction.AudioClassificationService;
+import ampControl.admin.service.control.AppControlService;
+import ampControl.admin.service.control.ControlRegistry;
+import com.beust.jcommander.Parameter;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import ampControl.admin.service.classifiction.AudioClassificationService;
-import ampControl.admin.service.control.AppControlService;
-import ampControl.admin.service.Service;
-import org.eclipse.paho.client.mqttv3.MqttException;
-
-import com.beust.jcommander.Parameter;
-
-import ampControl.admin.service.control.MessageToActionMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Runs the program main loop. Design borrowed from Winthing project.
@@ -26,14 +24,8 @@ import org.slf4j.LoggerFactory;
  */
 public class Engine {
 
-	@Parameter(names = "-mqttExit", description = "Mqtt message contents to exit application")
-	private String mqttExitMsg = "exit";
-
-	@Parameter(names = "-mqttActAutoMsg", description = "Mqtt message contents to start auto program change")
-	private String mqttActMsg = "activateAutoProgramChange";
-
-	@Parameter(names = "-mqttDectAutoMsg", description = "Mqtt message contents to stop auto program change")
-	private String mqttDeactMsg = "deactivateAutoProgramChange";
+	@Parameter(names = "-exitCmd", description = "Message to exit application")
+	private String exitMsg = "exit";
 
 	private static final Logger log = LoggerFactory.getLogger(Engine.class);
 	
@@ -81,11 +73,10 @@ public class Engine {
 				log.info("Starting engine...");
 				boolean connected = false;
 				try {
-					MessageToActionMap messageToActionMap = appControlService.start();
-					messageToActionMap.mapMessage(mqttActMsg, () -> new Thread(() -> service.start()).start());
-					messageToActionMap.mapMessage(mqttDeactMsg, () -> new Thread(() -> service.stop()).start());
-					messageToActionMap.mapMessage(mqttExitMsg, () -> stop());
-					messageToActionMap.setConnectionFailedAction(() -> pokeCondition());
+					final ControlRegistry registry = appControlService.start();
+					registry.registerSubscription(exitMsg, () -> stop());
+					registry.setConnectionFailedAction(() -> pokeCondition());
+					service.registerTo(registry);
 					connected = true;
 				} catch (final MqttException exception) {
 					log.info("Could not connect: " + exception.getMessage() + "!");

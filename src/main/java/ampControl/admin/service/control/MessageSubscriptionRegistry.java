@@ -6,7 +6,7 @@ package ampControl.admin.service.control;
  *
  * @author Christian Skärby
  */
-public interface MessageToActionMap {
+public interface MessageSubscriptionRegistry {
 
     /**
      * Maps the given message to the given action
@@ -14,12 +14,5 @@ public interface MessageToActionMap {
      * @param message the message to map the action
      * @param action The action to perform when the given message is received
      */
-    void mapMessage(String message, Runnable action);
-
-    /**
-     * Sets action to perform in case connection to message server (typically the MQTT broker) is lost
-     *
-     * @param action Action to perform in case connection to message server is lost
-     */
-    void setConnectionFailedAction(Runnable action);
+    void registerSubscription(String message, Runnable action);
 }

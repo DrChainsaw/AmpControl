@@ -1,20 +1,19 @@
 package ampControl.admin.service.classifiction;
 
+import ampControl.admin.service.Service;
+import ampControl.admin.service.control.SubscriptionRegistry;
+import ampControl.amp.ClassificationListener;
+import ampControl.audio.ClassifierInputProvider;
+import ampControl.model.inference.Classifier;
+import com.beust.jcommander.Parameter;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import ampControl.admin.service.Service;
-import org.nd4j.linalg.api.ndarray.INDArray;
-
-import com.beust.jcommander.Parameter;
-
-import ampControl.amp.ClassificationListener;
-import ampControl.audio.ClassifierInputProvider;
-import ampControl.model.inference.Classifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Service for doing online audio classification. Periodically asks all connected {@link Classifier Classifiers}
@@ -29,6 +28,12 @@ public class AudioClassificationService implements Service {
     
     @Parameter(names = {"-minTimeBetweenUpdates", "-mtbu"}, description = "Shortest time between classifications")
 	private int minTimeBetweenUpdatesMs = 100;
+
+    @Parameter(names = "-actAutoMsg", description = "Message contents to start auto program change")
+    private String actMsg = "activateAutoProgramChange";
+
+    @Parameter(names = "-dectAutoMsg", description = "Message contents to stop auto program change")
+    private String deactMsg = "deactivateAutoProgramChange";
 	
     private boolean isInit = false;
 
@@ -65,8 +70,7 @@ public class AudioClassificationService implements Service {
      * Start the service. Classifiction will be scheduled every minTimeBetweenUpdatesMs and result will be provided to
      * listeners.
      */
-    @Override
-    public void start() {
+    private void start() {
         if (!isInit) {
             throw new IllegalStateException("Must be initialized before starting!");
         }
@@ -115,6 +119,11 @@ public class AudioClassificationService implements Service {
     public boolean isRunning() {
     	return executorService != null && !executorService.isShutdown();
     }
-  
+
+    @Override
+    public void registerTo(SubscriptionRegistry subscriptionRegistry) {
+        subscriptionRegistry.registerSubscription(actMsg, () -> new Thread(() -> start()).start());
+        subscriptionRegistry.registerSubscription(deactMsg, () -> new Thread(() -> stop()).start());
+    }
 }
 

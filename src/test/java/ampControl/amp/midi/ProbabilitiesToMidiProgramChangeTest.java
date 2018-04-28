@@ -1,7 +1,7 @@
-package ampControl.amp;
+package ampControl.amp.midi;
 
-import com.beust.jcommander.JCommander;
 import ampControl.amp.midi.program.PodXtProgramChange;
+import com.beust.jcommander.JCommander;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -14,7 +14,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link ProbabilitiesToMidiProgramChange}.
