@@ -1,8 +1,7 @@
-package ampControl.amp;
+package ampControl.amp.midi;
 
 import ampControl.admin.param.PodXtProgramChangeStringConverter;
-import ampControl.amp.midi.Devices;
-import ampControl.amp.midi.MidiInterface;
+import ampControl.amp.AmpInterface;
 import ampControl.amp.midi.program.PodXtProgramChange;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -18,14 +17,14 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Factory for creating a {@link ClassificationListener} which sets the program on a PodXt over midi based on
+ * Factory for creating a {@link AmpInterface} which sets the program on a PodXt over midi based on
  * label probabilities.
  *
  * @author Christian Skärby
  *
  */
 @Parameters(commandDescription = "Sets up POD XT for automatic switching")
-public class PodXtFactory implements ClassificationListener.Factory {
+public class PodXtFactory implements AmpInterface.Factory {
 
     @Parameter(names = {"-labelToProg", "-ltp"},
             description = "Comma separated list of how to map labels programs. First program is mapped to label 0 etc",
@@ -38,14 +37,21 @@ public class PodXtFactory implements ClassificationListener.Factory {
     );
 
     @ParametersDelegate
-    ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange();
+    private final MidiChannelPar midiChannelPar = new MidiChannelPar();
+
+    @ParametersDelegate
+    private final ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange(midiChannelPar);
+
+    @ParametersDelegate
+    private final MidiServiceFactory midiServiceFactory = new MidiServiceFactory(midiChannelPar);
 
     @Override
-    public ClassificationListener create() {
+    public AmpInterface create() {
         Function<INDArray, List<ShortMessage>> probabilitiesToMessageMapping = programChange.createProbabilitiesToMessageMapping(programChangesList);
 
         try {
-            return new MidiInterface(Devices.podXt, probabilitiesToMessageMapping);
+            return new MidiInterface(Devices.podXt, probabilitiesToMessageMapping,
+                    rec -> midiServiceFactory.createService(msg -> rec.send(msg, System.nanoTime() / 1000)));
         } catch (MidiUnavailableException e) {
             throw new RuntimeException("Midi device initialization failed!", e);
         }

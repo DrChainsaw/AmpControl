@@ -1,4 +1,4 @@
-package ampControl.amp;
+package ampControl.amp.midi;
 
 import ampControl.admin.param.IntToDoubleConverter;
 import ampControl.amp.labelmapping.*;
@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 /**
  * Generic parameterized class for mapping a probabilties of each label into a midi program change. Sets up heuristics
@@ -23,9 +24,6 @@ import java.util.function.Function;
  * @author Christian Skärby
  */
 class ProbabilitiesToMidiProgramChange {
-
-    @Parameter(names = "-midiChannel", description = "midi channel to use")
-    private int midiChannel = 0;
 
     @Parameter(names = {"-labelToThreshold", "-ltt"},
             description = "Comma separated list of how to map labels programs. Syntax is <labelx>:<thredholsx>,<labely>:<thresholdy,...>",
@@ -45,6 +43,12 @@ class ProbabilitiesToMidiProgramChange {
     @Parameter(names = {"-updateProhibitTime", "-upt"}, description = "Shortest time in milli seconds between program changes allowed")
     private int updateProhibitTimeMs = 500;
 
+    private final IntSupplier midiChannel;
+
+    public ProbabilitiesToMidiProgramChange(IntSupplier midiChannel) {
+        this.midiChannel = midiChannel;
+    }
+
     /**
      * Create a mapping between probabilities for each label and the midi message to be sent
      *
@@ -63,7 +67,7 @@ class ProbabilitiesToMidiProgramChange {
                         new MaskDuplicateLabelMapping<>(
                                 new PacingLabelMapping<>(updateProhibitTimeMs,
                                         new MaskingLabelMapping<>(labelsMask,
-                                                new MidiProgramChangeLabelMapping(midiChannel, programChangesList.toArray(new ProgramChange[]{})
+                                                new MidiProgramChangeLabelMapping(midiChannel.getAsInt(), programChangesList.toArray(new ProgramChange[]{})
                                                 )
                                         )
                                 )

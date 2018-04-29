@@ -2,6 +2,7 @@ package ampControl.admin;
 
 import ampControl.admin.service.classifiction.AudioClassificationService;
 import ampControl.admin.service.control.mqtt.MqttAppControlService;
+import ampControl.amp.AmpInterface;
 import ampControl.amp.ClassificationListener;
 import ampControl.amp.PublishingClassificationListener;
 import ampControl.audio.asio.AsioClassifierInputFactory;
@@ -11,6 +12,7 @@ import com.beust.jcommander.JCommander;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -40,13 +42,13 @@ public class AmpControlMain {
                         classifierFromParameters,
                         mqttClassificationListenerFactory});
 
-        Map<String, ClassificationListener.Factory> ampFactoryCommands = ClassificationListener.getFactoryCommands();
+        Map<String, AmpInterface.Factory> ampFactoryCommands = AmpInterface.getFactoryCommands();
         ampFactoryCommands.forEach((key, value) -> jcBuilder.addCommand(key, value));
 
         JCommander jc = jcBuilder.build();
         jc.parse(args);
 
-        final ClassificationListener ampInterface = ampFactoryCommands.get(jc.getParsedCommand()).create();
+        final AmpInterface ampInterface = ampFactoryCommands.get(jc.getParsedCommand()).create();
         final ClassificationListener mqttInterface = mqttClassificationListenerFactory.create();
         final ClassificationListener classificationListenerAgg = arr -> {
         	ampInterface.indicateAudioClassification(arr);
@@ -62,7 +64,10 @@ public class AmpControlMain {
                     classificationListenerAgg,
                     classifier,
                     inputProviderFactory.finalizeAndReturnUpdateHandle());
-            engine.initialize(mqttAppControlService, audioClassificationService);
+
+            engine.initialize(mqttAppControlService, Arrays.asList(
+                    audioClassificationService,
+                    ampInterface));
             engine.run();
         } catch (Exception e) {
             System.out.println("Application failed!");

@@ -1,37 +1,52 @@
 package ampControl.admin.service.control.mqtt;
 
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-
-import ampControl.admin.service.control.MessageToActionMap;
+import ampControl.admin.service.control.ControlRegistry;
+import ampControl.admin.service.control.MessageSubscriptionRegistry;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
+
 /**
- * {@link MessageToActionMap} for MQTT messages.
+ * {@link MessageSubscriptionRegistry} for MQTT messages.
  *
  * @author Christian Skärby
  */
-public class MqttCallbackMap implements MqttCallback, MessageToActionMap {
+public class MqttCallbackMap implements MqttCallback, ControlRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(MqttCallbackMap.class);
 
+    private final Consumer<String> topicSubscriptionListener;
     private final Map<String, Runnable> messageActions = new HashMap<>();
-    private Runnable connectionFailedAction = () -> {
-        log.warn("connection failed!");
-    };
+    private final Map<String, Consumer<String>> topicConsumers = new HashMap<>();
+    private Runnable connectionFailedAction = () -> log.warn("connection failed!");
+
+    public MqttCallbackMap(Consumer<String> topicSubscriptionListener) {
+        this.topicSubscriptionListener = topicSubscriptionListener;
+    }
 
     @Override
-    public void mapMessage(String message, Runnable action) {
+    public void registerSubscription(String message, Runnable action) {
         // No problem to support, I just don't like the looks of nestled collections
         if (messageActions.containsKey(message)) {
             throw new RuntimeException("Message " + message + " already mapped to " + messageActions.get(message));
         }
         messageActions.put(message, action);
+    }
+
+    public void registerSubscription(String topic, Consumer<String> messageConsumer) {
+        // No problem to support, I just don't like the looks of nestled collections
+        if (topicConsumers.containsKey(topic)) {
+            throw new RuntimeException("Topic " + topic + " already mapped to " + topicConsumers.get(topic));
+        }
+        topicSubscriptionListener.accept(topic);
+        topicConsumers.put(topic, messageConsumer);
     }
 
     @Override
@@ -46,10 +61,11 @@ public class MqttCallbackMap implements MqttCallback, MessageToActionMap {
     }
 
     @Override
-    public void messageArrived(String s, MqttMessage mqttMessage) {
+    public void messageArrived(String topic, MqttMessage mqttMessage) {
         String msg = new String(mqttMessage.getPayload(), StandardCharsets.UTF_8);
-        log.info("Got message: " + s + " msg: " + msg);
+        log.info("Got message: " + topic + " msg: " + msg);
         runIfMapped(msg);
+        deliverToTopic(topic, msg);
     }
 
     private void runIfMapped(String msg) {
@@ -57,6 +73,14 @@ public class MqttCallbackMap implements MqttCallback, MessageToActionMap {
         if (action != null) {
             log.info("Executing action " + action);
             action.run();
+        }
+    }
+
+    private void deliverToTopic(String topic, String msg) {
+        Consumer<String> messageConsumer = topicConsumers.get(topic);
+        if (messageConsumer != null) {
+            log.info("Notifying consumer " + messageConsumer);
+            messageConsumer.accept(msg);
         }
     }
 

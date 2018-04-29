@@ -1,7 +1,7 @@
-package ampControl.amp;
+package ampControl.amp.midi;
 
-import com.beust.jcommander.JCommander;
 import ampControl.amp.midi.program.PodXtProgramChange;
+import com.beust.jcommander.JCommander;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -14,15 +14,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link ProbabilitiesToMidiProgramChange}.
  */
 public class ProbabilitiesToMidiProgramChangeTest {
 
-    private final static String midiChannelPar = "-midiChannel ";
-    private final static String labelToProgPar = "-ltp ";
     private final static String labelToThreshPar = "-ltt ";
     private final static String labelMaskPar = "-lm ";
     private final static String switchMomThreshPar = "-st ";
@@ -38,14 +36,14 @@ public class ProbabilitiesToMidiProgramChangeTest {
         final int labelMask = 0;
         final int switchMomThresh = 3;
         final int updateProhibitTimeMs = 0;
-        final String argStr = midiChannelPar + midiChan +
-                " " + labelToThreshPar + IntStream.range(0, pThresholds.size()).mapToObj(lab -> lab + ":" + pThresholds.get(lab)).collect(Collectors.joining(",")) +
+        final String argStr =
+                labelToThreshPar + IntStream.range(0, pThresholds.size()).mapToObj(lab -> lab + ":" + pThresholds.get(lab)).collect(Collectors.joining(",")) +
                 " " + labelMaskPar + labelMask +
                 " " + switchMomThreshPar + switchMomThresh +
                 " " + updateProhibitPar + updateProhibitTimeMs;
 
 
-        ProbabilitiesToMidiProgramChange programChangeMapping = new ProbabilitiesToMidiProgramChange();
+        ProbabilitiesToMidiProgramChange programChangeMapping = new ProbabilitiesToMidiProgramChange(() -> midiChan);
         JCommander.newBuilder().addObject(programChangeMapping)
                 .build()
                 .parse(argStr.split(" "));
