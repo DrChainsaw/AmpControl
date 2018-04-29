@@ -20,7 +20,6 @@ public class MidiServiceFactoryTest {
 
     private final static String topicPar = "-midiTopic";
     private final static String topicStr = "grergre/hthjj/rere";
-    private final static String midiChannelPar = "-midiChannel";
 
     /**
      * Test that a correct message is delivered to the receiver
@@ -32,9 +31,9 @@ public class MidiServiceFactoryTest {
         final int data1 = 66;
         final int data2 = 77;
 
-        final MidiServiceFactory factory = new MidiServiceFactory();
+        final MidiServiceFactory factory = new MidiServiceFactory(()-> channel);
 
-        final String parString = topicPar + " " + topicStr + " " + midiChannelPar + " " + channel;
+        final String parString = topicPar + " " + topicStr;
         JCommander.newBuilder().addObject(factory).build()
                 .parse(parString.split(" "));
 
@@ -65,9 +64,9 @@ public class MidiServiceFactoryTest {
         final int data1 = Integer.MAX_VALUE;
         final int data2 = Integer.MIN_VALUE;
 
-        final MidiServiceFactory factory = new MidiServiceFactory();
+        final MidiServiceFactory factory = new MidiServiceFactory(() -> channel);
 
-        final String parString = topicPar + " " + topicStr + " " + midiChannelPar + " " + channel;
+        final String parString = topicPar + " " + topicStr;
         JCommander.newBuilder().addObject(factory).build()
                 .parse(parString.split(" "));
         final ProbeConsumer probe = new ProbeConsumer();

@@ -22,10 +22,14 @@ public class MqttCallbackMap implements MqttCallback, ControlRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(MqttCallbackMap.class);
 
+    private final Consumer<String> topicSubscriptionListener;
     private final Map<String, Runnable> messageActions = new HashMap<>();
     private final Map<String, Consumer<String>> topicConsumers = new HashMap<>();
     private Runnable connectionFailedAction = () -> log.warn("connection failed!");
 
+    public MqttCallbackMap(Consumer<String> topicSubscriptionListener) {
+        this.topicSubscriptionListener = topicSubscriptionListener;
+    }
 
     @Override
     public void registerSubscription(String message, Runnable action) {
@@ -41,6 +45,7 @@ public class MqttCallbackMap implements MqttCallback, ControlRegistry {
         if (topicConsumers.containsKey(topic)) {
             throw new RuntimeException("Topic " + topic + " already mapped to " + topicConsumers.get(topic));
         }
+        topicSubscriptionListener.accept(topic);
         topicConsumers.put(topic, messageConsumer);
     }
 

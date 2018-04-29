@@ -6,6 +6,8 @@ import ampControl.admin.service.control.MessageSubscriptionRegistry;
 import ampControl.admin.service.control.TopicPublisher;
 import com.beust.jcommander.Parameter;
 import org.eclipse.paho.client.mqttv3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service for interacting with the application through MQTT.
@@ -13,6 +15,8 @@ import org.eclipse.paho.client.mqttv3.*;
  * @author Christian Skärby
  */
 public class MqttAppControlService implements TopicPublisher, AppControlService {
+
+    private static final Logger log = LoggerFactory.getLogger(MqttAppControlService.class);
 
     @Parameter(names = "-mqttServer", description = "MQTT server to connect to")
     private String server = "";
@@ -32,7 +36,7 @@ public class MqttAppControlService implements TopicPublisher, AppControlService 
     private final static MqttMessage ON = new MqttMessage("ON".getBytes());
     private final static MqttMessage OFF = new MqttMessage("OFF".getBytes());
 
-    private final MqttCallbackMap callbackMapper = new MqttCallbackMap();
+    private MqttCallbackMap callbackMapper;
     private ClientFactory clientFactory = serverUri -> new MqttClient(serverUri, MqttClient.generateClientId());
     private IMqttClient client;
 
@@ -61,7 +65,13 @@ public class MqttAppControlService implements TopicPublisher, AppControlService 
     public ControlRegistry start() throws MqttException {
 
         client = clientFactory.create(server); //new MqttClient(server, MqttClient.generateClientId());
-
+        callbackMapper = new MqttCallbackMap(topic -> {
+            try {
+                client.subscribe(topic);
+            } catch (MqttException e) {
+                log.warn(e.toString());
+            }
+        });
         MqttConnectOptions connectOptions = new MqttConnectOptions();
         connectOptions.setCleanSession(true);
 

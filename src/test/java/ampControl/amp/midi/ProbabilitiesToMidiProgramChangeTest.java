@@ -21,8 +21,6 @@ import static org.junit.Assert.assertEquals;
  */
 public class ProbabilitiesToMidiProgramChangeTest {
 
-    private final static String midiChannelPar = "-midiChannel ";
-    private final static String labelToProgPar = "-ltp ";
     private final static String labelToThreshPar = "-ltt ";
     private final static String labelMaskPar = "-lm ";
     private final static String switchMomThreshPar = "-st ";
@@ -38,14 +36,14 @@ public class ProbabilitiesToMidiProgramChangeTest {
         final int labelMask = 0;
         final int switchMomThresh = 3;
         final int updateProhibitTimeMs = 0;
-        final String argStr = midiChannelPar + midiChan +
-                " " + labelToThreshPar + IntStream.range(0, pThresholds.size()).mapToObj(lab -> lab + ":" + pThresholds.get(lab)).collect(Collectors.joining(",")) +
+        final String argStr =
+                labelToThreshPar + IntStream.range(0, pThresholds.size()).mapToObj(lab -> lab + ":" + pThresholds.get(lab)).collect(Collectors.joining(",")) +
                 " " + labelMaskPar + labelMask +
                 " " + switchMomThreshPar + switchMomThresh +
                 " " + updateProhibitPar + updateProhibitTimeMs;
 
 
-        ProbabilitiesToMidiProgramChange programChangeMapping = new ProbabilitiesToMidiProgramChange();
+        ProbabilitiesToMidiProgramChange programChangeMapping = new ProbabilitiesToMidiProgramChange(() -> midiChan);
         JCommander.newBuilder().addObject(programChangeMapping)
                 .build()
                 .parse(argStr.split(" "));

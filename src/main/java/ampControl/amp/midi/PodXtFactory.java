@@ -37,10 +37,13 @@ public class PodXtFactory implements AmpInterface.Factory {
     );
 
     @ParametersDelegate
-    private final ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange();
+    private final MidiChannelPar midiChannelPar = new MidiChannelPar();
 
     @ParametersDelegate
-    private final MidiServiceFactory midiServiceFactory = new MidiServiceFactory();
+    private final ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange(midiChannelPar);
+
+    @ParametersDelegate
+    private final MidiServiceFactory midiServiceFactory = new MidiServiceFactory(midiChannelPar);
 
     @Override
     public AmpInterface create() {

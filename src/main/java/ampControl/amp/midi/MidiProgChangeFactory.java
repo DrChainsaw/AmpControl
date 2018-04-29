@@ -33,7 +33,10 @@ public class MidiProgChangeFactory implements AmpInterface.Factory {
     );
 
     @ParametersDelegate
-    private final ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange();
+    private final MidiChannelPar midiChannelPar = new MidiChannelPar();
+
+    @ParametersDelegate
+    private final ProbabilitiesToMidiProgramChange programChange = new ProbabilitiesToMidiProgramChange(midiChannelPar);
 
     @Override
     public AmpInterface create() {

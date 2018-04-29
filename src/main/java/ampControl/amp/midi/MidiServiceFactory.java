@@ -3,13 +3,13 @@ package ampControl.amp.midi;
 import ampControl.admin.service.Service;
 import ampControl.admin.service.control.SubscriptionRegistry;
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.ShortMessage;
 import java.util.function.Consumer;
+import java.util.function.IntSupplier;
 
 /**
  * Configuration of a {@link Service} which subscribes to a topic and interprets any messages as a
@@ -17,15 +17,17 @@ import java.util.function.Consumer;
  *
  * @author Christian Skärby
  */
-class MidiServiceFactory {
+public class MidiServiceFactory {
 
     @Parameter(names = "-midiTopic", description = "Topic to listen to midi commands. Format is cmd,data1,data2 all " +
             "integers")
     private String topic = "midi/message";
 
-    @ParametersDelegate
-    private final MidiChannelPar midiChannel = new MidiChannelPar();
+    private final IntSupplier midiChannel;
 
+    public MidiServiceFactory(IntSupplier midiChannel) {
+        this.midiChannel = midiChannel;
+    }
 
     private static class ServiceInternal implements Service {
 
@@ -37,7 +39,7 @@ class MidiServiceFactory {
         private final String topic;
         private boolean on = true;
 
-        public ServiceInternal(Consumer<ShortMessage> listener, int channel, String topic) {
+        private ServiceInternal(Consumer<ShortMessage> listener, int channel, String topic) {
             this.listener = listener;
             this.channel = channel;
             this.topic = topic;
@@ -69,7 +71,7 @@ class MidiServiceFactory {
      * @param listener Consumer of ShortMessages
      * @return a {@link Service}
      */
-    Service createService(Consumer<ShortMessage> listener) {
-        return new ServiceInternal(listener, midiChannel.get(), topic);
+    public Service createService(Consumer<ShortMessage> listener) {
+        return new ServiceInternal(listener, midiChannel.getAsInt(), topic);
     }
 }

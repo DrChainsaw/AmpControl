@@ -34,7 +34,7 @@ public class EngineTest {
         engine.initialize(appCtrl,  Collections.singleton(new MockService()));
         appCtrl.assertRunningState(false);
 
-        new Thread(() -> engine.run()).start();
+        new Thread(engine::run).start();
 
         try {
             Thread.sleep(sleepTimeMs);
@@ -68,7 +68,7 @@ public class EngineTest {
         engine.initialize(appControl, Collections.singleton(service));
         service.assertRunningState(false);
 
-        new Thread(() -> engine.run()).start();
+        new Thread(engine::run).start();
 
         try {
             Thread.sleep(sleepTimeMs);
@@ -136,11 +136,11 @@ public class EngineTest {
         private final String start;
         private final String stop;
 
-        public MockService() {
+        MockService() {
             this("start", "stop");
         }
 
-        public MockService(String start, String stop) {
+        MockService(String start, String stop) {
             this.start = start;
             this.stop = stop;
         }

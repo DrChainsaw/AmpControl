@@ -17,7 +17,7 @@ public class MqttCallbackMapTest {
      */
     @Test
     public void noActionMapped() {
-        final MqttCallbackMap map = new MqttCallbackMap();
+        final MqttCallbackMap map = new MqttCallbackMap(str -> {});
         final String msg1Str = "msg1";
         final MqttMessage msg1 = new MqttMessage(msg1Str.getBytes());
         map.messageArrived("", msg1);
@@ -29,7 +29,7 @@ public class MqttCallbackMapTest {
      */
     @Test
     public void mapAction() {
-        final MqttCallbackMap map = new MqttCallbackMap();
+        final MqttCallbackMap map = new MqttCallbackMap(topic -> {});
         final String msg1Str = "msg1";
         final String msg2Str = "msg2";
         final MqttMessage msg1 = new MqttMessage(msg1Str.getBytes());
@@ -64,7 +64,7 @@ public class MqttCallbackMapTest {
      */
     @Test
     public void connectionFailedTest() {
-        final MqttCallbackMap map = new MqttCallbackMap();
+        final MqttCallbackMap map = new MqttCallbackMap(str -> {});
         final ActionProbe failProbe = new ActionProbe();
         map.setConnectionFailedAction(failProbe);
         failProbe.assertCalled(0);
