@@ -8,6 +8,7 @@ import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
 import ampControl.model.training.model.layerblocks.graph.SeBlock;
+import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ScheduleType;
 import org.nd4j.linalg.schedule.StepSchedule;
@@ -122,12 +123,12 @@ public class ResNetConv2DFactory {
 
         IntStream.of(10).forEach(resDepth -> {
             DoubleStream.of(0).forEach(dropOutProb -> {
-                DoubleStream.of(0, 0.0003, 0.003, 0.03).forEach(lambda -> {
+                DoubleStream.of(0.003).forEach(lambda -> {
                     BlockBuilder bBuilder = new BlockBuilder()
                             .setNamePrefix(namePrefix)
                             .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.001, 0.1, 40000)))
-                            //.setTrainWs(WorkspaceMode.SEPARATE)
-                            //.setEvalWs(WorkspaceMode.SEPARATE)
+                            .setTrainWs(WorkspaceMode.NONE)
+                            .setEvalWs(WorkspaceMode.NONE)
                             .first(new ConvType(inputShape))
                             .andThen(zeroPad3x3)
                             .andThen(new Conv2DBatchNormAfter()
@@ -162,8 +163,8 @@ public class ResNetConv2DFactory {
                             .andFinally(new SeBlock())
                             //.andFinally(new DropOut().setDropProb(dropOutProb))
                             .andThenStack(2)
-                            .aggOf(new Dense())
-                            .andFinally(new DropOut().setDropProb(dropOutProb))
+                            .of(new Dense())
+                            //.andFinally(new DropOut().setDropProb(dropOutProb))
                             .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                                     .setAlpha(0.6)
                                     .setLambda(lambda));

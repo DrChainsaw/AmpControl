@@ -3,6 +3,7 @@ package ampControl.model.training.data.iterators.preprocs;
 import org.deeplearning4j.nn.api.MaskState;
 import org.deeplearning4j.nn.conf.InputPreProcessor;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.primitives.Pair;
 
@@ -20,7 +21,7 @@ public class Cnn2DtoCnn1DInputPreprocessor implements InputPreProcessor {
 
 
     @Override
-    public INDArray preProcess(INDArray input, int miniBatchSize) {
+    public INDArray preProcess(INDArray input, int miniBatchSize, LayerWorkspaceMgr workspaceMgr) {
         //featureArr = Nd4j.create(new int[] {batchSize, 1, feature.length, feature[0].length}, 'f');
         //For input shape [a,b,c,d], tensorssAlongDimension(0,2,3) gives b tensors, and tensorAlongDimension(i,0,2,3) returns tensors of shape [a,c,d].
       //  INDArray output = input.tensorAlongDimension(0,0, 3, 2);
@@ -37,7 +38,7 @@ public class Cnn2DtoCnn1DInputPreprocessor implements InputPreProcessor {
     }
 
     @Override
-    public INDArray backprop(INDArray output, int miniBatchSize) {
+    public INDArray backprop(INDArray output, int miniBatchSize, LayerWorkspaceMgr workspaceMgr) {
         return output;
     }
 

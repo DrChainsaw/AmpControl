@@ -1,10 +1,11 @@
 package ampControl.model.training.data.iterators.preprocs;
 
 import org.deeplearning4j.nn.conf.InputPreProcessor;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
 
 /**
  * Test cases for {@link Cnn2DtoCnn1DInputPreprocessor}
@@ -12,6 +13,8 @@ import static org.junit.Assert.*;
  * @author Christian Skärby
  */
 public class Cnn2DtoCnn1DInputPreprocessorTest {
+
+    private static final LayerWorkspaceMgr wsMgr = new LayerWorkspaceMgr.Builder().defaultNoWorkspace().build();
 
     /**
      * Test preProcess
@@ -22,7 +25,7 @@ public class Cnn2DtoCnn1DInputPreprocessorTest {
         final int[] expectedFeatureShape = {3,7,11};
         final InputPreProcessor pp = new Cnn2DtoCnn1DInputPreprocessor();
         assertArrayEquals("Incorrect shape!", expectedFeatureShape,
-                pp.preProcess(Nd4j.create(featureShapeIn),1).shape());
+                pp.preProcess(Nd4j.create(featureShapeIn),1, wsMgr).shape());
     }
 
     /**
@@ -31,7 +34,7 @@ public class Cnn2DtoCnn1DInputPreprocessorTest {
     @Test(expected = RuntimeException.class)
     public void cnnToRnnFeatureTooManyChannels() {
         final int[] featureShapeIn = {3,2,7,11};
-        new Cnn2DtoCnn1DInputPreprocessor().preProcess(Nd4j.create(featureShapeIn),1);
+        new Cnn2DtoCnn1DInputPreprocessor().preProcess(Nd4j.create(featureShapeIn),1, wsMgr);
     }
 
 }

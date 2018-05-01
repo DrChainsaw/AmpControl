@@ -3,8 +3,9 @@ package ampControl.model.training.listen;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.gradient.Gradient;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.deeplearning4j.optimize.api.ConvexOptimizer;
-import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.optimize.api.TrainingListener;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.primitives.Pair;
 
@@ -19,17 +20,17 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void setListeners(Collection<IterationListener> listeners) {
+    public void setListeners(Collection<TrainingListener> listeners) {
 
     }
 
     @Override
-    public void setListeners(IterationListener... listeners) {
+    public void setListeners(TrainingListener... listeners) {
 
     }
 
     @Override
-    public void addListeners(IterationListener... listener) {
+    public void addListeners(TrainingListener... listener) {
 
     }
 
@@ -54,9 +55,10 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void computeGradientAndScore() {
+    public void computeGradientAndScore(LayerWorkspaceMgr workspaceMgr) {
 
     }
+
 
     @Override
     public void accumulateScore(double accum) {
@@ -99,12 +101,7 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void fit(INDArray data) {
-
-    }
-
-    @Override
-    public void iterate(INDArray input) {
+    public void fit(INDArray data, LayerWorkspaceMgr workspaceMgr) {
 
     }
 

@@ -3,7 +3,7 @@ package ampControl.model.training.model.layerblocks.graph;
 import ampControl.model.training.model.layerblocks.LayerBlockConfig;
 import ampControl.model.training.model.layerblocks.adapters.BuilderAdapter;
 import ampControl.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
-import ampControl.model.training.model.vertex.ElementWiseVertexLatest;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.ScaleVertex;
 import org.deeplearning4j.nn.conf.layers.GlobalPoolingLayer;
 import org.deeplearning4j.nn.conf.layers.PoolingType;
@@ -50,7 +50,7 @@ public class GlobMeanMax implements LayerBlockConfig {
 
         final String addVertexName = info.getName("gp_add" + String.valueOf(nextLayerInd++));
         graphBuilder.addVertex(addVertexName,
-                new ElementWiseVertexLatest(ElementWiseVertexLatest.Op.Add), maxPoolName, avgPoolName);
+                new ElementWiseVertex(ElementWiseVertex.Op.Add), maxPoolName, avgPoolName);
 
         final String scaleVertexName = info.getName("gp_sc" + String.valueOf(nextLayerInd++));
         graphBuilder.addVertex(scaleVertexName, new ScaleVertex(0.5), addVertexName);

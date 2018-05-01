@@ -5,6 +5,7 @@ import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.layers.BaseOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.optimize.api.BaseTrainingListener;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
@@ -19,7 +20,7 @@ import java.util.function.BiConsumer;
  * TODO: Too painful to test due to dependencies to Dl4j internals. Possible to redesign?
  * @author Christian Skärby
  */
-public class TrainEvaluator implements IterationListener {
+public class TrainEvaluator extends BaseTrainingListener {
 
     private final int resetAfterNumExamples;
     private final BiConsumer<Integer, Double> iterAndEvalListener;
@@ -46,7 +47,7 @@ public class TrainEvaluator implements IterationListener {
             BaseOutputLayer ol = (BaseOutputLayer) ((MultiLayerNetwork) model).getOutputLayer();
             checkEvalReset();
             resetCount += labels.get(labelsCount).shape()[0];
-            eval.eval(labels.get(labelsCount), ol.output(false));
+            eval.eval(labels.get(labelsCount),output(ol));
             labelsCount++;
             iterStore = iteration;
 
@@ -54,7 +55,7 @@ public class TrainEvaluator implements IterationListener {
             BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
             checkEvalReset();
             resetCount += labels.get(labelsCount).shape()[0];
-            eval.eval(labels.get(labelsCount), ol.output(false));
+            eval.eval(labels.get(labelsCount), output(ol));
             labelsCount++;
             iterStore = iteration;
         } else {
@@ -80,5 +81,9 @@ public class TrainEvaluator implements IterationListener {
             log.info("Training accuracy after "+ resetCount + " examples: " + eval.accuracy());
             iterAndEvalListener.accept(iterStore, eval.accuracy());
         }
+    }
+
+    private INDArray output(BaseOutputLayer outputLayer) {
+        return outputLayer.layerConf().getActivationFn().getActivation(outputLayer.getPreOutput(), false);
     }
 }

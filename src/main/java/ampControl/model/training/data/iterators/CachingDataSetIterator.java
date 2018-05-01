@@ -6,7 +6,6 @@ import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
 import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
 import org.nd4j.linalg.api.memory.enums.LearningPolicy;
 import org.nd4j.linalg.api.memory.enums.MirroringPolicy;
-import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
@@ -82,7 +81,7 @@ public class CachingDataSetIterator implements DataSetIterator {
                         try (MemoryWorkspace ws = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, "CachingDataSetWs" + i)) {
                             //try(MemoryWorkspace scopedOut = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()){
                             //log.info(ws.getCurrentSize());
-                            return sourceIter.next();
+                            return migrate(sourceIter.next());
                         }
 
                     })
@@ -93,7 +92,8 @@ public class CachingDataSetIterator implements DataSetIterator {
             resetCursor();
         }
         cursor++;
-        DataSet ds = migrate(cache.get(cursor));
+        DataSet ds = (cache.get(cursor));
+        //ds.detach();
         // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
         if (preProcessor != null) {
             if (sourceIter.getPreProcessor() == null) {
@@ -111,28 +111,30 @@ public class CachingDataSetIterator implements DataSetIterator {
         if(ds == null) {
             return ds;
         }
+        ds.detach();
+        return ds;
 
-        if(ds.getFeatures() == null && ds.getLabels() == null) {
-            return ds;
-        }
-
-        if (!ds.getFeatures().isAttached()) {
-            return ds;
-        }
-
-        final INDArray detachedFeatures = ds.getFeatures(); //.migrate(true);
-        final INDArray detachedLabels = ds.getLabels().migrate(true);
-
-        INDArray detachedLabelMask = null;
-        if (ds.getLabelsMaskArray() != null) {
-            detachedLabelMask = ds.getLabelsMaskArray().migrate(true);
-        }
-        INDArray detachedFeatureMask = null;
-        if(ds.getFeaturesMaskArray() != null) {
-            detachedFeatureMask = ds.getFeaturesMaskArray().migrate(true);
-        }
-
-        return new DataSet(detachedFeatures, detachedLabels, detachedFeatureMask, detachedLabelMask);
+//        if(ds.getFeatures() == null && ds.getLabels() == null) {
+//            return ds;
+//        }
+//
+//        if (!ds.getFeatures().isAttached()) {
+//            return ds;
+//        }
+//
+//        final INDArray detachedFeatures = ds.getFeatures(); //.migrate(true);
+//        final INDArray detachedLabels = ds.getLabels().migrate(true);
+//
+//        INDArray detachedLabelMask = null;
+//        if (ds.getLabelsMaskArray() != null) {
+//            detachedLabelMask = ds.getLabelsMaskArray().migrate(true);
+//        }
+//        INDArray detachedFeatureMask = null;
+//        if(ds.getFeaturesMaskArray() != null) {
+//            detachedFeatureMask = ds.getFeaturesMaskArray().migrate(true);
+//        }
+//
+//        return new DataSet(detachedFeatures, detachedLabels, detachedFeatureMask, detachedLabelMask);
     }
 
     @Override

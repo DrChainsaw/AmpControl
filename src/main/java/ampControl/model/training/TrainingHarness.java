@@ -17,7 +17,7 @@ import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.eval.ROCMultiClass;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.optimize.api.BaseTrainingListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
@@ -70,7 +70,12 @@ public class TrainingHarness {
         private int currIter = 0;
 
         private ModelInfo(ModelHandle mdh) {
-            mdh.getModel().addListeners((IterationListener) (model, iteration, epoch) -> currIter = iteration);
+            mdh.getModel().addListeners(new BaseTrainingListener() {
+                @Override
+                public void iterationDone(Model model, int iteration, int epoch) {
+                    currIter = iteration;
+                }
+            });
         }
     }
 

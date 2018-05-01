@@ -1,14 +1,14 @@
 package ampControl.model.training.listen;
 
 import org.deeplearning4j.nn.api.Model;
-import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.optimize.api.BaseTrainingListener;
 
 /**
  * Watches for non-finite (e.g. infinite, NaN) scores and notifies the provided callback {@link Runnable}.
  *
  * @author Christian Skärby
  */
-public class NanScoreWatcher implements IterationListener {
+public class NanScoreWatcher extends BaseTrainingListener {
 
     private final Runnable nanCallback;
 

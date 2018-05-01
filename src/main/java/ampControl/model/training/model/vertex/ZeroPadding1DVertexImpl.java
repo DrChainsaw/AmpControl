@@ -24,8 +24,9 @@ import org.deeplearning4j.nn.gradient.Gradient;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.BaseGraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
+import org.deeplearning4j.nn.workspace.ArrayType;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.primitives.Pair;
@@ -71,13 +72,13 @@ public class ZeroPadding1DVertexImpl extends BaseGraphVertex {
     }
 
     @Override
-    public INDArray doForward(boolean training) {
+    public INDArray doForward(boolean training, LayerWorkspaceMgr workspaceMgr) {
 
         int[] inShape = getInputs()[0].shape();
         int paddedOut = inShape[2] + padding[0] + padding[1];
         int[] outShape = new int[] {inShape[0], inShape[1], paddedOut};
 
-        INDArray out = Nd4j.create(outShape);
+        INDArray out = workspaceMgr.create(ArrayType.ACTIVATIONS, outShape);
         out.put(new INDArrayIndex[] {NDArrayIndex.all(), NDArrayIndex.all(),
                 NDArrayIndex.interval(padding[0], padding[0] + inShape[2])}, getInputs()[0]);
 
@@ -85,7 +86,7 @@ public class ZeroPadding1DVertexImpl extends BaseGraphVertex {
     }
 
     @Override
-    public Pair<Gradient, INDArray[]> doBackward(boolean tbptt) {
+    public Pair<Gradient, INDArray[]> doBackward(boolean tbptt, LayerWorkspaceMgr workspaceMgr) {
         int[] inShape = inputs[0].shape();
 
         INDArray epsNext = epsilon.get(NDArrayIndex.all(), NDArrayIndex.all(),

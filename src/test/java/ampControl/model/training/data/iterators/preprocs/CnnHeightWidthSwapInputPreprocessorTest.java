@@ -2,10 +2,12 @@ package ampControl.model.training.data.iterators.preprocs;
 
 import org.deeplearning4j.nn.conf.InputPreProcessor;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link CnnHeightWidthSwapInputPreprocessor}.
@@ -14,6 +16,9 @@ import static org.junit.Assert.*;
  */
 public class CnnHeightWidthSwapInputPreprocessorTest {
 
+    private static final LayerWorkspaceMgr wsMgr = new LayerWorkspaceMgr.Builder().defaultNoWorkspace().build();
+
+    /**
     /**
      * Test preProcess
      */
@@ -22,7 +27,7 @@ public class CnnHeightWidthSwapInputPreprocessorTest {
         final int[] shapeIn = {3, 5, 7, 11};
         final int[] expectedShape = {3, 5, 11, 7};
         final InputPreProcessor pp = new CnnHeightWidthSwapInputPreprocessor();
-        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), shapeIn[0]).shape());
+        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), shapeIn[0], wsMgr).shape());
     }
 
     /**
@@ -33,7 +38,7 @@ public class CnnHeightWidthSwapInputPreprocessorTest {
         final int[] shapeIn = {3, 5, 7, 11};
         final int[] expectedShape = {3, 5, 11, 7};
         final InputPreProcessor pp = new CnnHeightWidthSwapInputPreprocessor();
-        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), shapeIn[0]).shape());
+        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), shapeIn[0], wsMgr).shape());
     }
 
     /**

@@ -8,7 +8,10 @@ import ampControl.amp.PublishingClassificationListener;
 import ampControl.audio.asio.AsioClassifierInputFactory;
 import ampControl.model.inference.Classifier;
 import ampControl.model.inference.ClassifierFromParameters;
+import ampControl.model.training.model.vertex.ChannelMultVertex;
+import ampControl.model.training.model.vertex.ElementWiseVertexLatest;
 import com.beust.jcommander.JCommander;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 
@@ -59,6 +62,7 @@ public class AmpControlMain {
         try {
             // Might need to move into concrete Classifiers if something else is used in training
             DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
+            NeuralNetConfiguration.registerLegacyCustomClassesForJSON(ChannelMultVertex.class, ElementWiseVertexLatest.class);
             final Classifier classifier = classifierFromParameters.getClassifier(inputProviderFactory);
             audioClassificationService.initialize(
                     classificationListenerAgg,
