@@ -139,6 +139,7 @@ public class ChannelMultVertexImpl extends BaseGraphVertex {
         // From my attempts to decipher paper authors caffe code this is what they are doing too
         // https://github.com/hujie-frank/SENet/blob/master/src/caffe/layers/axpy_layer.cpp
         INDArray out_scale = eps_scale.sum(2, 3);
+        out_scale = workspaceMgr.leverageTo(ArrayType.ACTIVATION_GRAD, out_scale);
 
         // Take a step of size mean(abs(eps_scale)) in the "dominant" direction of the error -> NaNaNaNaN-land
         //INDArray sum = eps_scale.sum(2,3);

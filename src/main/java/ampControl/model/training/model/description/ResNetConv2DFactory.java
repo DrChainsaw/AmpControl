@@ -8,7 +8,6 @@ import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
 import ampControl.model.training.model.layerblocks.graph.SeBlock;
-import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ScheduleType;
 import org.nd4j.linalg.schedule.StepSchedule;
@@ -127,8 +126,8 @@ public class ResNetConv2DFactory {
                     BlockBuilder bBuilder = new BlockBuilder()
                             .setNamePrefix(namePrefix)
                             .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.001, 0.1, 40000)))
-                            .setTrainWs(WorkspaceMode.NONE)
-                            .setEvalWs(WorkspaceMode.NONE)
+                            //.setTrainWs(WorkspaceMode.NONE)
+                            //.setEvalWs(WorkspaceMode.NONE)
                             .first(new ConvType(inputShape))
                             .andThen(zeroPad3x3)
                             .andThen(new Conv2DBatchNormAfter()

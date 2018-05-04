@@ -123,8 +123,8 @@ public class BlockBuilder {
 
     private String namePrefix = "";
     private int seed = 666;
-    private WorkspaceMode trainWs = WorkspaceMode.SINGLE;
-    private WorkspaceMode evalWs = WorkspaceMode.SINGLE;
+    private WorkspaceMode trainWs = WorkspaceMode.ENABLED;
+    private WorkspaceMode evalWs = WorkspaceMode.ENABLED;
 
     private ISchedule learningRateSchedule = new StepSchedule(ScheduleType.ITERATION, 0.05, 0.1, 40000);
     private IUpdater updater = new Adam(learningRateSchedule);
