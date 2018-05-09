@@ -24,6 +24,7 @@
         <datavec.version>0.9.1</datavec.version>
         <arbiter.version>0.9.1</arbiter.version>
         <rl4j.version>0.9.1</rl4j.version>
+        <junit.version>4.11</junit.version>
 
         <!-- For Spark examples: change the _1 to _2 to switch between Spark 1 and Spark 2 -->
 
@@ -58,8 +59,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -151,6 +152,12 @@
                             <descriptorRef>AmpControl</descriptorRef>
                         </descriptorRefs>
                     </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>2.21.0</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -309,6 +316,12 @@
             <version>3.1</version>
             <classifier>with-dependencies</classifier>
         </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!--
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -333,6 +346,4 @@
             <url>http://maven.jzy3d.org/releases</url>
         </repository>
     </repositories>
-
-    <packaging>pom</packaging>
 </project>
