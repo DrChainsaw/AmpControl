@@ -9,9 +9,11 @@
     <description>Controls amplifiers</description>
     <properties>
 
-        <!-- Change the nd4j.backend property to nd4j-cuda-7.5-platform or nd4j-cuda-8.0-platform to use CUDA GPUs -->
-        <nd4j.backend>nd4j-cuda-8.0-platform</nd4j.backend>
+        <!-- Change the nd4j.backend and dl4j.backend property to *-cuda-x.y-platform to use CUDA GPUs -->
         <!-- <nd4j.backend>nd4j-native-platform</nd4j.backend -->
+
+        <nd4j.backend>nd4j-cuda-8.0-platform</nd4j.backend>
+        <dl4j.backend>deeplearning4j-cuda-8.0</dl4j.backend>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <shadedClassifier>bin</shadedClassifier>
@@ -243,7 +245,7 @@
     <dependencies>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-cuda-8.0</artifactId>
+            <artifactId>${dl4j.backend}</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
@@ -282,13 +284,13 @@
             <artifactId>datavec-data-audio</artifactId>
             <version>0.9.1</version>
         </dependency>
-        <dependency>
-            <groupId>src.com</groupId>
-            <artifactId>JASIOHost</artifactId>
-            <version>master</version>
-            <scope>system</scope>
-            <systemPath>${jasiohost.jar.location}</systemPath>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>src.com</groupId>-->
+            <!--<artifactId>JASIOHost</artifactId>-->
+            <!--<version>master</version>-->
+            <!--<scope>system</scope>-->
+            <!--<systemPath>${jasiohost.jar.location}</systemPath>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>org.jzy3d</groupId>
             <artifactId>jzy3d-api</artifactId>
@@ -322,6 +324,11 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.nybbs2003</groupId>
+            <artifactId>jasiohost</artifactId>
+            <version>5045c95</version>
+        </dependency>
         <!--
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -344,6 +351,10 @@
             <id>jzy3d-releases</id>
             <name>Jzy3d Releases</name>
             <url>http://maven.jzy3d.org/releases</url>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
     </repositories>
 </project>
