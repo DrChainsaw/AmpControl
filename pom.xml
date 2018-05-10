@@ -10,10 +10,9 @@
     <properties>
 
         <!-- Change the nd4j.backend and dl4j.backend property to *-cuda-x.y-platform to use CUDA GPUs -->
-        <!-- <nd4j.backend>nd4j-native-platform</nd4j.backend -->
-
-        <nd4j.backend>nd4j-cuda-8.0-platform</nd4j.backend>
-        <dl4j.backend>deeplearning4j-cuda-8.0</dl4j.backend>
+        <nd4j.backend>nd4j-native-platform</nd4j.backend>
+        <!-- <dl4j.backend>deeplearning4j-native-platform</dl4j.backend> -->
+        <!-- <nd4j.backend>nd4j-cuda-8.0-platform</nd4j.backend> -->
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <shadedClassifier>bin</shadedClassifier>
@@ -48,8 +47,6 @@
         <aws.sdk.version>1.11.109</aws.sdk.version>
         <jackson.version>2.6.6</jackson.version>
         <scala.plugin.version>3.2.2</scala.plugin.version>
-        <jasiohost.jar.location>${basedir}\bin\JAsioHost.jar
-        </jasiohost.jar.location>
     </properties>
 
 
@@ -239,15 +236,26 @@
                 <artifactId>nd4j-cuda-8.0-platform</artifactId>
                 <version>${nd4j.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.deeplearning4j</groupId>
+                <artifactId>dl4j-native-platform</artifactId>
+                <version>${dl4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deeplearning4j</groupId>
+                <artifactId>dl4j-cuda-8.0-platform</artifactId>
+                <version>${dl4j.version}</version>
+            </dependency>
         </dependencies>
+
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>org.deeplearning4j</groupId>
-            <artifactId>${dl4j.backend}</artifactId>
-            <version>${dl4j.version}</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.deeplearning4j</groupId>-->
+            <!--<artifactId>deeplearning4j-cuda-8.0</artifactId>-->
+            <!--<version>${dl4j.version}</version>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-nlp</artifactId>
