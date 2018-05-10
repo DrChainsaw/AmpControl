@@ -9,11 +9,6 @@
     <description>Controls amplifiers</description>
     <properties>
 
-        <!-- Change the nd4j.backend and dl4j.backend property to *-cuda-x.y-platform to use CUDA GPUs -->
-        <nd4j.backend>nd4j-native-platform</nd4j.backend>
-        <!-- <dl4j.backend>deeplearning4j-native-platform</dl4j.backend> -->
-        <!-- <nd4j.backend>nd4j-cuda-8.0-platform</nd4j.backend> -->
-
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <shadedClassifier>bin</shadedClassifier>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -223,42 +218,10 @@
         </profile>
     </profiles>
 
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.nd4j</groupId>
-                <artifactId>nd4j-native-platform</artifactId>
-                <version>${nd4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.nd4j</groupId>
-                <artifactId>nd4j-cuda-8.0-platform</artifactId>
-                <version>${nd4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.deeplearning4j</groupId>
-                <artifactId>dl4j-native-platform</artifactId>
-                <version>${dl4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.deeplearning4j</groupId>
-                <artifactId>dl4j-cuda-8.0-platform</artifactId>
-                <version>${dl4j.version}</version>
-            </dependency>
-        </dependencies>
-
-    </dependencyManagement>
-
     <dependencies>
-        <!--<dependency>-->
-            <!--<groupId>org.deeplearning4j</groupId>-->
-            <!--<artifactId>deeplearning4j-cuda-8.0</artifactId>-->
-            <!--<version>${dl4j.version}</version>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-nlp</artifactId>
+            <artifactId>deeplearning4j-cuda-8.0</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
@@ -277,28 +240,20 @@
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-cuda-8.0-platform</artifactId>
+            <version>${nd4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
-            <artifactId>${nd4j.backend}</artifactId>
+            <artifactId>nd4j-native-platform</artifactId>
             <version>${nd4j.version}</version>
         </dependency>
-        <!-- Used in the RegressionMathFunctions example -->
         <dependency>
             <groupId>org.datavec</groupId>
             <artifactId>datavec-data-audio</artifactId>
             <version>0.9.1</version>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>src.com</groupId>-->
-            <!--<artifactId>JASIOHost</artifactId>-->
-            <!--<version>master</version>-->
-            <!--<scope>system</scope>-->
-            <!--<systemPath>${jasiohost.jar.location}</systemPath>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>org.jzy3d</groupId>
             <artifactId>jzy3d-api</artifactId>
@@ -337,14 +292,6 @@
             <artifactId>jasiohost</artifactId>
             <version>5045c95</version>
         </dependency>
-        <!--
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-nop</artifactId>
-            <version>${slf4j.version}</version>
-            <scope>test</scope>
-        </dependency>
-        -->
     </dependencies>
 
 
