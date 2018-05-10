@@ -10,7 +10,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link EnsembleWeightedSumClassifier}
@@ -62,8 +62,17 @@ public class EnsembleWeightedSumClassifierTest {
 
         final INDArray result = classifier.classify();
         mockEnsemble.forEach(mockClassifier -> mockClassifier.assertCalled(true));
-        assertEquals("Incorrect result!", 1d, result.sum().getDouble(0), 1e-10);
+        assertEquals("Incorrect result!", 1d, result.sum(1).getDouble(0), 1e-10);
         assertEquals("Incorrect result!", 3, result.argMax().getInt(0));
+    }
+
+    /**
+     * Fails with CPU backend
+     */
+    @Test
+    public void testSum() {
+        final INDArray test = Nd4j.create(new double[]{1, 2});
+        assertEquals("Incorrect result!", Nd4j.create(new double[] {3}), test.sum(1));
     }
 
 
