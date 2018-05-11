@@ -9,6 +9,7 @@ import com.beust.jcommander.JCommander;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -19,6 +20,7 @@ import static org.junit.Assert.fail;
 public class EngineTest {
 
     private final static long sleepTimeMs = 5;
+    private final static int maxNrofRetries = 10;
 
     private final static String exitCmdPar = "-exitCmd";
     private final static String exitCmdMsg = "frehththtyjy";
@@ -31,7 +33,7 @@ public class EngineTest {
     public void startStopEngine() {
         final Engine engine = new Engine();
         final MockAppControl appCtrl = new MockAppControl();
-        engine.initialize(appCtrl,  Collections.singleton(new MockService()));
+        engine.initialize(appCtrl, Collections.singleton(new MockService()));
         appCtrl.assertRunningState(false);
 
         new Thread(engine::run).start();
@@ -70,32 +72,39 @@ public class EngineTest {
 
         new Thread(engine::run).start();
 
+        waitForCondition(() -> false, sleepTimeMs, 2);
+
+        service.assertRunningState(false);
+
+        appControl.getM2aMap().execute(service.start);
+
+        waitForCondition(() -> service.isStarted, sleepTimeMs, maxNrofRetries);
+
+        service.assertRunningState(true);
+        appControl.getM2aMap().execute(service.stop);
+
+        waitForCondition(() -> !service.isStarted, sleepTimeMs, maxNrofRetries);
+
+        service.assertRunningState(false);
+        appControl.getM2aMap().execute(service.start);
+
+        waitForCondition(() -> service.isStarted, sleepTimeMs, maxNrofRetries);
+
+        service.assertRunningState(true);
+
+        appControl.getM2aMap().execute(exitCmdMsg);
+
+        waitForCondition(() -> !service.isStarted, sleepTimeMs, maxNrofRetries);
+        service.assertRunningState(false);
+    }
+
+    private static void waitForCondition(Supplier<Boolean> condition, long sleepTimeMs, int maxNrofRetries) {
         try {
-            Thread.sleep(sleepTimeMs);
-
-            service.assertRunningState(false);
-
-            appControl.getM2aMap().execute(service.start);
-
-            Thread.sleep(sleepTimeMs);
-
-            service.assertRunningState(true);
-            appControl.getM2aMap().execute(service.stop);
-
-            Thread.sleep(sleepTimeMs);
-
-            service.assertRunningState(false);
-            appControl.getM2aMap().execute(service.start);
-
-            Thread.sleep(sleepTimeMs);
-
-            service.assertRunningState(true);
-
-            appControl.getM2aMap().execute(exitCmdMsg);
-
-            Thread.sleep(sleepTimeMs);
-            service.assertRunningState(false);
-
+            int retryCnt = 0;
+            while (!condition.get() && retryCnt < maxNrofRetries) {
+                Thread.sleep(sleepTimeMs);
+                retryCnt++;
+            }
         } catch (InterruptedException e) {
             fail("test interrupted!");
         }
