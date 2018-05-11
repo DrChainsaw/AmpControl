@@ -44,4 +44,14 @@ public class MockControlRegistry implements ControlRegistry {
     public void deliver(String topic, String message) {
         topicToConsumer.getOrDefault(topic, str -> {}).accept(message);
     }
+
+    /**
+     * Returns true if given topic is registered
+     *
+     * @param topic the topic
+     * @return true if given topic is registered
+     */
+    public boolean isRegistered(String topic) {
+        return topicToConsumer.containsKey(topic);
+    }
 }
