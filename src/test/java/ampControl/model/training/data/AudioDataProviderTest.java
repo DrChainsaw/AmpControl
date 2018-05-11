@@ -41,7 +41,9 @@ public class AudioDataProviderTest {
         final List<Path> paths1 = Stream.of("gerf", "gtth", "jyujuy").map(str -> Paths.get(label1 + File.separator + str)).collect(Collectors.toList());
         final List<Path> paths2 = Stream.of("ewrt", "vcdfbj").map(str -> Paths.get(label2 + File.separator + str)).collect(Collectors.toList());
         final List<Path> allpaths = Stream.concat(paths1.stream(), paths2.stream()).collect(Collectors.toList());
-
+System.out.println("paths1: " + paths1);
+        System.out.println("paths2: " + paths2);
+        System.out.println("allpaths: " + allpaths);
         final DataProvider pr = new AudioDataProvider(allpaths, labelToBuilder, new ToggleSupplier(label1,label2));
         builder1.assertExpectedPaths(paths1);
         builder2.assertExpectedPaths(paths2);
