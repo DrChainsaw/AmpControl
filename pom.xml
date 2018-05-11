@@ -295,7 +295,6 @@
     </dependencies>
 
 
-
     <repositories>
         <repository>
             <id>jzy3d-snapshots</id>

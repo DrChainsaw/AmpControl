@@ -17,8 +17,6 @@ import static org.junit.Assert.*;
  */
 public class AudioClassificationServiceTest {
 
-    private final static long sleepTimeMs = 5;
-
     private final static String minTimeBetweenUpdatesPar = "-minTimeBetweenUpdates ";
     private final static String actMsgPar = "-actAutoMsg ";
 
@@ -45,33 +43,34 @@ public class AudioClassificationServiceTest {
 
         assertFalse("Service runs without being started!", service.isRunning());
 
-        try {
-            registry.execute(actMsg);
-            Thread.sleep(sleepTimeMs);
-            assertTrue("Service not running!", service.isRunning());
+        registry.execute(actMsg);
 
+        assertTrue("Service not running!", service.isRunning());
 
-            Thread.sleep(nrofCyclesToRun * msBetweenUpdates);
-            service.stop();
-            assertFalse("Service runs after stopped!", service.isRunning());
+        sleep( nrofCyclesToRun * msBetweenUpdates);
+        service.stop();
+        assertFalse("Service runs after stopped!", service.isRunning());
 
-            listenerProbe.assertNrofCallsMoreThan(0);
-            final int lastNrofCalls = listenerProbe.nrofCalls;
+        listenerProbe.assertNrofCallsMoreThan(0);
+        final int lastNrofCalls = listenerProbe.nrofCalls;
 
-            registry.execute(actMsg);
-            Thread.sleep(sleepTimeMs);
-            assertTrue("Service not running!", service.isRunning());
+        registry.execute(actMsg);
+        assertTrue("Service not running!", service.isRunning());
 
-            Thread.sleep(nrofCyclesToRun * msBetweenUpdates);
-            service.stop();
-            assertFalse("Service runs after stopped!", service.isRunning());
+        sleep( nrofCyclesToRun * msBetweenUpdates);
+        service.stop();
+        assertFalse("Service runs after stopped!", service.isRunning());
 
-            listenerProbe.assertNrofCallsMoreThan(lastNrofCalls);
+        listenerProbe.assertNrofCallsMoreThan(lastNrofCalls);
 
-        } catch (InterruptedException e) {
-            fail("Testing interruped!");
-        }
+    }
 
+    private static void sleep(long sleepTimeMs) {
+            try {
+                Thread.sleep(sleepTimeMs);
+            } catch (InterruptedException e) {
+                fail("Testing interruped!");
+            }
     }
 
     private static class ProbeClassificationListener implements ClassificationListener {

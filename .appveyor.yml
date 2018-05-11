@@ -1,0 +1,6 @@
+version: '{build}'
+platform: x86
+environment:
+  BACKEND_PRIORITY_CPU: 100000
+build_script:
+- cmd: mvn clean test
