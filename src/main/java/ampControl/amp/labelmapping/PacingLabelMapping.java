@@ -28,10 +28,12 @@ public class PacingLabelMapping<T> implements LabelMapping<T> {
     @Override
     public List<T> apply(Integer labelInd) {
 
-        LocalTime toCompare = LocalTime.now().minus(minimumIntervalMs, ChronoField.MILLI_OF_DAY.getBaseUnit());
-        Duration timeRemaining = Duration.between(lastRequest, toCompare);
-        if(timeRemaining.isNegative() || timeRemaining.isZero()) {
-            return new ArrayList<>();
+        if(minimumIntervalMs > 0) {
+            LocalTime toCompare = LocalTime.now().minus(minimumIntervalMs, ChronoField.MILLI_OF_DAY.getBaseUnit());
+            Duration timeRemaining = Duration.between(lastRequest, toCompare);
+            if (timeRemaining.isNegative() || timeRemaining.isZero()) {
+                return new ArrayList<>();
+            }
         }
 
         List<T> ret =  sourceLabelMapping.apply(labelInd);
