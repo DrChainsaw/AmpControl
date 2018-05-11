@@ -1,5 +1,7 @@
 version: '{build}'
 platform: x86
+cache:
+  - '%USERPROFILE%\.m2'
 environment:
   BACKEND_PRIORITY_CPU: 100000
 build_script:
