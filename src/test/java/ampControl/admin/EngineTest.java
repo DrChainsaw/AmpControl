@@ -20,7 +20,7 @@ import static org.junit.Assert.fail;
 public class EngineTest {
 
     private final static long sleepTimeMs = 5;
-    private final static int maxNrofRetries = 10;
+    private final static int maxNrofRetries = 100;
 
     private final static String exitCmdPar = "-exitCmd";
     private final static String exitCmdMsg = "frehththtyjy";
@@ -72,33 +72,33 @@ public class EngineTest {
 
         new Thread(engine::run).start();
 
-        waitForCondition(() -> false, sleepTimeMs, 2);
+        waitForCondition(() -> appControl.getM2aMap().isRegistered(service.start));
 
         service.assertRunningState(false);
 
         appControl.getM2aMap().execute(service.start);
 
-        waitForCondition(() -> service.isStarted, sleepTimeMs, maxNrofRetries);
+        waitForCondition(() -> service.isStarted);
 
         service.assertRunningState(true);
         appControl.getM2aMap().execute(service.stop);
 
-        waitForCondition(() -> !service.isStarted, sleepTimeMs, maxNrofRetries);
+        waitForCondition(() -> !service.isStarted);
 
         service.assertRunningState(false);
         appControl.getM2aMap().execute(service.start);
 
-        waitForCondition(() -> service.isStarted, sleepTimeMs, maxNrofRetries);
+        waitForCondition(() -> service.isStarted);
 
         service.assertRunningState(true);
 
         appControl.getM2aMap().execute(exitCmdMsg);
 
-        waitForCondition(() -> !service.isStarted, sleepTimeMs, maxNrofRetries);
+        waitForCondition(() -> !service.isStarted);
         service.assertRunningState(false);
     }
 
-    private static void waitForCondition(Supplier<Boolean> condition, long sleepTimeMs, int maxNrofRetries) {
+    private static void waitForCondition(Supplier<Boolean> condition) {
         try {
             int retryCnt = 0;
             while (!condition.get() && retryCnt < maxNrofRetries) {
