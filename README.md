@@ -1,6 +1,9 @@
+
+Travis [![Build Status](https://travis-ci.org/DrChainsaw/AmpControl.svg?branch=master)](https://travis-ci.org/DrChainsaw/AmpControl)
+AppVeyor [![Build status](https://ci.appveyor.com/api/projects/status/b9e4h8g0em7r7c1v?svg=true)](https://ci.appveyor.com/project/DrChainsaw/ampcontrol-fsko3)
 # AmpControl
 
-Do you have an amplifier hidden from plain sight with a dedicated wireless system for casual guitar practice in your living room? Are you sometimes annoyed that when playing along to recordings you can't find a sound which is a good balance for both rythm and leads but you also don't want to have a foot switch in your living room? Do you happen to have a moderately powerful computer standing close enough to the amplifier?
+Do you have an amplifier hidden from plain sight with a dedicated wireless system for casual guitar practice in your living room? Are you sometimes annoyed that when playing along to recordings you can't find a sound which is a good balance for both rhythm and leads, but you also don't want to have a foot switch in your living room? Do you happen to have a moderately powerful computer standing close enough to the amplifier?
 
 Didn't think so. But I had this very "problem" along with a desire to get my hands dirty with some machine learning so I created this software.
 
@@ -8,11 +11,11 @@ Didn't think so. But I had this very "problem" along with a desire to get my han
 
 In short: It changes the sound of the amplifier based on what you are playing on your guitar (or whatever instrument you plug in). 
 
-This is done by continously feeding the contents of an audio buffer (e.g. from a soundcard) into a classifier (typically a neural network) which has been trained to classify short (50-200 ms) samples of audio. The output from the net is used to change the sound of the amplifier, e.g. change program, increase volume/gain/delay etc..
+This is done by continuously feeding the contents of an audio buffer (e.g. from a sound card) into a classifier (typically a neural network) which has been trained to classify short (50-200 ms) samples of audio. The output from the net is used to change the sound of the amplifier, e.g. change program, increase volume/gain/delay etc..
 
 In order to be able to integrate the whole thing in a home automation system, the app can be controlled through a messaging protocol, e.g. MQTT.
 
-The current interfaces are currently supported:
+The following interfaces are currently supported:
 
 Audio input:
 * ASIO (using [Jasiohost](https://github.com/mhroth/jasiohost))
@@ -27,13 +30,13 @@ Neural nets by [deeplearning4j](https://github.com/deeplearning4j/deeplearning4j
 
 ### Does it really work?
 
-Well, I would not replace my footswitch in live situations with this, but it works well enough in the casual practive context for me to be worth having. After a couple of more updates I might try it in rehearsals as well.
+Well, I would not replace my footswitch in live situations with this, but it works well enough in the casual practice context for me to be worth having. After a couple of more updates I might try it in rehearsals as well.
 
-My best classifiers get about 96% accuracy on the test set which perhaps does not sound too bad. However, 96% accuracy means on average that you will get a "misclassification" every 10-40 seconds depending on how often the model produces a new classification. This is mitigated by using additional heuristics in the label probability interpretation, e.g filtering label probabilities over time, separate classification thresholds per label and not change sound unless you get a couple of classifications in a row saying the same. Using these techniques, I can mantain the error rate but it does cost a bit in delay so that switching does not feel "instant". 
+My best classifiers get about 96% accuracy on the test set which perhaps does not sound too bad. However, 96% accuracy means on average that you will get a "misclassification" every 10-40 seconds depending on how often the model produces a new classification. This is mitigated by using additional heuristics in the label probability interpretation, e.g filtering label probabilities over time, separate classification thresholds per label and not change sound unless you get a couple of classifications in a row saying the same. Using these techniques, I can maintain the error rate but it does cost a bit in delay so that switching does not feel "instant". 
 
-Errors are obviously not random independently distributed but rather reflect cases which are hard for the model to distinguish. The hunt for the perfect model is continously ongoing though...
+Errors are obviously not random independently distributed but rather reflect cases which are hard for the model to distinguish. The hunt for the perfect model is continuously ongoing though...
 
-I do belive there are strict limiations with this approach. I have only attempted to classify into four different labels: Silence, Noise, Rythm, Lead. If one where to add e.g. clean sound in there I think the model would run into serious problems to distinguish between rythm, lead and clean given that it only sees a handful of milliseconds of audio at the time. Many guitarists (not me though) also use more than one sound for one type of playing and there is no guarantee that there exists some pattern only in the guitar input that tells which sound the artist playing had in mind, especially not one which would transfer between artists. Otoh, I'm no machine learning expert...
+I do believe there are strict limitations with this approach. I have only attempted to classify into four different labels: Silence, Noise, Rhythm, Lead. If one were to add e.g. clean sound in there I think the model would run into serious problems to distinguish between rhythm, lead and clean given that it only sees a handful of milliseconds of audio at the time. Many guitarists (not me though) also use more than one sound for one type of playing and there is no guarantee that there exists some pattern only in the guitar input that tells which sound the artist playing had in mind, especially not one which would transfer between artists. Otoh, I'm no machine learning expert...
 
 ## Getting Started
 
@@ -54,7 +57,9 @@ Clone the repo and fire it up in your IDE of choice. I had some issues getting C
 
 ## Running the tests
 
-Unit tests are in the src/test folder. Some of the test cases instantiates models which might not fit on low tier GPUs (I have 6 Gb GPU RAM on my system). Please post an issue if you encounter any problems of this kind.
+`mvn clean test`
+
+Unit tests are in the src/test folder. Some test cases instantiates models which might not fit on low tier GPUs (I have 6 Gb GPU RAM on my system). Please post an issue if you encounter any problems of this kind.
 
 ## Contributing
 
