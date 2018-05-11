@@ -4,6 +4,7 @@ import ampControl.audio.processing.ProcessingResult;
 import ampControl.model.training.data.processing.AudioProcessor;
 import org.junit.Test;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -14,7 +15,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link AudioDataProvider}.
@@ -37,8 +38,8 @@ public class AudioDataProviderTest {
         final Map<String, AudioDataProvider.AudioProcessorBuilder> labelToBuilder = new HashMap<>();
         labelToBuilder.put(label1, builder1);
         labelToBuilder.put(label2, builder2);
-        final List<Path> paths1 = Stream.of("gerf", "gtth", "jyujuy").map(str -> Paths.get(label1 + "\\" + str)).collect(Collectors.toList());
-        final List<Path> paths2 = Stream.of("ewrt", "vcdfbj").map(str -> Paths.get(label2 + "\\" + str)).collect(Collectors.toList());
+        final List<Path> paths1 = Stream.of("gerf", "gtth", "jyujuy").map(str -> Paths.get(label1 + File.separator + str)).collect(Collectors.toList());
+        final List<Path> paths2 = Stream.of("ewrt", "vcdfbj").map(str -> Paths.get(label2 + File.separator + str)).collect(Collectors.toList());
         final List<Path> allpaths = Stream.concat(paths1.stream(), paths2.stream()).collect(Collectors.toList());
 
         final DataProvider pr = new AudioDataProvider(allpaths, labelToBuilder, new ToggleSupplier(label1,label2));

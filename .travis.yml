@@ -1,0 +1,4 @@
+language: java
+sudo: false
+before_script: export BACKEND_PRIORITY_CPU="100000"
+script: mvn clean test

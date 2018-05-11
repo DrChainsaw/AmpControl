@@ -34,7 +34,7 @@ public class Cnn2DDataSetIteratorTest {
         final DataSetIterator iter = new Cnn2DDataSetIterator(dataProviderSpy, batchSize, labels);
         DataSet ds = iter.next();
         assertTrue("Incorrect checksum!", dataProviderSpy.checkSum > 0);
-        assertEquals("Incorrect checksum!", dataProviderSpy.checkSum, ds.getFeatures().sum().getInt(0));
+        assertEquals("Incorrect checksum!", dataProviderSpy.checkSum, ds.getFeatures().sum(0,1,2,3).getInt(0));
         INDArray labelInds = ds.getLabels().argMax(1);
         for(int i = 0; i < batchSize; i++) {
             assertEquals("Incorrect label at " +i + "!", dataProviderSpy.labels.get(i), labels.get(labelInds.getInt(i)));
@@ -52,7 +52,7 @@ public class Cnn2DDataSetIteratorTest {
         final DataSetIterator iter = new CachingDataSetIterator(new Cnn2DDataSetIterator(dataProviderSpy, batchSize, labels));
         DataSet ds = iter.next();
         assertTrue("Incorrect checksum!", dataProviderSpy.checkSum > 0);
-        assertEquals("Incorrect checksum!", dataProviderSpy.checkSum, ds.getFeatures().sum().getInt(0));
+        assertEquals("Incorrect checksum!", dataProviderSpy.checkSum, ds.getFeatures().sum(0,1,2,3).getInt(0));
         INDArray labelInds = ds.getLabels().argMax(1);
         for(int i = 0; i < batchSize; i++) {
             assertEquals("Incorrect label at " +i + "!", dataProviderSpy.labels.get(i), labels.get(labelInds.getInt(i)));

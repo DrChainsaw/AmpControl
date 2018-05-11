@@ -1,10 +1,6 @@
 package ampControl.model.training.data.iterators;
 
 
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import org.nd4j.linalg.api.memory.MemoryWorkspace;
 import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
 import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
@@ -16,6 +12,10 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * {@link DataSetIterator} which caches output from another {@link DataSetIterator}. Main use case is validation set but
@@ -32,6 +32,7 @@ public class CachingDataSetIterator implements DataSetIterator {
     private static final long serialVersionUID = 6874213288810185979L;
     private final DataSetIterator sourceIter;
     private final int nrofItersToCache;
+    private final boolean useWorkspace;
     private List<DataSet> cache;
     private int cursor = -1;
 
@@ -46,6 +47,7 @@ public class CachingDataSetIterator implements DataSetIterator {
 
     /**
      * Constructor
+     *
      * @param sourceIter {@link DataSetIterator} for which a cache shall be created
      */
     public CachingDataSetIterator(DataSetIterator sourceIter) {
@@ -54,12 +56,18 @@ public class CachingDataSetIterator implements DataSetIterator {
 
     /**
      * Constructor
-     * @param sourceIter {@link DataSetIterator} for which a cache shall be created
+     *
+     * @param sourceIter       {@link DataSetIterator} for which a cache shall be created
      * @param nrofItersToCache Sets how many iterations from sourceIter will be cached.
      */
     public CachingDataSetIterator(DataSetIterator sourceIter, int nrofItersToCache) {
         this.sourceIter = sourceIter;
         this.nrofItersToCache = nrofItersToCache;
+        if (Nd4j.getBackend() instanceof org.nd4j.linalg.cpu.nativecpu.CpuBackend) {
+            useWorkspace = false;
+        } else {
+            useWorkspace = true;
+        }
     }
 
     @Override
@@ -70,33 +78,32 @@ public class CachingDataSetIterator implements DataSetIterator {
     @Override
     public DataSet next() {
         if (cache == null) {
-                log.info("create cache of size " + nrofItersToCache);
-                cache = IntStream.range(0, nrofItersToCache)
-                        .parallel()
+            log.info("create cache of size " + nrofItersToCache);
+            cache = IntStream.range(0, nrofItersToCache)
+                    .parallel()
 
-                        .mapToObj(i -> {
+                    .mapToObj(i -> {
+                        if(useWorkspace) {
                             // Create a new workspace for each thread started or else data becomes all zeroes
-                            try (MemoryWorkspace ws = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, "CachingDataSetWs"+i)) {
-                            DataSet ds = sourceIter.next();
-                            //log.info(ws.getCurrentSize());
-                                return ds;
+                            try (MemoryWorkspace ws = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, "CachingDataSetWs" + i)) {
+                                return sourceIter.next();
                             }
+                        }
+                        return sourceIter.next();
 
-                        })
-                        //.peek(dataSet -> log.info(dataSet.getFeatures().isAttached()))
-                        //.peek(dataSet -> log.info("labsthen: " + dataSet.getLabels().sum(0).sum(0).sum(0).sum(0)))
-                        .collect(Collectors.toList());
+                    })
+                    .collect(Collectors.toList());
 
             resetCursor();
         }
         cursor++;
         DataSet ds = cache.get(cursor);
         // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
-        if(preProcessor != null) {
+        if (preProcessor != null) {
             if (sourceIter.getPreProcessor() == null) {
                 ds = new DataSet(ds.getFeatures(), ds.getLabels(), ds.getFeaturesMaskArray(), ds.getLabelsMaskArray());
                 preProcessor.preProcess(ds);
-            } else if(sourceIter.getPreProcessor() != preProcessor) {
+            } else if (sourceIter.getPreProcessor() != preProcessor) {
                 throw new RuntimeException("Different preprocessors for source and cache! Source: "
                         + sourceIter.getPreProcessor() + " cache: " + preProcessor);
             }
@@ -173,7 +180,7 @@ public class CachingDataSetIterator implements DataSetIterator {
     @Override
     public void setPreProcessor(DataSetPreProcessor preProcessor) {
         this.preProcessor = preProcessor;
-        if(cache == null) {
+        if (cache == null) {
             sourceIter.setPreProcessor(preProcessor);
         }
     }
@@ -197,6 +204,7 @@ public class CachingDataSetIterator implements DataSetIterator {
 
     /**
      * Returns nrofItersToCache
+     *
      * @return nrofItersToCache
      */
     public int getNrofItersToCache() {

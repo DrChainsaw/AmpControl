@@ -8,7 +8,6 @@ import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampControl.model.training.data.processing.SilenceProcessor;
 import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.description.ResNetConv2DFactory;
-import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
@@ -68,11 +67,11 @@ public class TrainingDescription {
 
     public static void main(String[] args) {
         DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
-        CudaEnvironment.getInstance().getConfiguration()
-                .setMaximumDeviceCacheableLength(1024 * 1024 * 1024L)
-                .setMaximumDeviceCache(6L * 1024 * 1024 * 1024L)
-                .setMaximumHostCacheableLength(1024 * 1024 * 1024L)
-                .setMaximumHostCache(6L * 1024 * 1024 * 1024L);
+//        CudaEnvironment.getInstance().getConfiguration()
+//                .setMaximumDeviceCacheableLength(1024 * 1024 * 1024L)
+//                .setMaximumDeviceCache(6L * 1024 * 1024 * 1024L)
+//                .setMaximumHostCacheableLength(1024 * 1024 * 1024L)
+//                .setMaximumHostCache(6L * 1024 * 1024 * 1024L);
 
         List<ModelHandle> modelData = new ArrayList<>();
 

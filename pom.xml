@@ -9,10 +9,6 @@
     <description>Controls amplifiers</description>
     <properties>
 
-        <!-- Change the nd4j.backend property to nd4j-cuda-7.5-platform or nd4j-cuda-8.0-platform to use CUDA GPUs -->
-        <nd4j.backend>nd4j-cuda-8.0-platform</nd4j.backend>
-        <!-- <nd4j.backend>nd4j-native-platform</nd4j.backend -->
-
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <shadedClassifier>bin</shadedClassifier>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -24,6 +20,7 @@
         <datavec.version>0.9.1</datavec.version>
         <arbiter.version>0.9.1</arbiter.version>
         <rl4j.version>0.9.1</rl4j.version>
+        <junit.version>4.11</junit.version>
 
         <!-- For Spark examples: change the _1 to _2 to switch between Spark 1 and Spark 2 -->
 
@@ -45,8 +42,6 @@
         <aws.sdk.version>1.11.109</aws.sdk.version>
         <jackson.version>2.6.6</jackson.version>
         <scala.plugin.version>3.2.2</scala.plugin.version>
-        <jasiohost.jar.location>${basedir}\bin\JAsioHost.jar
-        </jasiohost.jar.location>
     </properties>
 
 
@@ -58,8 +53,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -152,6 +147,12 @@
                         </descriptorRefs>
                     </configuration>
                 </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>2.21.0</version>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
@@ -217,31 +218,10 @@
         </profile>
     </profiles>
 
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.nd4j</groupId>
-                <artifactId>nd4j-native-platform</artifactId>
-                <version>${nd4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.nd4j</groupId>
-                <artifactId>nd4j-cuda-8.0-platform</artifactId>
-                <version>${nd4j.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-cuda-8.0</artifactId>
-            <version>${dl4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-nlp</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
@@ -260,27 +240,19 @@
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-cuda-8.0-platform</artifactId>
+            <version>${nd4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
-            <artifactId>${nd4j.backend}</artifactId>
+            <artifactId>nd4j-native-platform</artifactId>
             <version>${nd4j.version}</version>
         </dependency>
-        <!-- Used in the RegressionMathFunctions example -->
         <dependency>
             <groupId>org.datavec</groupId>
             <artifactId>datavec-data-audio</artifactId>
             <version>0.9.1</version>
-        </dependency>
-        <dependency>
-            <groupId>src.com</groupId>
-            <artifactId>JASIOHost</artifactId>
-            <version>master</version>
-            <scope>system</scope>
-            <systemPath>${jasiohost.jar.location}</systemPath>
         </dependency>
         <dependency>
             <groupId>org.jzy3d</groupId>
@@ -309,14 +281,17 @@
             <version>3.1</version>
             <classifier>with-dependencies</classifier>
         </dependency>
-        <!--
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-nop</artifactId>
-            <version>${slf4j.version}</version>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
-        -->
+        <dependency>
+            <groupId>com.github.nybbs2003</groupId>
+            <artifactId>jasiohost</artifactId>
+            <version>5045c95</version>
+        </dependency>
     </dependencies>
 
 
@@ -332,7 +307,9 @@
             <name>Jzy3d Releases</name>
             <url>http://maven.jzy3d.org/releases</url>
         </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
     </repositories>
-
-    <packaging>pom</packaging>
 </project>

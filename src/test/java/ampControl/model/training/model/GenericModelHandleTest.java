@@ -1,13 +1,14 @@
 package ampControl.model.training.model;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
+import ampControl.model.training.listen.NanScoreWatcher;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.junit.Test;
-import org.nd4j.linalg.activations.impl.*;
+import org.nd4j.linalg.activations.impl.ActivationSoftmax;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
 import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Test cases for {@link GenericModelHandle}.
@@ -55,7 +57,7 @@ public class GenericModelHandleTest {
                 .learningRate(0.1)
                 .seed(666)
                 .iterations(1)
-                .weightInit(WeightInit.XAVIER)
+                .weightInit(WeightInit.UNIFORM)
                 .updater(new Adam())
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .list()
@@ -67,6 +69,7 @@ public class GenericModelHandleTest {
                         .build())
                 .build());
         model.init();
+        model.addListeners(new NanScoreWatcher(() -> fail("Nan in score!")));
         return model;
     }
 
@@ -82,7 +85,8 @@ public class GenericModelHandleTest {
         public DataSet next(int num) {
             final double[] terms1 = rng.ints(num, -10, 10).mapToDouble(i -> i).toArray();
             final double[][] evenOrOdd = DoubleStream.of(terms1).mapToInt(d -> (int) d).mapToObj(i -> i > 0 ? positive : negative).collect(Collectors.toList()).toArray(new double[][]{});
-            return new DataSet(Nd4j.create(terms1).transpose(), Nd4j.create(evenOrOdd));
+            final DataSet ds =  new DataSet(Nd4j.create(terms1).transpose(), Nd4j.create(evenOrOdd));
+            return ds;
         }
 
         @Override
@@ -107,7 +111,7 @@ public class GenericModelHandleTest {
 
         @Override
         public boolean asyncSupported() {
-            return true;
+            return false;
         }
 
         @Override
