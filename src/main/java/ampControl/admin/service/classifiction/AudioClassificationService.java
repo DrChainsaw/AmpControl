@@ -122,8 +122,8 @@ public class AudioClassificationService implements Service {
 
     @Override
     public void registerTo(SubscriptionRegistry subscriptionRegistry) {
-        subscriptionRegistry.registerSubscription(actMsg, () -> new Thread(() -> start()).start());
-        subscriptionRegistry.registerSubscription(deactMsg, () -> new Thread(() -> stop()).start());
+        subscriptionRegistry.registerSubscription(actMsg, () -> start());
+        subscriptionRegistry.registerSubscription(deactMsg, () -> stop());
     }
 }
 
