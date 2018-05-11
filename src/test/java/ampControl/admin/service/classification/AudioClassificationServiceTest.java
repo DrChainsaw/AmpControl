@@ -8,6 +8,8 @@ import com.beust.jcommander.JCommander;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
+import java.util.function.Supplier;
+
 import static org.junit.Assert.*;
 
 /**
@@ -16,6 +18,8 @@ import static org.junit.Assert.*;
  * @author Christian Skärby
  */
 public class AudioClassificationServiceTest {
+
+    private final static int maxNrofRetries = 100;
 
     private final static String minTimeBetweenUpdatesPar = "-minTimeBetweenUpdates ";
     private final static String actMsgPar = "-actAutoMsg ";
@@ -27,7 +31,6 @@ public class AudioClassificationServiceTest {
     public void startStop() {
         final AudioClassificationService service = new AudioClassificationService();
         final int msBetweenUpdates = 2;
-        final int nrofCyclesToRun = 4;
         final String actMsg = "gjkflghjghht";
         final String params = minTimeBetweenUpdatesPar + msBetweenUpdates + " " + actMsgPar + actMsg;
 
@@ -47,7 +50,7 @@ public class AudioClassificationServiceTest {
 
         assertTrue("Service not running!", service.isRunning());
 
-        sleep( nrofCyclesToRun * msBetweenUpdates);
+        waitForCondition(() -> listenerProbe.nrofCalls > 0,  msBetweenUpdates);
         service.stop();
         assertFalse("Service runs after stopped!", service.isRunning());
 
@@ -57,7 +60,7 @@ public class AudioClassificationServiceTest {
         registry.execute(actMsg);
         assertTrue("Service not running!", service.isRunning());
 
-        sleep( nrofCyclesToRun * msBetweenUpdates);
+        waitForCondition( () -> listenerProbe.nrofCalls > lastNrofCalls,  msBetweenUpdates);
         service.stop();
         assertFalse("Service runs after stopped!", service.isRunning());
 
@@ -65,12 +68,16 @@ public class AudioClassificationServiceTest {
 
     }
 
-    private static void sleep(long sleepTimeMs) {
-            try {
+    private static void waitForCondition(Supplier<Boolean> condition, long sleepTimeMs) {
+        try {
+            int retryCnt = 0;
+            while (!condition.get() && retryCnt < maxNrofRetries) {
                 Thread.sleep(sleepTimeMs);
-            } catch (InterruptedException e) {
-                fail("Testing interruped!");
+                retryCnt++;
             }
+        } catch (InterruptedException e) {
+            fail("test interrupted!");
+        }
     }
 
     private static class ProbeClassificationListener implements ClassificationListener {
