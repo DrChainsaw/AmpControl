@@ -92,8 +92,6 @@ public class CachingDataSetIterator implements DataSetIterator {
                         return sourceIter.next();
 
                     })
-                    //.peek(dataSet -> log.info(dataSet.getFeatures().isAttached()))
-                    //.peek(dataSet -> log.info("labsthen: " + dataSet.getLabels().sum(0).sum(0).sum(0).sum(0)))
                     .collect(Collectors.toList());
 
             resetCursor();
