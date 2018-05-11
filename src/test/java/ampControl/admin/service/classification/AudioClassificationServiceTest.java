@@ -27,7 +27,7 @@ public class AudioClassificationServiceTest {
     public void startStop() {
         final AudioClassificationService service = new AudioClassificationService();
         final int msBetweenUpdates = 2;
-        final int nrofCyclesToRun = 2;
+        final int nrofCyclesToRun = 4;
         final String actMsg = "gjkflghjghht";
         final String params = minTimeBetweenUpdatesPar + msBetweenUpdates + " " + actMsgPar + actMsg;
 
