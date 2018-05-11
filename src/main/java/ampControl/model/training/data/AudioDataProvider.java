@@ -51,9 +51,7 @@ public class AudioDataProvider implements DataProvider {
 	
 	private void createProcessors(List<Path> files,  Map<String, AudioProcessorBuilder> labels) {
 		for(Path file: files) {
-			String[] chopchop = file.toAbsolutePath().toString().split("\\\\");
-			String labelDir = chopchop[chopchop.length-2];
-			labels.get(labelDir).add(file);
+			labels.get(file.getParent().getFileName().toString()).add(file);
 		}
 		
 		labels.forEach((key, value) -> processors.put(key, value.build()));
