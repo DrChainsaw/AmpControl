@@ -1,6 +1,12 @@
 
 Travis [![Build Status](https://travis-ci.org/DrChainsaw/AmpControl.svg?branch=master)](https://travis-ci.org/DrChainsaw/AmpControl)
 AppVeyor [![Build status](https://ci.appveyor.com/api/projects/status/b9e4h8g0em7r7c1v?svg=true)](https://ci.appveyor.com/project/DrChainsaw/ampcontrol-fsko3)
+
+Code climate: [![Maintainability](https://api.codeclimate.com/v1/badges/a99a88d28ad37a79dbf6/maintainability)](https://codeclimate.com/github/codeclimate/codeclimate/maintainability)
+<a href="https://codeclimate.com/github/codeclimate/codeclimate/test_coverage"><img src="https://api.codeclimate.com/v1/badges/a99a88d28ad37a79dbf6/test_coverage" /></a>
+
+[![codebeat badge](https://codebeat.co/badges/998446a1-99e0-4f8f-9b62-d8dda4ef780d)](https://codebeat.co/projects/github-com-drchainsaw-ampcontrol-master)
+
 # AmpControl
 
 Do you have an amplifier hidden from plain sight with a dedicated wireless system for casual guitar practice in your living room? Are you sometimes annoyed that when playing along to recordings you can't find a sound which is a good balance for both rhythm and leads, but you also don't want to have a foot switch in your living room? Do you happen to have a moderately powerful computer standing close enough to the amplifier?
