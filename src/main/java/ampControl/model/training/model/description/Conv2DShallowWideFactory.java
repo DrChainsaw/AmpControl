@@ -40,28 +40,6 @@ public class Conv2DShallowWideFactory {
      * @param modelData list to add models to
      */
     public void addModelData(List<ModelHandle> modelData) {
-//            DoubleStream.of(0).forEach(dropOutProb -> {
-//                int kernelSize = inputShape[1] - 10; // Allow for 10 frequency bins invariance
-//                int poolSizeTime = inputShape[0] / 2;
-//                BlockBuilder bBuilder = new BlockBuilder()
-//                        .setStartingLearningRate(0.0005)
-//                        .setUpdater(new Nesterovs(0.9))
-//                        .setNamePrefix(namePrefix)
-//                        .first(new ConvType(inputShape))
-//                        .andThen(new Conv2DBatchNormAfter()
-//                                .setKernelSize_w(kernelSize)
-//                                .setKernelSize_h(1)
-//                                .setNrofKernels(512))
-//                        //.andThen(new DropOut().setDropProb(dropOutProb))
-//                        .andThen(new Pool2D().setSize_h(poolSizeTime).setSize_w(1).setStride_h(poolSizeTime / 8).setSize_w(1))
-//                        //.andThen(new GlobMeanMax())
-//                        .andThen(new Dense()
-//                                .setHiddenWidth(256)
-//                                .setActivation(new ActivationReLU()))
-//                        .andThen(new DropOut().setDropProb(dropOutProb))
-//                        .andFinally(new Output(trainIter.totalOutcomes()));
-//                modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.name(), bBuilder.getAccuracy()));
-//            });
 
         DoubleStream.of(0).forEach(dropOutProb -> {
             int kernelSizeLong = inputShape[1] - 2; // Allow for 2 frequency bins invariance
