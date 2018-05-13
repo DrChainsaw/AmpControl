@@ -1,10 +1,7 @@
 package ampControl.model.training.model.description;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
-import ampControl.model.training.model.BlockBuilder;
-import ampControl.model.training.model.GenericModelHandle;
-import ampControl.model.training.model.GraphModelAdapter;
-import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.*;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
 import ampControl.model.training.model.layerblocks.graph.SeBlock;
@@ -51,10 +48,11 @@ public class StackedConv2DFactory {
 
         // Current best score with lgsc 96.0. Also performs very well in practice
         final LayerBlockConfig pool = new MinMaxPool().setSize(2).setStride(2);
-        Stream.of(new IdBlock(), new SeBlock()).forEach(afterConvBlock -> {
-            IntStream.of(3).forEach(kernelSize -> {
+        Stream.of(new IdBlock(), new SeBlock()).forEach(afterConvBlock ->
+            IntStream.of(3).forEach(kernelSize ->
                 DoubleStream.of(0).forEach(dropOutProb -> {
-                    BlockBuilder bBuilder = new BlockBuilder()
+                    ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                            new BlockBuilder()
                             .setStartingLearningRate(0.005)
                             .setUpdater(new Nesterovs(0.9))
                             .setNamePrefix(namePrefix)
@@ -93,10 +91,15 @@ public class StackedConv2DFactory {
                                     .setHiddenWidth(512)
                                     .setActivation(new ActivationReLU()))
                             .andFinally(new DropOut().setDropProb(dropOutProb))
-                            .andFinally(new Output(trainIter.totalOutcomes()));
-                    modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
-                });
-            });
-        });
+                            .andFinally(new Output(trainIter.totalOutcomes())));
+                    modelData.add(new GenericModelHandle(
+                            trainIter,
+                            evalIter,
+                            new GraphModelAdapter(builder.buildGraph()),
+                            builder.name(),
+                            builder.getAccuracy()));
+                })
+            )
+        );
     }
 }

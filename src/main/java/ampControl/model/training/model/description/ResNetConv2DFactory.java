@@ -1,10 +1,7 @@
 package ampControl.model.training.model.description;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
-import ampControl.model.training.model.BlockBuilder;
-import ampControl.model.training.model.GenericModelHandle;
-import ampControl.model.training.model.GraphModelAdapter;
-import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.*;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
 import ampControl.model.training.model.layerblocks.graph.SeBlock;
@@ -44,10 +41,11 @@ public class ResNetConv2DFactory {
 
         final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
 
-        IntStream.of(10).forEach(resDepth -> {
-            DoubleStream.of(0).forEach(dropOutProb -> {
-                DoubleStream.of(0, 0.0003, 0.003, 0.03).forEach(lambda -> {
-                    BlockBuilder bBuilder = new BlockBuilder()
+        IntStream.of(1).forEach(resDepth ->
+            DoubleStream.of(0).forEach(dropOutProb ->
+                DoubleStream.of(0, 0.03).forEach(lambda -> {
+                    ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                            new BlockBuilder()
                             .setNamePrefix(namePrefix)
                             .setStartingLearningRate(0.001)
                             .setUpdater(new Nesterovs(0.9))
@@ -91,10 +89,15 @@ public class ResNetConv2DFactory {
                             .andFinally(new DropOut().setDropProb(dropOutProb))
                             .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                                     .setAlpha(0.6)
-                                    .setLambda(lambda));
-                    modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
-                });
-            });
-        });
+                                    .setLambda(lambda)));
+                    modelData.add(new GenericModelHandle(
+                            trainIter,
+                            evalIter,
+                            new GraphModelAdapter(builder.buildGraph()),
+                            builder.name(),
+                            builder.getAccuracy()));
+                })
+            )
+        );
     }
 }

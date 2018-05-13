@@ -1,6 +1,5 @@
 package ampControl.model.training.model;
 
-import ampControl.model.inference.StoredGraphClassifier;
 import ampControl.model.training.model.layerblocks.AggBlock;
 import ampControl.model.training.model.layerblocks.BlockStack;
 import ampControl.model.training.model.layerblocks.LayerBlockConfig;
@@ -17,7 +16,6 @@ import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.deeplearning4j.util.ModelSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.learning.config.Adam;
@@ -25,8 +23,6 @@ import org.nd4j.linalg.learning.config.IUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -117,7 +113,7 @@ import java.util.Map;
  * @author Christian Skärby
  */
 
-public class BlockBuilder {
+public class BlockBuilder implements ModelBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(BlockBuilder.class);
 
@@ -160,36 +156,14 @@ public class BlockBuilder {
 
     private String namePrefix = "";
     private int seed = 666;
-    private int nrofIterations = 1;
     private WorkspaceMode trainWs = WorkspaceMode.SINGLE;
     private WorkspaceMode evalWs = WorkspaceMode.SINGLE;
 
     private IUpdater updater = new Adam(startingLearningRate, 0.9, 0.999, 1e-8);
 
-    private double accuracy = 0;
-
-    /**
-     * Construct a {@link MultiLayerNetwork} from the builder. If a seralized model with the same name exists in the
-     * given directory the serialized model will be returned. Note: An exception will be thrown if any {@link LayerBlockConfig}
-     * requires a {@link ComputationGraph}.
-     *
-     * @param modelDir
-     * @return a {@link MultiLayerNetwork}
-     */
-    public MultiLayerNetwork build(String modelDir) {
-        File modelFile = new File(modelDir + File.separator + getName());
-        if (modelFile.exists()) {
-            try {
-                log.info("restoring saved model: " + modelFile.getAbsolutePath());
-                accuracy = StoredGraphClassifier.getAccuracy(modelFile.getAbsolutePath());
-                boolean loadUpdater = updater instanceof Adam ? false : true; // load updater with Adam results in score NaN for some unknown reason
-                return ModelSerializer.restoreMultiLayerNetwork(modelFile, loadUpdater);
-
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load model");
-            }
-        }
-        log.info("Creating model: " + getName());
+    @Override
+    public MultiLayerNetwork build() {
+        log.info("Creating model: " + name());
 
         final NeuralNetConfiguration.Builder builder = initBuilder();
 
@@ -204,28 +178,9 @@ public class BlockBuilder {
         return model;
     }
 
-    /**
-     * Construct a {@link ComputationGraph} from the builder. If a seralized model with the same name exists in the
-     * given directory the serialized model will be returned.
-     *
-     * @param modelDir
-     * @return a {@link ComputationGraph}
-     */
-    public ComputationGraph buildGraph(String modelDir) {
-        File modelFile = new File(modelDir + File.separator + getName().hashCode());
-        if (modelFile.exists()) {
-            try {
-                log.info("restoring saved model: " + modelFile.getAbsolutePath());
-                accuracy = StoredGraphClassifier.getAccuracy(modelDir + File.separator + getName() + "_best");
-                boolean loadUpdater = updater instanceof Adam ? false : true; // load updater with Adam results in score NaN for some unknown reason
-                return ModelSerializer.restoreComputationGraph(modelFile, loadUpdater);
-
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load model " + modelFile, e);
-            }
-        }
-
-        log.info("Creating graph: " + getName());
+    @Override
+    public ComputationGraph buildGraph() {
+        log.info("Creating graph: " + name());
 
         final NeuralNetConfiguration.Builder builder = initBuilder();
 
@@ -247,7 +202,7 @@ public class BlockBuilder {
     private NeuralNetConfiguration.Builder initBuilder() {
         final NeuralNetConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
                 .seed(seed)
-                .iterations(nrofIterations)
+                .iterations(1)
                 .weightInit(WeightInit.RELU_UNIFORM)
                 .activation(Activation.IDENTITY) // Will be set later on
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
@@ -264,19 +219,10 @@ public class BlockBuilder {
      *
      * @return
      */
-    public String getName() {
+    @Override
+    public String name() {
         String updater = this.updater.getClass().getSimpleName();
         return namePrefix + layerBlockConfig.name() + updater;
-    }
-
-    /**
-     * Returns the accuracy of the model. Only non-zero if a serialized model with the same name was loaded when calling
-     * build or buildGraph.
-     *
-     * @return the accuracy.
-     */
-    public double getAccuracy() {
-        return accuracy;
     }
 
     /**
@@ -321,17 +267,6 @@ public class BlockBuilder {
      */
     public BlockBuilder setSeed(int seed) {
         this.seed = seed;
-        return this;
-    }
-
-    /**
-     * Sets the number of iterations
-     *
-     * @param nrofIterations
-     * @return the {@link BlockBuilder}
-     */
-    public BlockBuilder setNrofIterations(int nrofIterations) {
-        this.nrofIterations = nrofIterations;
         return this;
     }
 

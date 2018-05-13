@@ -1,10 +1,7 @@
 package ampControl.model.training.model.description;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
-import ampControl.model.training.model.BlockBuilder;
-import ampControl.model.training.model.GenericModelHandle;
-import ampControl.model.training.model.GraphModelAdapter;
-import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.*;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
 import ampControl.model.training.model.layerblocks.graph.SeBlock;
@@ -48,44 +45,50 @@ public class DenseNetFactory {
         IntStream.of(4, 8, 16).forEach(denseStackSize -> {
             DoubleStream.of(0).forEach(dropOutProb -> {
                 // ~0.96 acc, but quite heavy
-                BlockBuilder bBuilder = new BlockBuilder()
-                        .setNamePrefix(namePrefix)
-                        .setStartingLearningRate(0.001)
-                        .setUpdater(new Nesterovs(0.9))
-                        .first(new ConvType(inputShape))
-                        .andThen(zeroPad3x3)
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(3)
-                                .setNrofKernels(64))
-                        .andThen(new MinMaxPool().setSize(3).setStride(3))
-                        .andThen(zeroPad3x3)
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(3)
-                                .setNrofKernels(128))
-                        .andThen(new MinMaxPool().setSize(3).setStride(3))
-                        .andThen(new SeBlock())
-                        .andThen(zeroPad3x3)
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setKernelSize(3)
-                                .setNrofKernels(128))
-                        .andThen(new MinMaxPool().setSize(3).setStride(3))
-                        .andThen(new SeBlock())
-                        .andThenStack(10)
-                        .aggDenseStack(denseStackSize)
-                        .aggOf(zeroPad3x3)
-                        .andFinally(new Conv2DBatchNormAfter()
-                                .setKernelSize(3)
-                                .setNrofKernels(32))
-                        .andThen(new Conv2DBatchNormAfter()
-                                .setNrofKernels(32 * 4)
-                                .setKernelSize(1))
-                        //   .andThen(new DropOut().setDropProb(dropOutProb))
-                        .andFinally(new SeBlock())
-                        .andThenStack(2)
-                        .of(new Dense())//.setActivation(new ActivationSELU()))
-                        .andThen(new DropOut().setDropProb(dropOutProb))
-                        .andFinally(new Output(trainIter.totalOutcomes()));
-                modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
+                ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                        new BlockBuilder()
+                                .setNamePrefix(namePrefix)
+                                .setStartingLearningRate(0.001)
+                                .setUpdater(new Nesterovs(0.9))
+                                .first(new ConvType(inputShape))
+                                .andThen(zeroPad3x3)
+                                .andThen(new Conv2DBatchNormAfter()
+                                        .setKernelSize(3)
+                                        .setNrofKernels(64))
+                                .andThen(new MinMaxPool().setSize(3).setStride(3))
+                                .andThen(zeroPad3x3)
+                                .andThen(new Conv2DBatchNormAfter()
+                                        .setKernelSize(3)
+                                        .setNrofKernels(128))
+                                .andThen(new MinMaxPool().setSize(3).setStride(3))
+                                .andThen(new SeBlock())
+                                .andThen(zeroPad3x3)
+                                .andThen(new Conv2DBatchNormAfter()
+                                        .setKernelSize(3)
+                                        .setNrofKernels(128))
+                                .andThen(new MinMaxPool().setSize(3).setStride(3))
+                                .andThen(new SeBlock())
+                                .andThenStack(10)
+                                .aggDenseStack(denseStackSize)
+                                .aggOf(zeroPad3x3)
+                                .andFinally(new Conv2DBatchNormAfter()
+                                        .setKernelSize(3)
+                                        .setNrofKernels(32))
+                                .andThen(new Conv2DBatchNormAfter()
+                                        .setNrofKernels(32 * 4)
+                                        .setKernelSize(1))
+                                //   .andThen(new DropOut().setDropProb(dropOutProb))
+                                .andFinally(new SeBlock())
+                                .andThenStack(2)
+                                .of(new Dense())//.setActivation(new ActivationSELU()))
+                                .andThen(new DropOut().setDropProb(dropOutProb))
+                                .andFinally(new Output(trainIter.totalOutcomes())));
+                modelData.add(new GenericModelHandle(
+                        trainIter,
+                        evalIter,
+                        new GraphModelAdapter(builder.buildGraph()),
+                        builder.name(),
+                        builder.getAccuracy()));
             });
         });
     }

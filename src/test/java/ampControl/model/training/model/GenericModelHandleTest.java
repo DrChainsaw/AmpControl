@@ -2,6 +2,9 @@ package ampControl.model.training.model;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.listen.NanScoreWatcher;
+import ampControl.model.training.model.validation.EvalValidation;
+import ampControl.model.training.model.validation.Validation;
+import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
@@ -19,10 +22,11 @@ import org.nd4j.linalg.lossfunctions.impl.LossBinaryXENT;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
@@ -47,9 +51,13 @@ public class GenericModelHandleTest {
             toTest.fit();
             toTest.resetTraining();
         }
+        final ProbeValidation probe = new ProbeValidation();
+        final Validation.Factory<Evaluation> factory = labels -> new EvalValidation(new Evaluation(labels), probe);
+        toTest.registerValidation(factory);
         toTest.eval();
+        probe.assertWasCalled(true);
         // Not a good test really. Most likely not the class under tests fault if desired accuracy is not reached.
-        assertTrue("Did not reach desired accuracy! Was " + toTest.getBestEvalScore() + "!", toTest.getBestEvalScore() > 0.99);
+
     }
 
     private static MultiLayerNetwork createPosNegNetwork() {
@@ -157,6 +165,20 @@ public class GenericModelHandleTest {
         @Override
         public DataSet next() {
             return next(batchSize);
+        }
+    }
+
+    private static class ProbeValidation implements Consumer<Evaluation> {
+
+        private boolean wasCalled = false;
+
+        @Override
+        public void accept(Evaluation evaluation) {
+            wasCalled = true;
+        }
+
+        private void assertWasCalled(boolean expected) {
+            assertEquals("Incorrect state! ", expected, wasCalled);
         }
     }
 

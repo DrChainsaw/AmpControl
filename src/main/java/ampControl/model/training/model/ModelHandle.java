@@ -1,6 +1,6 @@
 package ampControl.model.training.model;
 
-import org.deeplearning4j.eval.Evaluation;
+import ampControl.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
 
@@ -19,18 +19,9 @@ public interface ModelHandle {
     void fit();
 
     /**
-     * Evaluates the model and return the result
-     * @param evals Evaluators to use
-     * @param <T> Type of evaluators
-     * @return Evaluators with statistics
+     * Evaluates the model
      */
-    <T extends IEvaluation> T[] eval(T... evals);
-
-    /**
-     * Create a "template" for evaluation of this model.
-     * @return a "template" for evaluation of this model.
-     */
-    Evaluation createEvalTemplate();
+    void eval();
 
     /**
      * Prepares for another "round" of fitting. Separated from fit as models might (and typically do) share training
@@ -79,4 +70,10 @@ public interface ModelHandle {
      * @param accuracyCallback Will be notified of accuracy per iteration.
      */
     void createTrainingEvalListener(BiConsumer<Integer, Double> accuracyCallback);
+
+    /**
+     * Register a {@link Validation} to perform
+     * @param validationFactory a {@link Validation.Factory} to create the validation.
+     */
+    void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory);
 }

@@ -2,10 +2,7 @@ package ampControl.model.training.model.description;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.data.iterators.preprocs.Cnn2DtoCnn1DInputPreprocessor;
-import ampControl.model.training.model.BlockBuilder;
-import ampControl.model.training.model.GenericModelHandle;
-import ampControl.model.training.model.GraphModelAdapter;
-import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.*;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.PreprocVertex;
 import ampControl.model.training.model.layerblocks.graph.ZeroPad1D;
@@ -36,28 +33,31 @@ public class SampleCnnFactory {
         this.namePrefix = namePrefix;
         this.modelDir = modelDir;
     }
+
     /**
      * Adds the ModelHandles defined by this class to the given list
+     *
      * @param modelData list to add models to
      */
     public void addModelData(List<ModelHandle> modelData) {
         DoubleStream.of(0).forEach(dropOutProb -> {
             // .95 with potential room for improvment after 70k iters
-            BlockBuilder bBuilder = new BlockBuilder()
-                    .setNamePrefix(namePrefix)
-                    //.setUpdater(new Nesterovs(0.9))
-                    .setStartingLearningRate(0.01)
-                    .first(new ConvTimeType(inputShape))
-                    .andThen(new PreprocVertex()
-                            .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))
+            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                    new BlockBuilder()
+                            .setNamePrefix(namePrefix)
+                            //.setUpdater(new Nesterovs(0.9))
+                            .setStartingLearningRate(0.01)
+                            .first(new ConvTimeType(inputShape))
+                            .andThen(new PreprocVertex()
+                                    .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))
 
-                    //"Stem layer"
-                    .andThen(new Conv1D()
-                            .setNrofKernels(256)
-                            .setKernelSize(3)
-                            .setStride(3))
+                            //"Stem layer"
+                            .andThen(new Conv1D()
+                                    .setNrofKernels(256)
+                                    .setKernelSize(3)
+                                    .setStride(3))
 
-                    // Block 1: 128 filters
+                            // Block 1: 128 filters
 //                        .andThenStack(2)
 //                        .aggOf(new Conv1D()
 //                                .setNrofKernels(128)
@@ -65,48 +65,48 @@ public class SampleCnnFactory {
 //                                .setStride(1))
 //                        .andFinally(new Pool1D().setSize(3).setStride(3))
 
-                    // Block 1: 256 filters
-                    .andThenStack(2)
-                    .aggOf(new Conv1D()
-                            .setNrofKernels(256)
-                            .setKernelSize(3)
-                            .setStride(1))
-                    .andFinally(new Pool1D().setSize(3).setStride(3))
+                            // Block 1: 256 filters
+                            .andThenStack(2)
+                            .aggOf(new Conv1D()
+                                    .setNrofKernels(256)
+                                    .setKernelSize(3)
+                                    .setStride(1))
+                            .andFinally(new Pool1D().setSize(3).setStride(3))
 
-                    .multiLevel()
-                    .andThenAgg(new Conv1D()
-                            .setNrofKernels(256)
-                            .setKernelSize(3)
-                            .setStride(1))
-                    //.andThen(new DropOut().setDropProb(0.2))
-                    .andFinally(new Pool1D().setSize(3).setStride(3))
-                    .andThenAgg(new Conv1D()
-                            .setNrofKernels(256)
-                            .setKernelSize(3)
-                            .setStride(1))
-                    //.andThen(new DropOut().setDropProb(0.2))
-                    .andFinally(new Pool1D().setSize(3).setStride(3))
-                    .andThenAgg(new Conv1D()
-                            .setNrofKernels(512)
-                            .setKernelSize(3)
-                            .setStride(1))
-                    .andFinally(new Pool1D().setSize(3).setStride(3))
-                    //End of multilevel
-                    .done()
+                            .multiLevel()
+                            .andThenAgg(new Conv1D()
+                                    .setNrofKernels(256)
+                                    .setKernelSize(3)
+                                    .setStride(1))
+                            //.andThen(new DropOut().setDropProb(0.2))
+                            .andFinally(new Pool1D().setSize(3).setStride(3))
+                            .andThenAgg(new Conv1D()
+                                    .setNrofKernels(256)
+                                    .setKernelSize(3)
+                                    .setStride(1))
+                            //.andThen(new DropOut().setDropProb(0.2))
+                            .andFinally(new Pool1D().setSize(3).setStride(3))
+                            .andThenAgg(new Conv1D()
+                                    .setNrofKernels(512)
+                                    .setKernelSize(3)
+                                    .setStride(1))
+                            .andFinally(new Pool1D().setSize(3).setStride(3))
+                            //End of multilevel
+                            .done()
 
-                    //.andThen(new Dense())
-                    // .andThen(new GlobMeanMax())
-                    .andThenStack(2)
-                    .aggOf(new Dense())
-                    .andFinally(new DropOut().setDropProb(dropOutProb))
-                    .andFinally(new Output(trainIter.totalOutcomes()));
+                            //.andThen(new Dense())
+                            // .andThen(new GlobMeanMax())
+                            .andThenStack(2)
+                            .aggOf(new Dense())
+                            .andFinally(new DropOut().setDropProb(dropOutProb))
+                            .andFinally(new Output(trainIter.totalOutcomes())));
 
             modelData.add(new GenericModelHandle(
                     trainIter,
                     evalIter,
-                    new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())),
-                    bBuilder.getName(),
-                    bBuilder.getAccuracy()));
+                    new GraphModelAdapter(builder.buildGraph()),
+                    builder.name(),
+                    builder.getAccuracy()));
         });
 
 
@@ -203,8 +203,8 @@ public class SampleCnnFactory {
             modelData.add(new GenericModelHandle(
                     trainIter,
                     evalIter,
-                    new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())),
-                    bBuilder.getName(),
+                    new GraphModelAdapter(bBuilder.buildGraph()),
+                    bBuilder.name(),
                     bBuilder.getAccuracy()));
         });
     }

@@ -37,7 +37,7 @@ public class TrainingDescription {
     private final static int trainingIterations = 10; // 10
     private final static int trainBatchSize = 20;   // 32 64
     private final static int evalBatchSize = 20;
-    private final static double evalSetPercentage = 5;
+    private final static double evalSetPercentage = 1;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.

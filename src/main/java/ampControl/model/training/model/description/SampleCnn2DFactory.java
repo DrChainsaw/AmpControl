@@ -2,10 +2,7 @@ package ampControl.model.training.model.description;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.data.iterators.preprocs.CnnHeightWidthSwapInputPreprocessor;
-import ampControl.model.training.model.BlockBuilder;
-import ampControl.model.training.model.GenericModelHandle;
-import ampControl.model.training.model.GraphModelAdapter;
-import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.*;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.PreprocVertex;
 import org.nd4j.linalg.learning.config.Nesterovs;
@@ -42,7 +39,8 @@ public class SampleCnn2DFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
         DoubleStream.of(0).forEach(dropOutProb -> {
-            BlockBuilder bBuilder = new BlockBuilder()
+            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                    new BlockBuilder()
                     .setNamePrefix(namePrefix)
                     .setUpdater(new Nesterovs(0.9))
                     .setStartingLearningRate(0.0005)
@@ -112,14 +110,14 @@ public class SampleCnn2DFactory {
                     .andThenStack(2)
                     .aggOf(new Dense().setHiddenWidth(512))
                     .andFinally(new DropOut().setDropProb(dropOutProb))
-                    .andFinally(new Output(trainIter.totalOutcomes()));
+                    .andFinally(new Output(trainIter.totalOutcomes())));
 
             modelData.add(new GenericModelHandle(
                     trainIter,
                     evalIter,
-                    new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())),
-                    bBuilder.getName(),
-                    bBuilder.getAccuracy()));
+                    new GraphModelAdapter(builder.buildGraph()),
+                    builder.name(),
+                    builder.getAccuracy()));
         });
     }
 }
