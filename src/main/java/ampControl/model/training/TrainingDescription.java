@@ -8,6 +8,7 @@ import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampControl.model.training.data.processing.SilenceProcessor;
 import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.description.ResNetConv2DFactory;
+import ampControl.model.training.model.validation.listen.BufferedTextWriter;
 import ampControl.model.visualize.RealTimePlot;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
@@ -124,7 +125,8 @@ public class TrainingDescription {
 
         TrainingHarness harness = new TrainingHarness(modelData,
                 modelDir.toAbsolutePath().toString(),
-                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"));
+                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
+                BufferedTextWriter.defaultFactory);
         harness.startTraining(4000);
     }
 

@@ -48,11 +48,17 @@ class TrainingHarness {
     private final List<ModelHandle> modelsToTrain;
     private final String modelSaveDir;
     private final Plot.Factory<Integer, Double> plotFactory;
+    private final TextWriter.Factory writerFactory;
 
-    TrainingHarness(List<ModelHandle> modelsToTrain, String modelSaveDir, Plot.Factory<Integer, Double> plotFactory) {
+    TrainingHarness(
+            List<ModelHandle> modelsToTrain,
+            String modelSaveDir,
+            Plot.Factory<Integer, Double> plotFactory,
+            TextWriter.Factory writerFactory) {
         this.modelsToTrain = modelsToTrain;
         this.modelSaveDir = modelSaveDir;
         this.plotFactory = plotFactory;
+        this.writerFactory = writerFactory;
     }
 
     private void addListeners(final List<ModelHandle> models) {
@@ -200,7 +206,7 @@ class TrainingHarness {
     }
 
     private Consumer<Evaluation> createCheckPoint(final ModelHandle model, final String fileBaseName) {
-        final Consumer<Evaluation> scoreCheckPoint = new EvalCheckPoint(fileBaseName, model.name());
+        final Consumer<Evaluation> scoreCheckPoint = new EvalCheckPoint(fileBaseName, model.name(), writerFactory);
         final Consumer<Evaluation> modelCheckPointEc = eval -> {
             try {
                 model.saveModel(fileBaseName);
