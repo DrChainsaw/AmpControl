@@ -1,11 +1,7 @@
 package ampControl.audio.processing;
 
-import ampControl.model.visualize.RealTimePlot;
 import org.jtransforms.dct.DoubleDCT_1D;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -51,23 +47,6 @@ public class Dct implements ProcessingResult.Factory {
                 }
                 return dct;
             });
-        }
-    }
-
-    public static void main(String[] args) {
-        final Dct dct = new Dct();
-        final int size = 1024;
-        List<Integer> freqs = Arrays.asList(17, 50);
-        double[] cosSinSum = IntStream.range(0, size)
-                .mapToDouble(i -> i * 2 * Math.PI / size)
-                .map(d -> freqs.stream().mapToDouble(freq -> Math.cos(freq*d)).sum() + Math.sin(5*d))
-                .toArray();
-        ProcessingResult res = dct.create(new SingletonDoubleInput(cosSinSum));
-        double[] dctData = res.stream().findAny().get()[0];
-        RealTimePlot<Integer, Double> rtp = new RealTimePlot<>("dct", "dummy");
-        for(int i = 0; i < cosSinSum.length; i++) {
-           rtp.plotData("dct", i, dctData[i]/size);
-            rtp.plotData("cos", i, cosSinSum[i]);
         }
     }
 }

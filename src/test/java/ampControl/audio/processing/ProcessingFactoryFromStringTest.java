@@ -31,16 +31,16 @@ public class ProcessingFactoryFromStringTest {
                                 new Pipe(
                                         new Fork(
                                                 new UnitMaxZeroMin(),
-                                                new Mfsc(sampleRate)),
+                                                new ZeroMean()),
                                         new Pipe(
                                                 new Spectrogram(4,1),
-                                                new Mfsc(sampleRate)
+                                                new Log10()
                                         )
                                 )
                         ),
                         new Pipe(
-                                new UnitMaxZeroMin(),
-                                new Mfsc(sampleRate)
+                                new NoProcessing(),
+                                new LogScale()
                         )));
 
         final String str = "weewf21_23fd_" + ProcessingFactoryFromString.prefix() + pp.name() + "_f5re5r7_hy6t8juy45";

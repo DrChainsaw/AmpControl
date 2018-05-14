@@ -8,7 +8,7 @@ import org.nd4j.linalg.activations.impl.ActivationCube;
 
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test cases for {@link Conv2DBatchNormBetween}
@@ -22,6 +22,30 @@ public class Conv2DBatchNormBetweenTest {
      */
     @Test
     public void name() {
+        final int nrofKernels = 666;
+        final int kernelSize = 777;
+        final int stride_h = 888;
+        final int stride_w = 999;
+        final IActivation act = new ActivationCube();
+        String result = new Conv2DBatchNormBetween()
+                .setNrofKernels(nrofKernels)
+                .setKernelSize(kernelSize)
+                .setStride_h(stride_h)
+                .setStride_w(stride_w)
+                .setActivation(act)
+                .name();
+        assertTrue("Parameter not part of name!", result.contains(String.valueOf(nrofKernels)));
+        assertTrue("Parameter not part of name!", result.contains(String.valueOf(kernelSize)));
+        assertTrue("Parameter not part of name!", result.contains(String.valueOf(stride_h)));
+        assertTrue("Parameter not part of name!", result.contains(String.valueOf(stride_w)));
+        assertTrue("Parameter not part of name!", result.contains(LayerBlockConfig.actToStr(act)));
+    }
+
+    /**
+     * Test that name contains all set parameters
+     */
+    @Test
+    public void name2() {
         final int nrofKernels = 666;
         final int kernelSize_h = 777;
         final int kernelSize_w = 888;
