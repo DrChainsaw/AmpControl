@@ -7,7 +7,7 @@ import ampControl.model.training.model.validation.EvalValidation;
 import ampControl.model.training.model.validation.Skipping;
 import ampControl.model.training.model.validation.Validation;
 import ampControl.model.training.model.validation.listen.*;
-import ampControl.model.visualize.RealTimePlot;
+import ampControl.model.visualize.Plot;
 import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
@@ -37,7 +37,6 @@ class TrainingHarness {
     private static final Logger log = LoggerFactory.getLogger(TrainingHarness.class);
 
     private static final boolean doStatsLogging = false;
-    private static final int maxNrofTrainingSteps = 40000;
     private static final int evalEveryNrofSteps = 4;
     private static final String bestSuffix = "_best";
     private static final double saveThreshold = 0.9;
@@ -48,10 +47,12 @@ class TrainingHarness {
 
     private final List<ModelHandle> modelsToTrain;
     private final String modelSaveDir;
+    private final Plot.Factory<Integer, Double> plotFactory;
 
-    TrainingHarness(List<ModelHandle> modelsToTrain, String modelSaveDir) {
+    TrainingHarness(List<ModelHandle> modelsToTrain, String modelSaveDir, Plot.Factory<Integer, Double> plotFactory) {
         this.modelsToTrain = modelsToTrain;
         this.modelSaveDir = modelSaveDir;
+        this.plotFactory = plotFactory;
     }
 
     private void addListeners(final List<ModelHandle> models) {
@@ -70,8 +71,8 @@ class TrainingHarness {
     }
 
     private void addValidation(final List<ModelHandle> models) {
-        final RealTimePlot<Integer, Double> evalPlot = initPlot("Accuracy", models);
-        final RealTimePlot<Integer, Double> scorePlot = initPlot("Score", models);
+        final Plot<Integer, Double> evalPlot = initPlot("Accuracy", models);
+        final Plot<Integer, Double> scorePlot = initPlot("Score", models);
 
         for (ModelHandle mh : models) {
             final IterationSupplier iterationSupplier = new IterationSupplier();
@@ -97,8 +98,8 @@ class TrainingHarness {
         }
     }
 
-    private RealTimePlot<Integer, Double> initPlot(final String title, final List<ModelHandle> models) {
-        final RealTimePlot<Integer, Double> plot = new RealTimePlot<>(title, modelSaveDir + File.separator + "plots");
+    private Plot<Integer, Double> initPlot(final String title, final List<ModelHandle> models) {
+        final Plot<Integer, Double> plot = plotFactory.create(title);
         for (ModelHandle md : models) {
             plot.createSeries(trainEvalName(md.name()));
             plot.createSeries(lastEvalName(md.name()));
@@ -109,8 +110,8 @@ class TrainingHarness {
 
     private Consumer<Evaluation> createEvalConsumer(final ModelHandle model,
                                                     final Supplier<Integer> iterationSupplier,
-                                                    final RealTimePlot<Integer, Double> evalPlot,
-                                                    final RealTimePlot<Integer, Double> scorePlot) {
+                                                    final Plot<Integer, Double> evalPlot,
+                                                    final Plot<Integer, Double> scorePlot) {
         final String lastEvalLabel = lastEvalName(model.name());
         final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(lastEvalLabel, iterationSupplier.get(), eval.accuracy());
         final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(lastEvalLabel, iterationSupplier.get(), model.getModel().score());
@@ -123,7 +124,7 @@ class TrainingHarness {
                         scorePlot.storePlotData(trainEvalName(model.name()));
                         scorePlot.storePlotData(lastEvalLabel);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        log.warn(e.getMessage());
                     }
                 };
 
@@ -160,8 +161,8 @@ class TrainingHarness {
 
     private Consumer<Evaluation> createBestCheckPoint(final ModelHandle model,
                                                       final Supplier<Integer> iterationSupplier,
-                                                      final RealTimePlot<Integer, Double> evalPlot,
-                                                      final RealTimePlot<Integer, Double> scorePlot) {
+                                                      final Plot<Integer, Double> evalPlot,
+                                                      final Plot<Integer, Double> scorePlot) {
         final String fileBaseName = modelSaveDir + File.separator + model.name().hashCode() + bestSuffix;
         final Consumer<Evaluation> saveCheckPoint = createCheckPoint(model, fileBaseName);
 
@@ -175,7 +176,7 @@ class TrainingHarness {
                         evalPlot.storePlotData(bestEvalLabel);
                         scorePlot.storePlotData(bestEvalLabel);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        log.warn(e.getMessage());
                     }
                 };
 
@@ -200,12 +201,22 @@ class TrainingHarness {
 
     private Consumer<Evaluation> createCheckPoint(final ModelHandle model, final String fileBaseName) {
         final Consumer<Evaluation> scoreCheckPoint = new EvalCheckPoint(fileBaseName, model.name());
-        final ModelCheckPoint modelCheckPoint = new ModelCheckPoint(fileBaseName, model.getModel());
-        final Consumer<Evaluation> modelCheckPointEc = eval -> modelCheckPoint.save();
+        final Consumer<Evaluation> modelCheckPointEc = eval -> {
+            try {
+                model.saveModel(fileBaseName);
+            } catch (IOException e) {
+                log.warn(e.getMessage());
+            }
+        };
         return modelCheckPointEc.andThen(scoreCheckPoint);
     }
 
-    void startTraining() {
+    /**
+     * Trains the models
+     *
+     * @param maxNrofTrainingSteps number of training steps
+     */
+    void startTraining(final int maxNrofTrainingSteps) {
 
         addListeners(modelsToTrain);
         addValidation(modelsToTrain);

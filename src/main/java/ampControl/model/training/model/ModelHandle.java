@@ -4,6 +4,7 @@ import ampControl.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
 
+import java.io.IOException;
 import java.util.function.BiConsumer;
 
 /**
@@ -76,4 +77,10 @@ public interface ModelHandle {
      * @param validationFactory a {@link Validation.Factory} to create the validation.
      */
     void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory);
+
+    /**
+     * Serialize the model to a file with the given name.
+     * @param fileName the filename
+     */
+    void saveModel(String fileName) throws IOException;
 }

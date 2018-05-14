@@ -1,18 +1,22 @@
 
 package ampControl.model.visualize;
 
-import java.io.*;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
+import org.jetbrains.annotations.NotNull;
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
 import org.knowm.xchart.XYSeries;
 import org.knowm.xchart.style.Styler;
 import org.knowm.xchart.style.Styler.ChartTheme;
+
+import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Real time updatable plot with support for an arbitrary number of series. Can also serialize the plotted data and
@@ -23,7 +27,7 @@ import org.knowm.xchart.style.Styler.ChartTheme;
  *
  * @author Christian Skärby
  */
-public class RealTimePlot<X extends Number, Y extends Number> {
+public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X, Y> {
 
     private final String title;
     private final XYChart xyChart;
@@ -62,7 +66,7 @@ public class RealTimePlot<X extends Number, Y extends Number> {
             }
         }
 
-        public void createSeries(XYChart xyChart, SwingWrapper<XYChart> swingWrapper) {
+        private void createSeries(XYChart xyChart, SwingWrapper<XYChart> swingWrapper) {
             if(xData.size() == 0) {
                 xyChart.addSeries(series, Arrays.asList(0), Arrays.asList(1));
             } else {
@@ -95,31 +99,22 @@ public class RealTimePlot<X extends Number, Y extends Number> {
         this.plotDir = plotDir;
     }
 
-    /**
-     * Plot some data belonging to a certain label. Will be appended to an existing timeseries of such exists, either in
-     * an existing window or in serialized format in the plotDir. If no timeseries with the given label exists it will
-     * be created in the window of this plot instance.
-     * @param label time series label
-     * @param x point on x axis
-     * @param y point on y axis
-     */
+    @Override
     public void plotData(String label, X x, Y y) {
-        // new Thread(() -> {
         DataXY<X,Y> data = plotSeries.get(label);
         if (data == null) {
-            data = createSeries(label);
+            data = getOrCreateSeries(label);
         }
         data.addPoint(x, y, xyChart, swingWrapper);
-        //  }).start();
     }
 
-    /**
-     * Creates a time series for the given label. If data with the given label exists in serialized format in the
-     * plotDir the time series of that data will be recreated.
-     * @param label
-     * @return
-     */
-    public DataXY<X,Y> createSeries(String label) {
+    @Override
+    public void createSeries(String label) {
+        getOrCreateSeries(label);
+    }
+
+    @NotNull
+    private DataXY<X, Y> getOrCreateSeries(String label) {
         DataXY<X,Y> data = plotSeries.get(label);
         if (data == null) {
             data = restoreOrCreatePlotData(label);
@@ -129,11 +124,7 @@ public class RealTimePlot<X extends Number, Y extends Number> {
         return data;
     }
 
-    /**
-     * Serialize the data for the given label into a file in the plotDir.
-     * @param label
-     * @throws IOException
-     */
+    @Override
     public void storePlotData(String label) throws IOException {
             DataXY<X,Y> data = plotSeries.get(label);
             if(data != null) {

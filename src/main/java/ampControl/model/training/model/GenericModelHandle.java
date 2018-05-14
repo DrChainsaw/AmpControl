@@ -6,10 +6,13 @@ import ampControl.model.training.listen.TrainEvaluator;
 import ampControl.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
+import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -89,6 +92,12 @@ public class GenericModelHandle implements ModelHandle {
     @Override
     public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
         validations.add(validationFactory.create(evalIter.getLabels()));
+    }
+
+    @Override
+    public void saveModel(String fileName) throws IOException {
+        log.info("Saving model: " + name());
+        ModelSerializer.writeModel(model.asModel(), new File(fileName), true);
     }
 
     @Override

@@ -8,11 +8,13 @@ import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampControl.model.training.data.processing.SilenceProcessor;
 import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.description.ResNetConv2DFactory;
+import ampControl.model.visualize.RealTimePlot;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -120,8 +122,10 @@ public class TrainingDescription {
             log.info(md.name() + ": score: " + md.getBestEvalScore());
         }
 
-        TrainingHarness harness = new TrainingHarness(modelData, modelDir.toAbsolutePath().toString());
-        harness.startTraining();
+        TrainingHarness harness = new TrainingHarness(modelData,
+                modelDir.toAbsolutePath().toString(),
+                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"));
+        harness.startTraining(4000);
     }
 
     private static void createModels(final ProcessingResult.Factory audioPostProcessingFactory, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {
