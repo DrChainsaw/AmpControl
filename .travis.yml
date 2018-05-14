@@ -1,5 +1,5 @@
 language: java
-sudo: false
+sudo: required
 env:
   global:
     - CC_TEST_REPORTER_ID=e35562b8a6ef581798be079625fa963012327fc15a4707ec8ee2d2f28d580558

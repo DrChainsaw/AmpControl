@@ -17,6 +17,13 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+/**
+ * Factory for creating a {@link AmpInterface} which sets the program on a generic MIDI device based on
+ * label probabilities.
+ *
+ * @author Christian Skärby
+ *
+ */
 public class MidiProgChangeFactory implements AmpInterface.Factory {
 
     @Parameter(names = {"-midiDevice, -md"}, description = "Which midi device to send program change to based on classification",
