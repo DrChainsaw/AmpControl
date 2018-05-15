@@ -137,7 +137,7 @@ class TrainingHarness {
         final EvalLog evalLog = new EvalLog(model.name(), model.getBestEvalScore());
 
         return new NewThread<>( // Background work
-                new Synced<>( // To avoid mixed up loggig
+                new Synced<>( // To avoid mixed up logging
                         this,
                         evalLog
                                 .andThen(plotEval)
@@ -150,16 +150,7 @@ class TrainingHarness {
         final Consumer<Evaluation> saveCheckPoint = createCheckPoint(model, fileBaseName);
 
 
-        final Predicate<Evaluation> gate = new Predicate<Evaluation>() {
-            private double bestAccuracy = model.getBestEvalScore();
-
-            @Override
-            public boolean test(Evaluation eval) {
-                boolean ok = eval.accuracy() >= saveThreshold * bestAccuracy;
-                bestAccuracy = Math.max(eval.accuracy(), bestAccuracy);
-                return ok;
-            }
-        };
+        final Predicate<Evaluation> gate = new AccuracyImproved(model.getBestEvalScore(), saveThreshold);
 
         return new NewThread<>( // Background work
                 new Gated<>(saveCheckPoint, gate));
@@ -187,16 +178,7 @@ class TrainingHarness {
                 };
 
 
-        final Predicate<Evaluation> gate = new Predicate<Evaluation>() {
-            private double bestAccuracy = model.getBestEvalScore();
-
-            @Override
-            public boolean test(Evaluation eval) {
-                boolean ok = eval.accuracy() >= bestAccuracy;
-                bestAccuracy = Math.max(eval.accuracy(), bestAccuracy);
-                return ok;
-            }
-        };
+        final Predicate<Evaluation> gate = new AccuracyImproved(model.getBestEvalScore());
 
         return new NewThread<>( // Background work
                 new Gated<>(saveCheckPoint
@@ -252,4 +234,5 @@ class TrainingHarness {
     private String bestEvalName(String modelName) {
         return bestEvalPrefix + modelName.hashCode();
     }
+
 }

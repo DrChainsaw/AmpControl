@@ -42,7 +42,6 @@ public class TrainingHarnessTest {
         models.forEach(model -> model.assertNrofSaveFileNames(2));
     }
 
-
     private static class ProbeModelHandle implements ModelHandle {
 
         private int nrofFitCalls = 0;
@@ -53,7 +52,6 @@ public class TrainingHarnessTest {
         private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
         private final List<String> labels = Arrays.asList("greg", "grgrhh");
         private final Set<String> savedModelNames = new HashSet<>();
-
 
         private ProbeModelHandle(String name) {
             this.name = name;
@@ -84,7 +82,7 @@ public class TrainingHarnessTest {
         }
 
         private void assertNrofSaveFileNames(int expected) {
-            assertEquals("Incorrect number of fit calls!", expected, savedModelNames.size());
+            assertEquals("Incorrect number of save model names: " + savedModelNames, expected, savedModelNames.size());
         }
 
         @Override
