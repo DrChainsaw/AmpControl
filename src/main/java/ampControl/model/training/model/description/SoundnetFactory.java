@@ -117,8 +117,7 @@ public class SoundnetFactory {
                     trainIter,
                     evalIter,
                     new GraphModelAdapter(builder.buildGraph()),
-                    builder.name(),
-                    builder.getAccuracy()));
+                    builder.name()));
         });
     }
 }

@@ -94,8 +94,7 @@ public class ResNetConv2DFactory {
                             trainIter,
                             evalIter,
                             new GraphModelAdapter(builder.buildGraph()),
-                            builder.name(),
-                            builder.getAccuracy()));
+                            builder.name()));
                 })
             )
         );

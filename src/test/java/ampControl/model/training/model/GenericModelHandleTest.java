@@ -46,7 +46,7 @@ public class GenericModelHandleTest {
         final CachingDataSetIterator trainIter = new CachingDataSetIterator(addIter, 2);
         final CachingDataSetIterator evalIter = new CachingDataSetIterator(addIter, 10);
         final ModelHandle toTest = new GenericModelHandle(trainIter, evalIter, new MultiLayerModelAdapter(createPosNegNetwork()),
-                "addModel", 0);
+                "addModel");
         for (int i = 0; i < 30; i++) {
             toTest.fit();
             toTest.resetTraining();

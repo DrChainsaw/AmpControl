@@ -60,8 +60,7 @@ public class LstmTimeSeqFactory {
                     evalIter,
                     new ModelAdapterWithPreProc(new CnnToRnnToLastStepToFfPreProcessor(),
                             new GraphModelAdapter(builder.buildGraph())),
-                    builder.name(),
-                    builder.getAccuracy()));
+                    builder.name()));
 
         });
     }

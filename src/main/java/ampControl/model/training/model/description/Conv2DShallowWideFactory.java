@@ -76,8 +76,7 @@ public class Conv2DShallowWideFactory {
                     trainIter,
                     evalIter,
                     new GraphModelAdapter(builder.buildGraph()),
-                    builder.name(),
-                    builder.getAccuracy()));
+                    builder.name()));
         });
     }
 }

@@ -40,7 +40,6 @@ public class GenericModelHandle implements ModelHandle {
     private Optional<TrainEvaluator> trainEvaluatorListener = Optional.empty();
     private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
 
-    private double bestEvalScore;
     private int nanTimeOutTimer = nanTimeOutTime;
 
     /**
@@ -50,15 +49,12 @@ public class GenericModelHandle implements ModelHandle {
      * @param evalIter      Provides evaluation samples.
      * @param model         Model to fit/evaluate
      * @param name          Name of the model
-     * @param bestEvalScore Initial best evaluation metric found so far.
      */
-    public GenericModelHandle(CachingDataSetIterator trainingIter, CachingDataSetIterator evalIter, ModelAdapter model, String name,
-                              double bestEvalScore) {
+    public GenericModelHandle(CachingDataSetIterator trainingIter, CachingDataSetIterator evalIter, ModelAdapter model, String name) {
         this.trainingIter = trainingIter;
         this.evalIter = evalIter;
         this.model = model;
         this.name = name;
-        this.bestEvalScore = bestEvalScore;
 
         model.asModel().addListeners(new NanScoreWatcher(() -> nanTimeOutTimer = 0));
     }
@@ -106,11 +102,6 @@ public class GenericModelHandle implements ModelHandle {
     }
 
     @Override
-    public double getBestEvalScore() {
-        return bestEvalScore;
-    }
-
-    @Override
     public void fit() {
         if (nanTimeOutTimer < nanTimeOutTime) {
             //TODO: reload model when timer is up
@@ -126,7 +117,6 @@ public class GenericModelHandle implements ModelHandle {
         trainEvaluatorListener.ifPresent(te -> te.setLabels(labels));
         trainingIter.resetCursor();
         // TODO: Move into listener??
-        log.info("Training model with curr best " + getBestEvalScore() + ", name: " + name());
         final long starttime = System.nanoTime();
         model.fit(trainingIter);
         final long endtime = System.nanoTime();
@@ -151,8 +141,6 @@ public class GenericModelHandle implements ModelHandle {
                 .toArray(IEvaluation[]::new);
 
         if (evalArr.length > 0) {
-            // TODO: Move into validation??
-            log.info("Begin eval of " + name());
             final long starttime = System.nanoTime();
             model.eval(evalIter, evalArr);
             final long endtime = System.nanoTime();

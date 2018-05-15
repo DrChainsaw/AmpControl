@@ -83,16 +83,6 @@ public class TrainingDescription {
         final int timeWindowSizeMs = 50;
 
 
-//        final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new Pipe(
-//                //      new Pipe(
-//                new Spectrogram(256, 32),
-//                //new Mfsc(clipSamplingRate)),
-//                new LogScale()
-//                //  ),
-//
-//                //  new UnitStdZeroMean()
-//        );
-
         final ProcessingResult.Factory audioPostProcessingFactory= new Pipe(
                 new Spectrogram(256, 16),
                 new Fork(
@@ -106,22 +96,9 @@ public class TrainingDescription {
                 )
         );
 
-        //  final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new UnitMaxZeroMean();
-
-
-//                () -> new Pipe(
-//                new Spectrogrammm(512, 32, 1),
-//                new UnitStdZeroMean()
-//        );
-
         createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
 
-
         //NativeOpsHolder.getInstance().getDeviceNativeOps().setOmpNumThreads(1);
-
-        for (ModelHandle md : modelData) {
-            log.info(md.name() + ": score: " + md.getBestEvalScore());
-        }
 
         TrainingHarness harness = new TrainingHarness(modelData,
                 modelDir.toAbsolutePath().toString(),

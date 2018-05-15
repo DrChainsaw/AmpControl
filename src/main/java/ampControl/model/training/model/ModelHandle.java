@@ -37,12 +37,6 @@ public interface ModelHandle {
     String name();
 
     /**
-     * Returns the best evaluation score so far. Higher is better.
-     * @return the best evaluation score so far
-     */
-    double getBestEvalScore();
-
-    /**
      * Returns the {@link Model}
      * @return the {@link Model}
      */

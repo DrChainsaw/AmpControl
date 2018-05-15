@@ -96,11 +96,6 @@ public class TrainingHarnessTest {
         }
 
         @Override
-        public double getBestEvalScore() {
-            return 0;
-        }
-
-        @Override
         public Model getModel() {
             return model;
         }

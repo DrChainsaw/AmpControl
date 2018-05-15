@@ -96,8 +96,7 @@ public class StackedConv2DFactory {
                             trainIter,
                             evalIter,
                             new GraphModelAdapter(builder.buildGraph()),
-                            builder.name(),
-                            builder.getAccuracy()));
+                            builder.name()));
                 })
             )
         );

@@ -29,13 +29,4 @@ public interface ModelBuilder {
      * @return the name of the model the builder will create.
      */
     String name();
-
-    /**
-     * Returns the accuracy of the model.
-     *
-     * @return the accuracy.
-     */
-    default double getAccuracy() {
-        return 0;
-    }
 }

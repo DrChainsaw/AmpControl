@@ -19,25 +19,37 @@ public class Skipping<T extends IEvaluation> implements Validation<T> {
 
     private final Validation<T> sourceValidation;
     private final Function<T, Integer> metricToNrToSkip;
+    private final String logPrefix;
 
     private int nrofValidationsToSkip;
     private Optional<T> last = Optional.empty();
 
-    public Skipping(Function<T, Integer> metricToNrToSkip, Validation<T> sourceValidation) {
-        this(metricToNrToSkip, 0, sourceValidation);
+    Skipping(Function<T, Integer> metricToNrToSkip, Validation<T> sourceValidation) {
+        this(metricToNrToSkip, 0, "", sourceValidation);
     }
 
-    public Skipping(Function<T, Integer> metricToNrToSkip, int intialNrToSkip, Validation<T> sourceValidation) {
+    public Skipping(Function<T, Integer> metricToNrToSkip, String logPrefix, Validation<T> sourceValidation) {
+        this(metricToNrToSkip, 0, logPrefix, sourceValidation);
+    }
+
+    public Skipping(Function<T, Integer> metricToNrToSkip, int initialNrToSkip, Validation<T> sourceValidation) {
+        this(metricToNrToSkip, initialNrToSkip, "", sourceValidation);
+    }
+
+    public Skipping(Function<T, Integer> metricToNrToSkip, int initialNrToSkip, String logPrefix, Validation<T> sourceValidation) {
         this.sourceValidation = sourceValidation;
         this.metricToNrToSkip = metricToNrToSkip;
-        this.nrofValidationsToSkip = intialNrToSkip;
+        this.nrofValidationsToSkip = initialNrToSkip;
+        this.logPrefix = logPrefix;
     }
 
     @Override
     public Optional<T> get() {
         if(nrofValidationsToSkip > 0) {
+            if(!logPrefix.isEmpty()) {
+                log.info(logPrefix + nrofValidationsToSkip);
+            }
             nrofValidationsToSkip--;
-            log.info("Skip eval! " + nrofValidationsToSkip);
             return Optional.empty();
         }
         last = sourceValidation.get();

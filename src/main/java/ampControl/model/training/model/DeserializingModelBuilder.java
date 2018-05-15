@@ -67,14 +67,4 @@ public class DeserializingModelBuilder implements ModelBuilder {
         return sourceBuilder.name();
     }
 
-    /**
-     * Returns the accuracy of the model. Only non-zero if a serialized model with the same name was loaded when calling
-     * build or buildGraph.
-     *
-     * @return the accuracy.
-     */
-    @Override
-    public double getAccuracy() {
-        return 0;
-    }
 }

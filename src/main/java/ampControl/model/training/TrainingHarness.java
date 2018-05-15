@@ -4,6 +4,7 @@ import ampControl.model.training.listen.IterationSupplier;
 import ampControl.model.training.listen.TrainScoreListener;
 import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.validation.EvalValidation;
+import ampControl.model.training.model.validation.Listening;
 import ampControl.model.training.model.validation.Skipping;
 import ampControl.model.training.model.validation.Validation;
 import ampControl.model.training.model.validation.listen.*;
@@ -83,27 +84,24 @@ class TrainingHarness {
 
             try {
                 final BestEvalScore bestEvalScore = new BestEvalScore(fileBaseName + bestSuffix + scoreSuffix);
-                log.info("score for model: " + bestEvalScore.get());
+                log.info("Accuracy for model " + model.name() + ": " + bestEvalScore.get());
                 IterationSupplier iterListener = new IterationSupplier();
                 model.getModel().addListeners(iterListener);
 
                 final Consumer<Evaluation> listener =
-                        createEvalConsumer(iterListener)
+                        createEvalConsumer(bestEvalScore, iterListener)
                                 .andThen(createLastCheckPoint(bestEvalScore))
                                 .andThen(createBestCheckPoint(bestEvalScore, iterListener))
                                 .andThen(bestEvalScore);
 
-                return new Skipping<>(eval -> evalEveryNrofSteps, 2,
-                        new Skipping<>(eval -> (int) Math.floor(10 * (1 - eval.accuracy())), // TODO: Break out and test?
-                                new EvalValidation(new Evaluation(labels), listener)
-                        )
-                );
+                return decorate(new EvalValidation(new Evaluation(labels), listener), bestEvalScore);
+
             } catch (IOException e) {
                 throw new RuntimeException("Could not load file for model " + model.name() + "!", e);
             }
         }
 
-        private Consumer<Evaluation> createEvalConsumer(final Supplier<Integer> iterationSupplier) {
+        private Consumer<Evaluation> createEvalConsumer(final Supplier<Double> bestEvalSupplier, final Supplier<Integer> iterationSupplier) {
             final String lastEvalLabel = lastEvalName(model.name());
             final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(lastEvalLabel, iterationSupplier.get(), eval.accuracy());
             final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(lastEvalLabel, iterationSupplier.get(), model.getModel().score());
@@ -120,7 +118,7 @@ class TrainingHarness {
                         }
                     };
 
-            final EvalLog evalLog = new EvalLog(model.name(), model.getBestEvalScore());
+            final EvalLog evalLog = new EvalLog(model.name(), bestEvalSupplier);
 
             return new NewThread<>( // Background work
                     new Synced<>( // To avoid mixed up logging
@@ -178,6 +176,22 @@ class TrainingHarness {
             };
             return modelCheckPointEc.andThen(scoreCheckPoint);
         }
+
+        private Validation<Evaluation> decorate(final Validation<Evaluation> evaluationValidation, final Supplier<Double> bestEvalSupplier) {
+            final Consumer<Boolean> logEval = willEval -> {
+                if (willEval) {
+                    log.info("Begin eval of " + model.name());
+                }
+            };
+            final Consumer<Boolean> logAccuracy = willEval -> log.info("Current best " + bestEvalSupplier.get() + " for model: " + model.name());
+            return new Listening<>(logAccuracy.andThen(logEval),
+                    new Skipping<>(eval -> evalEveryNrofSteps, 2,
+                            new Skipping<>(eval -> (int) Math.floor(10 * (1 - eval.accuracy())), "Skip eval: ", // TODO: Break out and test?
+                                    evaluationValidation
+                            )
+                    )
+            );
+        }
     }
 
     private void addListeners(final List<ModelHandle> models) {
@@ -231,6 +245,7 @@ class TrainingHarness {
         for (int trainingStep = 0; trainingStep < maxNrofTrainingSteps; trainingStep++) {
             log.info("****************************** Training step " + trainingStep + " started! ***************************************");
             for (ModelHandle mh : modelsToTrain) {
+                log.info("Training model: " + mh.name());
                 mh.fit();
             }
 

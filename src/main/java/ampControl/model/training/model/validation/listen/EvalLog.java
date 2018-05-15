@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Logs evaluation results
@@ -15,14 +16,13 @@ public class EvalLog implements Consumer<Evaluation> {
     private static final Logger log = LoggerFactory.getLogger(EvalLog.class);
 
     private final String modelName;
-
-    private double bestAccuracy;
+    private final Supplier<Double> bestAccuracy;
 
     /**
      * Constructor
      * @param modelName name of model for which evaluation is provided
      */
-    public EvalLog(String modelName, double bestAccuracy) {
+    public EvalLog(String modelName, Supplier<Double> bestAccuracy) {
         this.modelName = modelName;
         this.bestAccuracy = bestAccuracy;
     }
@@ -30,10 +30,9 @@ public class EvalLog implements Consumer<Evaluation> {
     @Override
     public void accept(Evaluation eval) {
         final double newAccuracy = eval.accuracy();
-        bestAccuracy = Math.max(bestAccuracy, newAccuracy);
         log.info("Eval report for " + modelName);
         log.info(eval.stats());
         log.info("\n" + eval.confusionToString());
-        log.info("Accuracy = " + newAccuracy + " Best: " + bestAccuracy);
+        log.info("Accuracy = " + newAccuracy + " Best: " + bestAccuracy.get());
     }
 }

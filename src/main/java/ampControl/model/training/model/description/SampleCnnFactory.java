@@ -105,8 +105,7 @@ public class SampleCnnFactory {
                     trainIter,
                     evalIter,
                     new GraphModelAdapter(builder.buildGraph()),
-                    builder.name(),
-                    builder.getAccuracy()));
+                    builder.name()));
         });
 
 
@@ -204,8 +203,7 @@ public class SampleCnnFactory {
                     trainIter,
                     evalIter,
                     new GraphModelAdapter(bBuilder.buildGraph()),
-                    bBuilder.name(),
-                    bBuilder.getAccuracy()));
+                    bBuilder.name()));
         });
     }
 }

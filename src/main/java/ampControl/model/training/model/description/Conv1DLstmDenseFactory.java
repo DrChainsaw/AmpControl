@@ -95,8 +95,7 @@ public class Conv1DLstmDenseFactory {
                         evalIter,
                         new ModelAdapterWithPreProc(rnnPreproc,
                                 new GraphModelAdapter(builder.buildGraph())),
-                        builder.name(),
-                        builder.getAccuracy()));
+                        builder.name()));
             });
         });
     }
