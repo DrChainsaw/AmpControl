@@ -39,6 +39,7 @@ class TrainingHarness {
     private static final boolean doStatsLogging = false;
     private static final int evalEveryNrofSteps = 4;
     private static final String bestSuffix = "_best";
+    private static final String scoreSuffix = ".score";
     private static final double saveThreshold = 0.9;
 
     private static final String trainEvalPrefix = "Train";
@@ -61,6 +62,124 @@ class TrainingHarness {
         this.writerFactory = writerFactory;
     }
 
+    private final class EvalValidationFactory implements Validation.Factory<Evaluation> {
+
+        private final ModelHandle model;
+        private final Plot<Integer, Double> evalPlot;
+        private final Plot<Integer, Double> scorePlot;
+        private final String fileBaseName;
+
+        private EvalValidationFactory(ModelHandle model,
+                                      Plot<Integer, Double> evalPlot,
+                                      Plot<Integer, Double> scorePlot) {
+            this.model = model;
+            this.evalPlot = evalPlot;
+            this.scorePlot = scorePlot;
+            this.fileBaseName = modelSaveDir + File.separator + model.name().hashCode();
+        }
+
+        @Override
+        public Validation<Evaluation> create(List<String> labels) {
+
+            try {
+                final BestEvalScore bestEvalScore = new BestEvalScore(fileBaseName + bestSuffix + scoreSuffix);
+                log.info("score for model: " + bestEvalScore.get());
+                IterationSupplier iterListener = new IterationSupplier();
+                model.getModel().addListeners(iterListener);
+
+                final Consumer<Evaluation> listener =
+                        createEvalConsumer(iterListener)
+                                .andThen(createLastCheckPoint(bestEvalScore))
+                                .andThen(createBestCheckPoint(bestEvalScore, iterListener))
+                                .andThen(bestEvalScore);
+
+                return new Skipping<>(eval -> evalEveryNrofSteps, 2,
+                        new Skipping<>(eval -> (int) Math.floor(10 * (1 - eval.accuracy())), // TODO: Break out and test?
+                                new EvalValidation(new Evaluation(labels), listener)
+                        )
+                );
+            } catch (IOException e) {
+                throw new RuntimeException("Could not load file for model " + model.name() + "!", e);
+            }
+        }
+
+        private Consumer<Evaluation> createEvalConsumer(final Supplier<Integer> iterationSupplier) {
+            final String lastEvalLabel = lastEvalName(model.name());
+            final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(lastEvalLabel, iterationSupplier.get(), eval.accuracy());
+            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(lastEvalLabel, iterationSupplier.get(), model.getModel().score());
+
+            final Consumer<Evaluation> storePlots =
+                    eval -> {
+                        try {
+                            evalPlot.storePlotData(trainEvalName(model.name()));
+                            evalPlot.storePlotData(lastEvalLabel);
+                            scorePlot.storePlotData(trainEvalName(model.name()));
+                            scorePlot.storePlotData(lastEvalLabel);
+                        } catch (IOException e) {
+                            log.warn(e.getMessage());
+                        }
+                    };
+
+            final EvalLog evalLog = new EvalLog(model.name(), model.getBestEvalScore());
+
+            return new NewThread<>( // Background work
+                    new Synced<>( // To avoid mixed up logging
+                            this,
+                            evalLog
+                                    .andThen(plotEval)
+                                    .andThen(plotScore)
+                                    .andThen(storePlots)));
+        }
+
+        private Consumer<Evaluation> createLastCheckPoint(final Supplier<Double> bestEvalSupplier) {
+            final Consumer<Evaluation> saveCheckPoint = createCheckPoint(fileBaseName);
+
+            final Predicate<Evaluation> gate = eval -> eval.accuracy() >= bestEvalSupplier.get() * saveThreshold;
+
+            return new NewThread<>( // Background work
+                    new Gated<>(saveCheckPoint, gate));
+        }
+
+        private Consumer<Evaluation> createBestCheckPoint(final Supplier<Double> bestEvalSupplier,
+                                                          final Supplier<Integer> iterationSupplier) {
+            final Consumer<Evaluation> saveCheckPoint = createCheckPoint(fileBaseName + bestSuffix);
+
+            final String bestEvalLabel = bestEvalName(model.name());
+            final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(bestEvalLabel, iterationSupplier.get(), eval.accuracy());
+            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(bestEvalLabel, iterationSupplier.get(), model.getModel().score());
+
+            final Consumer<Evaluation> storePlots =
+                    eval -> {
+                        try {
+                            evalPlot.storePlotData(bestEvalLabel);
+                            scorePlot.storePlotData(bestEvalLabel);
+                        } catch (IOException e) {
+                            log.warn(e.getMessage());
+                        }
+                    };
+
+            final Predicate<Evaluation> gate = eval -> eval.accuracy() >= bestEvalSupplier.get();
+
+            return new NewThread<>( // Background work
+                    new Gated<>(saveCheckPoint
+                            .andThen(plotEval)
+                            .andThen(plotScore)
+                            .andThen(storePlots), gate));
+        }
+
+        private Consumer<Evaluation> createCheckPoint(final String fileBaseName) {
+            final Consumer<Evaluation> scoreCheckPoint = new EvalCheckPoint(fileBaseName + scoreSuffix, model.name(), writerFactory);
+            final Consumer<Evaluation> modelCheckPointEc = eval -> {
+                try {
+                    model.saveModel(fileBaseName);
+                } catch (IOException e) {
+                    log.warn(e.getMessage());
+                }
+            };
+            return modelCheckPointEc.andThen(scoreCheckPoint);
+        }
+    }
+
     private void addListeners(final List<ModelHandle> models) {
 
         for (final ModelHandle md : models) {
@@ -81,26 +200,10 @@ class TrainingHarness {
         final Plot<Integer, Double> scorePlot = initPlot("Score", models);
 
         for (ModelHandle mh : models) {
-            final IterationSupplier iterationSupplier = new IterationSupplier();
-            mh.getModel().addListeners(iterationSupplier);
-
             final String trainName = trainEvalName(mh.name());
             mh.getModel().addListeners(new TrainScoreListener(mh.getNrofBatchesForTraining(), (i, s) -> scorePlot.plotData(trainName, i, s)));
             mh.createTrainingEvalListener((i, e) -> evalPlot.plotData(trainName, i, e));
-
-            final Validation.Factory<Evaluation> evaluationValidation = (labels -> {
-                final Consumer<Evaluation> listener = createEvalConsumer(mh, iterationSupplier, evalPlot, scorePlot)
-                        .andThen(createLastCheckPoint(mh))
-                        .andThen(createBestCheckPoint(mh, iterationSupplier, evalPlot, scorePlot));
-
-
-                return new Skipping<>(
-                        new Skipping<>(
-                                new EvalValidation(new Evaluation(labels), listener),
-                                eval -> (int) Math.floor(10 * (1 - eval.accuracy()))), // TODO: Break out and test?
-                        eval -> evalEveryNrofSteps, 2);
-            });
-            mh.registerValidation(evaluationValidation);
+            mh.registerValidation(new EvalValidationFactory(mh, evalPlot, scorePlot));
         }
     }
 
@@ -112,91 +215,6 @@ class TrainingHarness {
             plot.createSeries(bestEvalName(md.name()));
         }
         return plot;
-    }
-
-    private Consumer<Evaluation> createEvalConsumer(final ModelHandle model,
-                                                    final Supplier<Integer> iterationSupplier,
-                                                    final Plot<Integer, Double> evalPlot,
-                                                    final Plot<Integer, Double> scorePlot) {
-        final String lastEvalLabel = lastEvalName(model.name());
-        final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(lastEvalLabel, iterationSupplier.get(), eval.accuracy());
-        final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(lastEvalLabel, iterationSupplier.get(), model.getModel().score());
-
-        final Consumer<Evaluation> storePlots =
-                eval -> {
-                    try {
-                        evalPlot.storePlotData(trainEvalName(model.name()));
-                        evalPlot.storePlotData(lastEvalLabel);
-                        scorePlot.storePlotData(trainEvalName(model.name()));
-                        scorePlot.storePlotData(lastEvalLabel);
-                    } catch (IOException e) {
-                        log.warn(e.getMessage());
-                    }
-                };
-
-        final EvalLog evalLog = new EvalLog(model.name(), model.getBestEvalScore());
-
-        return new NewThread<>( // Background work
-                new Synced<>( // To avoid mixed up logging
-                        this,
-                        evalLog
-                                .andThen(plotEval)
-                                .andThen(plotScore)
-                                .andThen(storePlots)));
-    }
-
-    private Consumer<Evaluation> createLastCheckPoint(final ModelHandle model) {
-        final String fileBaseName = modelSaveDir + File.separator + model.name().hashCode();
-        final Consumer<Evaluation> saveCheckPoint = createCheckPoint(model, fileBaseName);
-
-
-        final Predicate<Evaluation> gate = new AccuracyImproved(model.getBestEvalScore(), saveThreshold);
-
-        return new NewThread<>( // Background work
-                new Gated<>(saveCheckPoint, gate));
-    }
-
-    private Consumer<Evaluation> createBestCheckPoint(final ModelHandle model,
-                                                      final Supplier<Integer> iterationSupplier,
-                                                      final Plot<Integer, Double> evalPlot,
-                                                      final Plot<Integer, Double> scorePlot) {
-        final String fileBaseName = modelSaveDir + File.separator + model.name().hashCode() + bestSuffix;
-        final Consumer<Evaluation> saveCheckPoint = createCheckPoint(model, fileBaseName);
-
-        final String bestEvalLabel = bestEvalName(model.name());
-        final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(bestEvalLabel, iterationSupplier.get(), eval.accuracy());
-        final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(bestEvalLabel, iterationSupplier.get(), model.getModel().score());
-
-        final Consumer<Evaluation> storePlots =
-                eval -> {
-                    try {
-                        evalPlot.storePlotData(bestEvalLabel);
-                        scorePlot.storePlotData(bestEvalLabel);
-                    } catch (IOException e) {
-                        log.warn(e.getMessage());
-                    }
-                };
-
-
-        final Predicate<Evaluation> gate = new AccuracyImproved(model.getBestEvalScore());
-
-        return new NewThread<>( // Background work
-                new Gated<>(saveCheckPoint
-                        .andThen(plotEval)
-                        .andThen(plotScore)
-                        .andThen(storePlots), gate));
-    }
-
-    private Consumer<Evaluation> createCheckPoint(final ModelHandle model, final String fileBaseName) {
-        final Consumer<Evaluation> scoreCheckPoint = new EvalCheckPoint(fileBaseName, model.name(), writerFactory);
-        final Consumer<Evaluation> modelCheckPointEc = eval -> {
-            try {
-                model.saveModel(fileBaseName);
-            } catch (IOException e) {
-                log.warn(e.getMessage());
-            }
-        };
-        return modelCheckPointEc.andThen(scoreCheckPoint);
     }
 
     /**

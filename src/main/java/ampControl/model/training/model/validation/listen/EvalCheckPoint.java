@@ -12,17 +12,17 @@ import java.util.function.Consumer;
  */
 public class EvalCheckPoint implements Consumer<Evaluation> {
 
-    private final String fileBaseName;
+    private final String fileName;
     private final String modelName;
     private final TextWriter.Factory writerFactory;
 
     /**
      * Constructor
-     * @param fileBaseName base name of the file
+     * @param fileName name of the file to write evaluation to
      * @param modelName Name of the model
      */
-    public EvalCheckPoint(String fileBaseName, String modelName, TextWriter.Factory writerFactory) {
-        this.fileBaseName = fileBaseName;
+    public EvalCheckPoint(String fileName, String modelName, TextWriter.Factory writerFactory) {
+        this.fileName = fileName;
         this.modelName = modelName;
         this.writerFactory = writerFactory;
     }
@@ -30,7 +30,7 @@ public class EvalCheckPoint implements Consumer<Evaluation> {
     @Override
     public void accept(Evaluation eval) {
         try {
-            Path path = Paths.get(fileBaseName + ".score");
+            Path path = Paths.get(fileName);
             TextWriter writer = writerFactory.create(path);
             writer.write(modelName + "\n");
             writer.write(eval.confusionToString());

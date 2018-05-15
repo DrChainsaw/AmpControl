@@ -23,11 +23,11 @@ public class Skipping<T extends IEvaluation> implements Validation<T> {
     private int nrofValidationsToSkip;
     private Optional<T> last = Optional.empty();
 
-    public Skipping(Validation<T> sourceValidation, Function<T, Integer> metricToNrToSkip) {
-        this(sourceValidation, metricToNrToSkip, 0);
+    public Skipping(Function<T, Integer> metricToNrToSkip, Validation<T> sourceValidation) {
+        this(metricToNrToSkip, 0, sourceValidation);
     }
 
-    public Skipping(Validation<T> sourceValidation, Function<T, Integer> metricToNrToSkip, int intialNrToSkip) {
+    public Skipping(Function<T, Integer> metricToNrToSkip, int intialNrToSkip, Validation<T> sourceValidation) {
         this.sourceValidation = sourceValidation;
         this.metricToNrToSkip = metricToNrToSkip;
         this.nrofValidationsToSkip = intialNrToSkip;

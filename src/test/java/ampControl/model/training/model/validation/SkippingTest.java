@@ -24,7 +24,7 @@ public class SkippingTest {
     @Test
     public void testNoSkip() {
         final ProbeValidation<Evaluation> probe = new ProbeValidation<>(new Evaluation());
-        final Skipping<Evaluation> skipping = new Skipping<>(probe, t -> 0);
+        final Skipping<Evaluation> skipping = new Skipping<>(t -> 0, probe);
         assertTrue("Expect to get something!!", skipping.get().isPresent());
         skipping.notifyComplete();
         assertTrue("Expect to get something!!", skipping.get().isPresent());
@@ -38,7 +38,7 @@ public class SkippingTest {
     public void testSkip() {
         final int nrToSkip = 2;
         final ProbeValidation<Evaluation> probe = new ProbeValidation<>(new Evaluation());
-        final Skipping<Evaluation> skipping = new Skipping<>(probe, t -> nrToSkip);
+        final Skipping<Evaluation> skipping = new Skipping<>(t -> nrToSkip, probe);
         assertTrue("Expect to get something!!", skipping.get().isPresent());
         skipping.notifyComplete();
         IntStream.range(1, nrToSkip + 1)

@@ -33,7 +33,7 @@ public class TrainingHarnessTest {
                 .collect(Collectors.toList());
         final Plot.Factory<Integer, Double> plotFac = title -> new MockPlot();
 
-        final TrainingHarness harness = new TrainingHarness(new ArrayList<>(models), "", plotFac, path -> str -> {/* ignore */});
+        final TrainingHarness harness = new TrainingHarness(new ArrayList<>(models), "dummy", plotFac, path -> str -> {/* ignore */});
         final int nrofTrainingSteps = 100;
         harness.startTraining(nrofTrainingSteps);
 
@@ -51,7 +51,7 @@ public class TrainingHarnessTest {
         private final Model model = new MockModel();
         private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
         private final List<String> labels = Arrays.asList("greg", "grgrhh");
-        private final Set<String> savedModelNames = new HashSet<>();
+        private final Set<String> savedModelNames = new LinkedHashSet<>();
 
         private ProbeModelHandle(String name) {
             this.name = name;

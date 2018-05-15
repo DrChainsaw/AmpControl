@@ -1,6 +1,5 @@
 package ampControl.model.training.model;
 
-import ampControl.model.inference.StoredGraphClassifier;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.util.ModelSerializer;
@@ -20,10 +19,8 @@ public class DeserializingModelBuilder implements ModelBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(DeserializingModelBuilder.class);
 
-    private final String modelDir;
     private final ModelBuilder sourceBuilder;
 
-    private final double accuracy;
     private final File modelFile;
 
     /**
@@ -33,19 +30,8 @@ public class DeserializingModelBuilder implements ModelBuilder {
      * @param sourceBuilder {@link ModelBuilder} for which this class will try to restore a serialized model.
      */
     public DeserializingModelBuilder(String modelDir, ModelBuilder sourceBuilder) {
-        this.modelDir = modelDir;
         this.sourceBuilder = sourceBuilder;
         modelFile = new File(modelDir + File.separator + name().hashCode());
-
-        if (modelFile.exists()) {
-            try {
-            accuracy = StoredGraphClassifier.getAccuracy(modelDir + File.separator + name() + "_best");
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load model: " + name());
-            }
-        } else {
-            accuracy = 0;
-        }
     }
 
     @Override
@@ -64,7 +50,6 @@ public class DeserializingModelBuilder implements ModelBuilder {
 
     @Override
     public ComputationGraph buildGraph() {
-        File modelFile = new File(modelDir + File.separator + name().hashCode());
         if (modelFile.exists()) {
             try {
                 log.info("restoring saved model: " + modelFile.getAbsolutePath());
@@ -90,6 +75,6 @@ public class DeserializingModelBuilder implements ModelBuilder {
      */
     @Override
     public double getAccuracy() {
-        return accuracy;
+        return 0;
     }
 }
