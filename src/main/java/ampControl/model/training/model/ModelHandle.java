@@ -5,7 +5,6 @@ import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
 
 import java.io.IOException;
-import java.util.function.BiConsumer;
 
 /**
  * Interface for handling model fitting and evaluation without having to supply the dataset.
@@ -41,12 +40,6 @@ public interface ModelHandle {
      * @return the {@link Model}
      */
     Model getModel();
-
-    /**
-     * Create a listener for training evaluation. Will typically slow down training by a few percent.
-     * @param accuracyCallback Will be notified of accuracy per iteration.
-     */
-    void createTrainingEvalListener(BiConsumer<Integer, Double> accuracyCallback);
 
     /**
      * Register a {@link Validation} to perform

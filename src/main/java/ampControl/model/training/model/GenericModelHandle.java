@@ -2,7 +2,6 @@ package ampControl.model.training.model;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.listen.NanScoreWatcher;
-import ampControl.model.training.listen.TrainEvaluator;
 import ampControl.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
@@ -15,7 +14,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 
 /**
  * Handles fitting and evaluation of models encapsulated by a {@link ModelAdapter}. Manages {@link CachingDataSetIterator
@@ -59,13 +57,6 @@ public class GenericModelHandle implements ModelHandle {
     @Override
     public Model getModel() {
         return model.asModel();
-    }
-
-    @Override
-    public void createTrainingEvalListener(BiConsumer<Integer, Double> listener) {
-        final TrainEvaluator trainEval = new TrainEvaluator(evalIter.numExamples(), listener);
-
-        model.asModel().addListeners(trainEval);
     }
 
     @Override

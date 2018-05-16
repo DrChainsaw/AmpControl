@@ -25,19 +25,15 @@ public class TrainEvaluator implements TrainingListener {
 
     private static final Logger log = LoggerFactory.getLogger(TrainEvaluator.class);
 
-    private final int resetAfterNumExamples;
     private final BiConsumer<Integer, Double> iterAndEvalListener;
 
-    private int resetCount;
     private int iterStore = 0;
-    private Evaluation eval;
+    private final Evaluation eval;
 
     public TrainEvaluator(
-            int resetAfterNumExamples,
             BiConsumer<Integer, Double> iterAnEvalListener) {
-        this.resetAfterNumExamples = resetAfterNumExamples;
         this.iterAndEvalListener = iterAnEvalListener;
-        this.resetCount = resetAfterNumExamples+1;
+        this.eval = new Evaluation();
     }
 
     private boolean invoked = false;
@@ -58,16 +54,12 @@ public class TrainEvaluator implements TrainingListener {
         if (model instanceof MultiLayerNetwork) {
             final BaseOutputLayer ol = (BaseOutputLayer) ((MultiLayerNetwork) model).getOutputLayer();
             final INDArray labels = ol.getLabels();
-            checkEvalReset(labels.shape()[1]);
-            resetCount += model.batchSize();
             eval.eval(labels, ol.output(false));
             iterStore = iteration;
 
         } else if (model instanceof ComputationGraph){
             final BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
             final INDArray labels = ol.getLabels();
-            checkEvalReset(labels.shape()[1]);
-            resetCount += model.batchSize();
             eval.eval(labels, ol.output(false));
             iterStore = iteration;
         } else {
@@ -75,23 +67,15 @@ public class TrainEvaluator implements TrainingListener {
         }
     }
 
-    private void checkEvalReset(int nrofLabels) {
-        if (resetCount > resetAfterNumExamples) {
-            log.info("Reset training evaluator!");
-            eval = new Evaluation( nrofLabels);
-            resetCount = 0;
-        }
-    }
-
     @Override
     public void onEpochStart(Model model) {
-
+        eval.reset();
     }
 
     @Override
     public void onEpochEnd(Model model) {
         if(eval != null) {
-            log.info("Training accuracy after "+ resetCount + " examples: " + eval.accuracy());
+            log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy());
             iterAndEvalListener.accept(iterStore, eval.accuracy());
         }
     }

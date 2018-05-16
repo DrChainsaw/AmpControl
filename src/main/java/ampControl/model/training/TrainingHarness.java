@@ -2,6 +2,7 @@ package ampControl.model.training;
 
 import ampControl.model.training.listen.IterationSupplier;
 import ampControl.model.training.listen.TimeMeasurement;
+import ampControl.model.training.listen.TrainEvaluator;
 import ampControl.model.training.listen.TrainScoreListener;
 import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.validation.*;
@@ -215,7 +216,7 @@ class TrainingHarness {
         for (ModelHandle mh : models) {
             final String trainName = trainEvalName(mh.name());
             mh.getModel().addListeners(new TrainScoreListener((i, s) -> scorePlot.plotData(trainName, i, s)));
-            mh.createTrainingEvalListener((i, e) -> evalPlot.plotData(trainName, i, e));
+            mh.getModel().addListeners(new TrainEvaluator((i, e) -> evalPlot.plotData(trainName, i, e)));
             mh.registerValidation(new EvalValidationFactory(mh, evalPlot, scorePlot));
         }
     }

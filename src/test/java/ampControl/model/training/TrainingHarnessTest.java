@@ -10,7 +10,6 @@ import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -98,11 +97,6 @@ public class TrainingHarnessTest {
         @Override
         public Model getModel() {
             return model;
-        }
-
-        @Override
-        public void createTrainingEvalListener(BiConsumer<Integer, Double> accuracyCallback) {
-
         }
 
         @Override
