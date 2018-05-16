@@ -7,7 +7,6 @@ import ampControl.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
@@ -37,7 +35,6 @@ public class GenericModelHandle implements ModelHandle {
     private final CachingDataSetIterator evalIter;
     private final ModelAdapter model;
     private final String name;
-    private Optional<TrainEvaluator> trainEvaluatorListener = Optional.empty();
     private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
 
     private int nanTimeOutTimer = nanTimeOutTime;
@@ -65,24 +62,10 @@ public class GenericModelHandle implements ModelHandle {
     }
 
     @Override
-    public int getNrofBatchesForTraining() {
-        return trainingIter.getNrofItersToCache();
-    }
-
-    @Override
-    public int getNrofTrainingExamplesPerBatch() {
-        return trainingIter.numExamples();
-    }
-
-    @Override
-    public int getNrofEvalExamples() {
-        return evalIter.numExamples();
-    }
-
-    @Override
     public void createTrainingEvalListener(BiConsumer<Integer, Double> listener) {
-        trainEvaluatorListener = Optional.of(new TrainEvaluator(getNrofEvalExamples(), listener));
-        getModel().addListeners(trainEvaluatorListener.get());
+        final TrainEvaluator trainEval = new TrainEvaluator(evalIter.numExamples(), listener);
+
+        model.asModel().addListeners(trainEval);
     }
 
     @Override
@@ -109,21 +92,10 @@ public class GenericModelHandle implements ModelHandle {
             log.warn("Model " + name() + " broken. Skipping...");
             return;
         }
-        trainingIter.resetCursor();
-        final List<INDArray> labels = new ArrayList<>();
-        while (trainingIter.hasNext()) {
-            labels.add(trainingIter.next().getLabels());
-        }
-        trainEvaluatorListener.ifPresent(te -> te.setLabels(labels));
-        trainingIter.resetCursor();
-        // TODO: Move into listener??
-        final long starttime = System.nanoTime();
-        model.fit(trainingIter);
-        final long endtime = System.nanoTime();
-        final double time = (endtime - starttime) / 1000000d;
-        log.info("Training took " + time + " ms for " + getNrofTrainingExamplesPerBatch() + " examples, " + time / (double) getNrofTrainingExamplesPerBatch() + " ms per example");
 
-        trainEvaluatorListener.ifPresent(TrainEvaluator::pollListener);
+        trainingIter.resetCursor();
+
+        model.fit(trainingIter);
     }
 
     @Override
@@ -134,18 +106,14 @@ public class GenericModelHandle implements ModelHandle {
 
         evalIter.resetCursor();
 
-        IEvaluation[] evalArr = validations.stream()
+        final IEvaluation[] evalArr = validations.stream()
                 .map(Validation::get)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toArray(IEvaluation[]::new);
 
         if (evalArr.length > 0) {
-            final long starttime = System.nanoTime();
             model.eval(evalIter, evalArr);
-            final long endtime = System.nanoTime();
-            final double evalTime = (endtime - starttime) / 1000000d;
-            log.info("Evaluation took " + evalTime + " ms for " + getNrofEvalExamples() + " examples, " + evalTime / (double) getNrofEvalExamples() + " ms per example");
             validations.forEach(Validation::notifyComplete);
         }
     }

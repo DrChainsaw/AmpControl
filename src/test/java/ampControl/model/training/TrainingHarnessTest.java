@@ -101,21 +101,6 @@ public class TrainingHarnessTest {
         }
 
         @Override
-        public int getNrofBatchesForTraining() {
-            return 0;
-        }
-
-        @Override
-        public int getNrofTrainingExamplesPerBatch() {
-            return 0;
-        }
-
-        @Override
-        public int getNrofEvalExamples() {
-            return 0;
-        }
-
-        @Override
         public void createTrainingEvalListener(BiConsumer<Integer, Double> accuracyCallback) {
 
         }

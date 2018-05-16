@@ -5,7 +5,7 @@ import org.junit.Test;
 import java.util.function.BiConsumer;
 import java.util.stream.DoubleStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link TrainScoreListener}
@@ -19,25 +19,26 @@ public class TrainScoreListenerTest {
      */
     @Test
     public void iterationDone() {
-        final int reportInterval = 2;
         final double score0 = 666;
         final int iter0 = 0;
         final double score1 = 333;
-        final int iter1 = reportInterval-1;
+        final int iter1 = 1;
 
         final double score2 = 111;
-        final int iter2 = reportInterval;
+        final int iter2 = 2;
 
         final ProbeConsumer probe = new ProbeConsumer();
-        final TrainScoreListener listener = new TrainScoreListener(reportInterval, probe);
+        final TrainScoreListener listener = new TrainScoreListener(probe);
 
         listener.iterationDone(new ScoreModel(score0), iter0);
+        listener.onEpochEnd(null);
         probe.assertValues(iter0, score0);
 
         listener.iterationDone(new ScoreModel(score1), iter1);
         probe.assertValues(iter0, score0);
 
         listener.iterationDone(new ScoreModel(score2), iter2);
+        listener.onEpochEnd(null);
         final double expectedScore = DoubleStream.of(score1, score2).summaryStatistics().getAverage();
         probe.assertValues(iter2, expectedScore);
 
@@ -45,6 +46,7 @@ public class TrainScoreListenerTest {
         probe.assertValues(iter2, expectedScore);
 
         listener.iterationDone(new ScoreModel(score1), iter1);
+        listener.onEpochEnd(null);
         probe.assertValues(iter1, DoubleStream.of(score0, score1).summaryStatistics().getAverage());
 
     }

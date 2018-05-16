@@ -2,7 +2,11 @@ package ampControl.model.training.listen;
 
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.optimize.api.TrainingListener;
+import org.nd4j.linalg.api.ndarray.INDArray;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 /**
@@ -12,15 +16,14 @@ import java.util.function.BiConsumer;
  *
  * @author Christian Skärby
  */
-public class TrainScoreListener implements IterationListener {
+public class TrainScoreListener implements TrainingListener {
 
     private final BiConsumer<Integer, Double> iterAndScoreListener;
-    private final int printIterations;
     private int iterCount = 0;
     private double resultSum = 0;
+    private int lastIter;
 
-    public TrainScoreListener(int printIterations, BiConsumer<Integer, Double> iterAndScoreListener) {
-       this.printIterations = printIterations;
+    public TrainScoreListener(BiConsumer<Integer, Double> iterAndScoreListener) {
         this.iterAndScoreListener = iterAndScoreListener;
     }
 
@@ -38,14 +41,40 @@ public class TrainScoreListener implements IterationListener {
 
     @Override
     public void iterationDone(Model model, int iteration) {
-
         resultSum += model.score();
-        if (iterCount % printIterations == 0) {
-            invoke();
-            iterAndScoreListener.accept(iteration, resultSum / Math.max(iterCount,1));
-            iterCount = 0;
-            resultSum = 0;
-        }
         iterCount++;
+        lastIter = iteration;
+    }
+
+    @Override
+    public void onEpochStart(Model model) {
+
+    }
+
+    @Override
+    public void onEpochEnd(Model model) {
+        iterAndScoreListener.accept(lastIter, resultSum / Math.max(iterCount,1));
+        iterCount = 0;
+        resultSum = 0;
+    }
+
+    @Override
+    public void onForwardPass(Model model, List<INDArray> activations) {
+
+    }
+
+    @Override
+    public void onForwardPass(Model model, Map<String, INDArray> activations) {
+
+    }
+
+    @Override
+    public void onGradientCalculation(Model model) {
+
+    }
+
+    @Override
+    public void onBackwardPass(Model model) {
+
     }
 }

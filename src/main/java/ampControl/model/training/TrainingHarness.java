@@ -1,17 +1,14 @@
 package ampControl.model.training;
 
 import ampControl.model.training.listen.IterationSupplier;
+import ampControl.model.training.listen.TimeMeasurement;
 import ampControl.model.training.listen.TrainScoreListener;
 import ampControl.model.training.model.ModelHandle;
-import ampControl.model.training.model.validation.EvalValidation;
-import ampControl.model.training.model.validation.Listening;
-import ampControl.model.training.model.validation.Skipping;
-import ampControl.model.training.model.validation.Validation;
+import ampControl.model.training.model.validation.*;
 import ampControl.model.training.model.validation.listen.*;
 import ampControl.model.visualize.Plot;
 import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.eval.Evaluation;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.FileStatsStorage;
@@ -184,10 +181,12 @@ class TrainingHarness {
                 }
             };
             final Consumer<Boolean> logAccuracy = willEval -> log.info("Current best " + bestEvalSupplier.get() + " for model: " + model.name());
-            return new Listening<>(logAccuracy.andThen(logEval),
-                    new Skipping<>(eval -> evalEveryNrofSteps, 2,
-                            new Skipping<>(eval -> (int) Math.floor(10 * (1 - eval.accuracy())), "Skip eval: ", // TODO: Break out and test?
-                                    evaluationValidation
+            return new TimeMeasuring(
+                    new Listening<>(logAccuracy.andThen(logEval),
+                            new Skipping<>(eval -> evalEveryNrofSteps, 2,
+                                    new Skipping<>(eval -> (int) Math.floor(10 * (1 - eval.accuracy())), "Skip eval: ", // TODO: Break out and test?
+                                            evaluationValidation
+                                    )
                             )
                     )
             );
@@ -196,16 +195,16 @@ class TrainingHarness {
 
     private void addListeners(final List<ModelHandle> models) {
 
-        for (final ModelHandle md : models) {
+        for (final ModelHandle mh : models) {
             if (doStatsLogging) {
                 final UIServer uiServer = UIServer.getInstance();
                 //Alternative: new FileStatsStorage(File) - see UIStorageExample
-                final StatsStorage statsStorage = new FileStatsStorage(new File(md.name() + "_stats"));
+                final StatsStorage statsStorage = new FileStatsStorage(new File(mh.name() + "_stats"));
                 uiServer.attach(statsStorage);
-                final int listenerFrequency = md.getNrofBatchesForTraining();
-                md.getModel().addListeners(new StatsListener(statsStorage, listenerFrequency));
+                mh.getModel().addListeners(new StatsListener(statsStorage, 20));
             }
-            md.getModel().addListeners(new ScoreIterationListener(md.getNrofBatchesForTraining()));
+            mh.getModel().addListeners(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
+            mh.getModel().addListeners(new TimeMeasurement());
         }
     }
 
@@ -215,7 +214,7 @@ class TrainingHarness {
 
         for (ModelHandle mh : models) {
             final String trainName = trainEvalName(mh.name());
-            mh.getModel().addListeners(new TrainScoreListener(mh.getNrofBatchesForTraining(), (i, s) -> scorePlot.plotData(trainName, i, s)));
+            mh.getModel().addListeners(new TrainScoreListener((i, s) -> scorePlot.plotData(trainName, i, s)));
             mh.createTrainingEvalListener((i, e) -> evalPlot.plotData(trainName, i, e));
             mh.registerValidation(new EvalValidationFactory(mh, evalPlot, scorePlot));
         }
