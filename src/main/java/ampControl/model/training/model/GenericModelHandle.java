@@ -22,7 +22,6 @@ import java.util.Optional;
  *
  * @author Christian Skärby
  */
-// TODO: Clean up if possible: getNrof***, getBestEvalScore
 public class GenericModelHandle implements ModelHandle {
 
     private static final Logger log = LoggerFactory.getLogger(GenericModelHandle.class);
