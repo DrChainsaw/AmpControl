@@ -45,7 +45,7 @@ class ProbabilitiesToMidiProgramChange {
 
     private final IntSupplier midiChannel;
 
-    public ProbabilitiesToMidiProgramChange(IntSupplier midiChannel) {
+    ProbabilitiesToMidiProgramChange(IntSupplier midiChannel) {
         this.midiChannel = midiChannel;
     }
 

@@ -23,6 +23,10 @@ public class PublishingClassificationListener implements ClassificationListener 
 
     private static final Logger log = LoggerFactory.getLogger(PublishingClassificationListener.class);
 
+    private final String classificationTopic;
+    private final TopicPublisher topicPublisher;
+    private final Function<INDArray, List<Integer>> labelMapper;
+
     public static class Factory implements ClassificationListener.Factory {
 
         private final TopicPublisher topicPublisher;
@@ -58,7 +62,7 @@ public class PublishingClassificationListener implements ClassificationListener 
                     new MomentumLabelMapping<>(momentumThresh,
                             new MaskDuplicateLabelMapping<>(
                                     new PacingLabelMapping<>(updateProhibitTimeMs,
-                                            label -> Collections.singletonList(label)
+                                            Collections::singletonList
                                     )
                             )
                     );
@@ -74,12 +78,7 @@ public class PublishingClassificationListener implements ClassificationListener 
         }
     }
 
-
-    private final String classificationTopic;
-    private final TopicPublisher topicPublisher;
-    private final Function<INDArray, List<Integer>> labelMapper;
-
-    public PublishingClassificationListener(
+    private PublishingClassificationListener(
             String classificationTopic,
             TopicPublisher topicPublisher,
             Function<INDArray, List<Integer>> labelMapper) {

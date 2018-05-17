@@ -36,7 +36,6 @@ public class MqttAppControlService implements TopicPublisher, AppControlService 
     private final static MqttMessage ON = new MqttMessage("ON".getBytes());
     private final static MqttMessage OFF = new MqttMessage("OFF".getBytes());
 
-    private MqttCallbackMap callbackMapper;
     private ClientFactory clientFactory = serverUri -> new MqttClient(serverUri, MqttClient.generateClientId());
     private IMqttClient client;
 
@@ -65,7 +64,7 @@ public class MqttAppControlService implements TopicPublisher, AppControlService 
     public ControlRegistry start() throws MqttException {
 
         client = clientFactory.create(server); //new MqttClient(server, MqttClient.generateClientId());
-        callbackMapper = new MqttCallbackMap(topic -> {
+        MqttCallbackMap callbackMapper = new MqttCallbackMap(topic -> {
             try {
                 client.subscribe(topic);
             } catch (MqttException e) {
@@ -111,7 +110,7 @@ public class MqttAppControlService implements TopicPublisher, AppControlService 
     /**
      * Sets the {@link ClientFactory} to use. Intended for testing
      *
-     * @param clientFactory
+     * @param clientFactory factory to use
      */
     void setClientFactory(ClientFactory clientFactory) {
         this.clientFactory = clientFactory;

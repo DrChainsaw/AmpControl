@@ -9,8 +9,8 @@ import ampcontrol.audio.processing.ProcessingResult.Factory;
  */
 public class Pipe implements ProcessingResult.Factory {
 
-    final Factory first;
-    final Factory second;
+    private final Factory first;
+    private final Factory second;
 
     public Pipe(ProcessingResult.Factory first, Factory second) {
         this.first = first;

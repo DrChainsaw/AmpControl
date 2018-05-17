@@ -35,7 +35,7 @@ public class MqttCallbackMap implements MqttCallback, ControlRegistry {
     public void registerSubscription(String message, Runnable action) {
         // No problem to support, I just don't like the looks of nestled collections
         if (messageActions.containsKey(message)) {
-            throw new RuntimeException("Message " + message + " already mapped to " + messageActions.get(message));
+            throw new IllegalArgumentException("Message " + message + " already mapped to " + messageActions.get(message));
         }
         messageActions.put(message, action);
     }
@@ -43,7 +43,7 @@ public class MqttCallbackMap implements MqttCallback, ControlRegistry {
     public void registerSubscription(String topic, Consumer<String> messageConsumer) {
         // No problem to support, I just don't like the looks of nestled collections
         if (topicConsumers.containsKey(topic)) {
-            throw new RuntimeException("Topic " + topic + " already mapped to " + topicConsumers.get(topic));
+            throw new IllegalArgumentException("Topic " + topic + " already mapped to " + topicConsumers.get(topic));
         }
         topicSubscriptionListener.accept(topic);
         topicConsumers.put(topic, messageConsumer);
