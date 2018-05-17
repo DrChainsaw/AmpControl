@@ -163,7 +163,7 @@
                     <configuration>
                         <archive>
                             <manifest>
-                                <mainClass>ampControl.admin.AmpControlMain</mainClass>
+                                <mainClass>ampcontrol.admin.AmpControlMain</mainClass>
                             </manifest>
                         </archive>
                         <descriptorRefs>
