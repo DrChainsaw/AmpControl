@@ -178,62 +178,19 @@
 
     <profiles>
         <profile>
-            <id>OpenJFX</id>
+            <id>backend-CPU</id>
+            <properties>
+                <nd4j-backend>nd4j-native-platform</nd4j-backend>
+            </properties>
+        </profile>
+        <profile>
+            <id>backend-GPU</id>
             <activation>
-                <jdk>1.7</jdk>
+                <activeByDefault>true</activeByDefault>
             </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-enforcer-plugin</artifactId>
-                        <version>1.0.1</version>
-                        <executions>
-                            <execution>
-                                <id>enforce-default</id>
-                                <goals>
-                                    <goal>enforce</goal>
-                                </goals>
-                                <configuration>
-                                    <rules>
-                                        <requireProperty>
-                                            <property>env.JAVAFX_HOME</property>
-                                            <message>You must set the environment variable JAVAFX_HOME to the
-                                                installation directory of the JavaFX 2.0 SDK! (with Oracle JDK1.7,
-                                                $JRE_HOME/lib/jfxrt.jar)
-                                            </message>
-                                        </requireProperty>
-                                    </rules>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!--
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-install-plugin</artifactId>
-                        <version>2.5.2</version>
-                        <executions>
-                            <execution>
-                                <id>install-external</id>
-                                <phase>clean</phase>
-                                <configuration>
-                                    <file>${javafx.runtime.lib.jar}</file>
-                                    <repositoryLayout>default</repositoryLayout>
-                                    <groupId>com.oracle</groupId>
-                                    <artifactId>javafx</artifactId>
-                                    <version>${javafx.version}</version>
-                                    <packaging>jar</packaging>
-                                    <generatePom>true</generatePom>
-                                </configuration>
-                                <goals>
-                                    <goal>install-file</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    -->
-                </plugins>
-            </build>
+            <properties>
+                <nd4j-backend>nd4j-cuda-8.0-platform</nd4j-backend>
+            </properties>
         </profile>
     </profiles>
 
@@ -260,12 +217,7 @@
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-cuda-8.0-platform</artifactId>
-            <version>${nd4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-native-platform</artifactId>
+            <artifactId>${nd4j-backend}</artifactId>
             <version>${nd4j.version}</version>
         </dependency>
         <dependency>
