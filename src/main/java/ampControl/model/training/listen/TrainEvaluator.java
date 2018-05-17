@@ -6,11 +6,13 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.layers.BaseOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.optimize.api.TrainingListener;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 /**
@@ -19,22 +21,19 @@ import java.util.function.BiConsumer;
  * TODO: Too painful to test due to dependencies to Dl4j internals. Possible to redesign?
  * @author Christian Skärby
  */
-public class TrainEvaluator implements IterationListener {
+public class TrainEvaluator implements TrainingListener {
 
-    private final int resetAfterNumExamples;
-    private final BiConsumer<Integer, Double> iterAndEvalListener;
     private static final Logger log = LoggerFactory.getLogger(TrainEvaluator.class);
 
-    private int resetCount;
-    private int labelsCount = 0;
-    private int iterStore = 0;
-    private List<INDArray> labels;
-    private Evaluation eval;
+    private final BiConsumer<Integer, Double> iterAndEvalListener;
 
-    public TrainEvaluator(int resetAfterNumExamples,BiConsumer<Integer, Double> iterAnEvalListener) {
-        this.resetAfterNumExamples = resetAfterNumExamples;
+    private int iterStore = 0;
+    private final Evaluation eval;
+
+    public TrainEvaluator(
+            BiConsumer<Integer, Double> iterAnEvalListener) {
         this.iterAndEvalListener = iterAnEvalListener;
-        resetCount = resetAfterNumExamples+1;
+        this.eval = new Evaluation();
     }
 
     private boolean invoked = false;
@@ -53,42 +52,51 @@ public class TrainEvaluator implements IterationListener {
     public void iterationDone(Model model, int iteration) {
 
         if (model instanceof MultiLayerNetwork) {
-            BaseOutputLayer ol = (BaseOutputLayer) ((MultiLayerNetwork) model).getOutputLayer();
-            checkEvalReset();
-            resetCount += labels.get(labelsCount).shape()[0];
-            eval.eval(labels.get(labelsCount), ol.output(false));
-            labelsCount++;
+            final BaseOutputLayer ol = (BaseOutputLayer) ((MultiLayerNetwork) model).getOutputLayer();
+            final INDArray labels = ol.getLabels();
+            eval.eval(labels, ol.output(false));
             iterStore = iteration;
 
         } else if (model instanceof ComputationGraph){
-            BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
-            checkEvalReset();
-            resetCount += labels.get(labelsCount).shape()[0];
-            eval.eval(labels.get(labelsCount), ol.output(false));
-            labelsCount++;
+            final BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
+            final INDArray labels = ol.getLabels();
+            eval.eval(labels, ol.output(false));
             iterStore = iteration;
         } else {
             throw new RuntimeException("Not supported: " + model);
         }
     }
 
-    private void checkEvalReset() {
-        if (resetCount > resetAfterNumExamples) {
-            log.info("Reset training evaluator!");
-            eval = new Evaluation( labels.get(0).shape()[1]);
-            resetCount = 0;
-        }
+    @Override
+    public void onEpochStart(Model model) {
+        eval.reset();
     }
 
-    public void setLabels(List<INDArray> labels) {
-        labelsCount = 0;
-        this.labels = labels;
-    }
-
-    public void pollListener() {
+    @Override
+    public void onEpochEnd(Model model) {
         if(eval != null) {
-            log.info("Training accuracy after "+ resetCount + " examples: " + eval.accuracy());
+            log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy());
             iterAndEvalListener.accept(iterStore, eval.accuracy());
         }
+    }
+
+    @Override
+    public void onForwardPass(Model model, List<INDArray> activations) {
+
+    }
+
+    @Override
+    public void onForwardPass(Model model, Map<String, INDArray> activations) {
+
+    }
+
+    @Override
+    public void onGradientCalculation(Model model) {
+
+    }
+
+    @Override
+    public void onBackwardPass(Model model) {
+
     }
 }

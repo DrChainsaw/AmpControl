@@ -36,30 +36,31 @@ public class LstmTimeSeqFactory {
 
     /**
      * Adds the ModelHandles defined by this class to the given list
+     *
      * @param modelData list to add models to
      */
     public void addModelData(List<ModelHandle> modelData) {
         IntStream.of(1, 2, 4).forEach(nrofLstmLayers -> {
-            BlockBuilder bBuilder = new BlockBuilder()
-                    .setStartingLearningRate(0.05)
-                    .setUpdater(new Nesterovs(0.9))
-                    .setNamePrefix(namePrefix)
-                    .first(new RnnType(inputShape))//.setTbpttLength(2000)
-                    .andThenStack(nrofLstmLayers)
-                    .of(new LstmBlock()
-                            .setWidth(256))
-                    .andThen(new LastStep())
-                    .andThenStack(2)
-                    .of(new Dense())
-                    .andFinally(new Output(trainIter.totalOutcomes()));
+            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                    new BlockBuilder()
+                            .setStartingLearningRate(0.05)
+                            .setUpdater(new Nesterovs(0.9))
+                            .setNamePrefix(namePrefix)
+                            .first(new RnnType(inputShape))//.setTbpttLength(2000)
+                            .andThenStack(nrofLstmLayers)
+                            .of(new LstmBlock()
+                                    .setWidth(256))
+                            .andThen(new LastStep())
+                            .andThenStack(2)
+                            .of(new Dense())
+                            .andFinally(new Output(trainIter.totalOutcomes())));
 
             modelData.add(new GenericModelHandle(
                     trainIter,
                     evalIter,
                     new ModelAdapterWithPreProc(new CnnToRnnToLastStepToFfPreProcessor(),
-                            new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString()))),
-                    bBuilder.getName(),
-                    bBuilder.getAccuracy()));
+                            new GraphModelAdapter(builder.buildGraph())),
+                    builder.name()));
 
         });
     }

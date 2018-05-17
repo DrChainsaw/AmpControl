@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalTime;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +44,7 @@ public class AudioClassificationService implements Service {
     private ClassifierInputProvider.UpdateHandle inputUpdateHandle;
     private ScheduledExecutorService executorService;
     
-    private long nanoLast = System.nanoTime();
+    private LocalTime lastTime = LocalTime.now();
 
     /**
      * Initialize the service. Reason for this method instead of a constructor is only because Jcommander must have
@@ -86,12 +88,12 @@ public class AudioClassificationService implements Service {
             inputUpdateHandle.updateInput();
 
             // Step 2: classify
-            long classTime = System.nanoTime();
+            final LocalTime starttime = LocalTime.now();
             INDArray classification = classifier.classify();
-            long curr = System.nanoTime();
-            log.info("classTime: " + (curr - classTime) / 1e6);
-            log.info(((curr - nanoLast)/1e6) + " classification: " + classification);
-            nanoLast = curr;
+            final LocalTime endtime = LocalTime.now();
+            log.info("classTime: " + Duration.between(starttime,endtime).toMillis());
+            log.info(Duration.between(lastTime, endtime).toMillis() + " classification: " + classification);
+            lastTime = endtime;
             
             //Step 3: Give classifiction to listener
             ampInterface.indicateAudioClassification(classification);

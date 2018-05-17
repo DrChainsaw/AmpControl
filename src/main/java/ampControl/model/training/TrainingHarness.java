@@ -1,59 +1,44 @@
 package ampControl.model.training;
 
-import ampControl.audio.ClassifierInputProviderFactory;
-import ampControl.audio.processing.ProcessingFactoryFromString;
-import ampControl.audio.processing.ProcessingResult;
-import ampControl.model.training.data.*;
-import ampControl.model.training.data.iterators.CachingDataSetIterator;
-import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
-import ampControl.model.training.data.processing.SilenceProcessor;
+import ampControl.model.training.listen.IterationSupplier;
+import ampControl.model.training.listen.TimeMeasurement;
+import ampControl.model.training.listen.TrainEvaluator;
 import ampControl.model.training.listen.TrainScoreListener;
-import ampControl.model.training.model.GenericModelHandle;
-import ampControl.model.training.model.GraphModelAdapter;
 import ampControl.model.training.model.ModelHandle;
-import ampControl.model.visualize.RealTimePlot;
+import ampControl.model.training.model.validation.*;
+import ampControl.model.training.model.validation.listen.*;
+import ampControl.model.visualize.Plot;
 import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.eval.Evaluation;
-import org.deeplearning4j.eval.ROCMultiClass;
-import org.deeplearning4j.nn.api.Model;
-import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.optimize.api.IterationListener;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.FileStatsStorage;
-import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.linalg.api.buffer.DataBuffer;
-import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Harness for training and evaluation of {@link ModelHandle ModelHandles}. Models will take turn in doing fitting. Will
- * evaluate models in regular intervals and saves the last evaluated model as long as the accuracy is not worse than 90% 
+ * evaluate models in regular intervals and saves the last evaluated model as long as the accuracy is not worse than 90%
  * of the best evaluation accuracy for the model. Will also plot accuracy and score for training, eval and best eval.
- * 
+ *
  * @author Christian Skärby
  */
-public class TrainingHarness {
+class TrainingHarness {
 
     private static final Logger log = LoggerFactory.getLogger(TrainingHarness.class);
-    
+
     private static final boolean doStatsLogging = false;
-    private static final int maxNrofTrainingSteps = 40000;
-    private static final int evalEveryNrofSteps = 40;
+    private static final int evalEveryNrofSteps = 4;
     private static final String bestSuffix = "_best";
+    private static final String scoreSuffix = ".score";
     private static final double saveThreshold = 0.9;
 
     private static final String trainEvalPrefix = "Train";
@@ -62,214 +47,213 @@ public class TrainingHarness {
 
     private final List<ModelHandle> modelsToTrain;
     private final String modelSaveDir;
-    private RealTimePlot<Integer, Double> evalPlot;
-    private RealTimePlot<Integer, Double> scorePlot;
+    private final Plot.Factory<Integer, Double> plotFactory;
+    private final TextWriter.Factory writerFactory;
 
-    private static class ModelInfo {
-        private int skipEval = 0;
-        private int currIter = 0;
-
-        private ModelInfo(ModelHandle mdh) {
-            mdh.getModel().addListeners(new IterationListener() {
-                boolean invoked = false;
-
-                @Override
-                public boolean invoked() {
-                    return invoked;
-                }
-
-                @Override
-                public void invoke() {
-                    invoked = true;
-                }
-
-                @Override
-                public void iterationDone(Model model, int iteration) {
-                    invoke();
-                    currIter = iteration;
-                }
-            });
-        }
-    }
-
-
-    public TrainingHarness(List<ModelHandle> modelsToTrain, String modelSaveDir) {
+    TrainingHarness(
+            List<ModelHandle> modelsToTrain,
+            String modelSaveDir,
+            Plot.Factory<Integer, Double> plotFactory,
+            TextWriter.Factory writerFactory) {
         this.modelsToTrain = modelsToTrain;
         this.modelSaveDir = modelSaveDir;
-        evalPlot = new RealTimePlot<>("Accuracy", modelSaveDir + File.separator + "plots");
-        scorePlot = new RealTimePlot<>("Score", modelSaveDir + File.separator + "plots");
-        addListeners(modelsToTrain);
-        for (ModelHandle md : modelsToTrain) {
-            evalPlot.createSeries(trainEvalName(md.name()));
-            evalPlot.createSeries(lastEvalName(md.name()));
-            evalPlot.createSeries(bestEvalName(md.name()));
-
-            scorePlot.createSeries(trainEvalName(md.name()));
-            scorePlot.createSeries(lastEvalName(md.name()));
-            scorePlot.createSeries(bestEvalName(md.name()));
-            //Evaluation eval = md.model.evaluate(md.evalIter);
-            //Evaluation eval = new Evaluation();
-            //evaluate(md, eval);
-            //md.bestEvalScore = eval.accuracy();
-            //md.evalIter.resetCursor();
-            // log.info(md.name() + " acc: " + md.getBestEvalScore());
-        }
+        this.plotFactory = plotFactory;
+        this.writerFactory = writerFactory;
     }
 
-    private void addListeners(List<ModelHandle> models) {
+    private final class EvalValidationFactory implements Validation.Factory<Evaluation> {
 
-        for (final ModelHandle md : models) {
-            if (doStatsLogging) {
-                UIServer uiServer = UIServer.getInstance();
-                //Alternative: new FileStatsStorage(File) - see UIStorageExample
-                StatsStorage statsStorage = new FileStatsStorage(new File(md.name() + "_stats"));
-                uiServer.attach(statsStorage);
-                int listenerFrequency = md.getNrofBatchesForTraining();
-                md.getModel().addListeners(new StatsListener(statsStorage, listenerFrequency));
+        private final ModelHandle model;
+        private final Plot<Integer, Double> evalPlot;
+        private final Plot<Integer, Double> scorePlot;
+        private final String fileBaseName;
+
+        private EvalValidationFactory(ModelHandle model,
+                                      Plot<Integer, Double> evalPlot,
+                                      Plot<Integer, Double> scorePlot) {
+            this.model = model;
+            this.evalPlot = evalPlot;
+            this.scorePlot = scorePlot;
+            this.fileBaseName = modelSaveDir + File.separator + model.name().hashCode();
+        }
+
+        @Override
+        public Validation<Evaluation> create(List<String> labels) {
+
+            try {
+                final BestEvalScore bestEvalScore = new BestEvalScore(fileBaseName + bestSuffix + scoreSuffix);
+                log.info("Accuracy for model " + model.name() + ": " + bestEvalScore.get());
+                IterationSupplier iterListener = new IterationSupplier();
+                model.getModel().addListeners(iterListener);
+
+                final Consumer<Evaluation> listener =
+                        createEvalConsumer(bestEvalScore, iterListener)
+                                .andThen(createLastCheckPoint(bestEvalScore))
+                                .andThen(createBestCheckPoint(bestEvalScore, iterListener))
+                                .andThen(bestEvalScore);
+
+                return decorate(new EvalValidation(new Evaluation(labels), listener), bestEvalScore);
+
+            } catch (IOException e) {
+                throw new RuntimeException("Could not load file for model " + model.name() + "!", e);
             }
-            final String trainName = trainEvalName(md.name());
-            md.getModel().addListeners(new ScoreIterationListener(md.getNrofBatchesForTraining()));
-            md.getModel().addListeners(new TrainScoreListener(md.getNrofBatchesForTraining(), (i, s) -> scorePlot.plotData(trainName, i, s)));
-            md.createTrainingEvalListener((i, e) -> evalPlot.plotData(trainName, i, e));
+        }
+
+        private Consumer<Evaluation> createEvalConsumer(final Supplier<Double> bestEvalSupplier, final Supplier<Integer> iterationSupplier) {
+            final String lastEvalLabel = lastEvalName(model.name());
+            final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(lastEvalLabel, iterationSupplier.get(), eval.accuracy());
+            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(lastEvalLabel, iterationSupplier.get(), model.getModel().score());
+
+            final Consumer<Evaluation> storePlots =
+                    eval -> {
+                        try {
+                            evalPlot.storePlotData(trainEvalName(model.name()));
+                            evalPlot.storePlotData(lastEvalLabel);
+                            scorePlot.storePlotData(trainEvalName(model.name()));
+                            scorePlot.storePlotData(lastEvalLabel);
+                        } catch (IOException e) {
+                            log.warn(e.getMessage());
+                        }
+                    };
+
+            final EvalLog evalLog = new EvalLog(model.name(), bestEvalSupplier);
+
+            return new NewThread<>( // Background work
+                    new Synced<>( // To avoid mixed up logging
+                            this,
+                            evalLog
+                                    .andThen(plotEval)
+                                    .andThen(plotScore)
+                                    .andThen(storePlots)));
+        }
+
+        private Consumer<Evaluation> createLastCheckPoint(final Supplier<Double> bestEvalSupplier) {
+            final Consumer<Evaluation> saveCheckPoint = createCheckPoint(fileBaseName);
+
+            final Predicate<Evaluation> gate = eval -> eval.accuracy() >= bestEvalSupplier.get() * saveThreshold;
+
+            return new NewThread<>( // Background work
+                    new Gated<>(saveCheckPoint, gate));
+        }
+
+        private Consumer<Evaluation> createBestCheckPoint(final Supplier<Double> bestEvalSupplier,
+                                                          final Supplier<Integer> iterationSupplier) {
+            final Consumer<Evaluation> saveCheckPoint = createCheckPoint(fileBaseName + bestSuffix);
+
+            final String bestEvalLabel = bestEvalName(model.name());
+            final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(bestEvalLabel, iterationSupplier.get(), eval.accuracy());
+            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(bestEvalLabel, iterationSupplier.get(), model.getModel().score());
+
+            final Consumer<Evaluation> storePlots =
+                    eval -> {
+                        try {
+                            evalPlot.storePlotData(bestEvalLabel);
+                            scorePlot.storePlotData(bestEvalLabel);
+                        } catch (IOException e) {
+                            log.warn(e.getMessage());
+                        }
+                    };
+
+            final Predicate<Evaluation> gate = eval -> eval.accuracy() >= bestEvalSupplier.get();
+
+            return new NewThread<>( // Background work
+                    new Gated<>(saveCheckPoint
+                            .andThen(plotEval)
+                            .andThen(plotScore)
+                            .andThen(storePlots), gate));
+        }
+
+        private Consumer<Evaluation> createCheckPoint(final String fileBaseName) {
+            final Consumer<Evaluation> scoreCheckPoint = new EvalCheckPoint(fileBaseName + scoreSuffix, model.name(), writerFactory);
+            final Consumer<Evaluation> modelCheckPointEc = eval -> {
+                try {
+                    model.saveModel(fileBaseName);
+                } catch (IOException e) {
+                    log.warn(e.getMessage());
+                }
+            };
+            return modelCheckPointEc.andThen(scoreCheckPoint);
+        }
+
+        private Validation<Evaluation> decorate(final Validation<Evaluation> evaluationValidation, final Supplier<Double> bestEvalSupplier) {
+            final Consumer<Boolean> logEval = willEval -> {
+                if (willEval) {
+                    log.info("Begin eval of " + model.name());
+                }
+            };
+            final Consumer<Boolean> logAccuracy = willEval -> log.info("Current best " + bestEvalSupplier.get() + " for model: " + model.name());
+            return new TimeMeasuring(
+                    new Listening<>(logAccuracy.andThen(logEval),
+                            new Skipping<>(eval -> evalEveryNrofSteps, 2,
+                                    new Skipping<>(eval -> (int) Math.floor(10 * (1 - eval.accuracy())), "Skip eval: ", // TODO: Break out and test?
+                                            evaluationValidation
+                                    )
+                            )
+                    )
+            );
         }
     }
 
+    private void addListeners(final List<ModelHandle> models) {
 
-    public void startTraining() {
+        for (final ModelHandle mh : models) {
+            if (doStatsLogging) {
+                final UIServer uiServer = UIServer.getInstance();
+                //Alternative: new FileStatsStorage(File) - see UIStorageExample
+                final StatsStorage statsStorage = new FileStatsStorage(new File(mh.name() + "_stats"));
+                uiServer.attach(statsStorage);
+                mh.getModel().addListeners(new StatsListener(statsStorage, 20));
+            }
+            mh.getModel().addListeners(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
+            mh.getModel().addListeners(new TimeMeasurement());
+        }
+    }
+
+    private void addValidation(final List<ModelHandle> models) {
+        final Plot<Integer, Double> evalPlot = initPlot("Accuracy", models);
+        final Plot<Integer, Double> scorePlot = initPlot("Score", models);
+
+        for (ModelHandle mh : models) {
+            final String trainName = trainEvalName(mh.name());
+            mh.getModel().addListeners(new TrainScoreListener((i, s) -> scorePlot.plotData(trainName, i, s)));
+            mh.getModel().addListeners(new TrainEvaluator((i, e) -> evalPlot.plotData(trainName, i, e)));
+            mh.registerValidation(new EvalValidationFactory(mh, evalPlot, scorePlot));
+        }
+    }
+
+    private Plot<Integer, Double> initPlot(final String title, final List<ModelHandle> models) {
+        final Plot<Integer, Double> plot = plotFactory.create(title);
+        for (ModelHandle md : models) {
+            plot.createSeries(trainEvalName(md.name()));
+            plot.createSeries(lastEvalName(md.name()));
+            plot.createSeries(bestEvalName(md.name()));
+        }
+        return plot;
+    }
+
+    /**
+     * Trains the models
+     *
+     * @param maxNrofTrainingSteps number of training steps
+     */
+    void startTraining(final int maxNrofTrainingSteps) {
+
+        addListeners(modelsToTrain);
+        addValidation(modelsToTrain);
+
         Nd4j.getMemoryManager().setAutoGcWindow(5000);
-        Map<ModelHandle, ModelInfo> modelInfoMap = modelsToTrain.stream()
-                .collect(Collectors.toMap(
-                        Function.identity(),
-                        ModelInfo::new
-                ));
         for (int trainingStep = 0; trainingStep < maxNrofTrainingSteps; trainingStep++) {
             log.info("****************************** Training step " + trainingStep + " started! ***************************************");
-            for (ModelHandle md : modelsToTrain) {
-                printSynchronized("Training model with curr best " + md.getBestEvalScore() + ", name: " + md.name());
-                long starttime = System.nanoTime();
-                md.fit();
-                long endtime = System.nanoTime();
-                double time = (endtime - starttime) / 1000000d;
-                printSynchronized("Training took " + time + " ms for " + md.getNrofTrainingExamplesPerBatch() + " examples, " + time / (double) md.getNrofTrainingExamplesPerBatch() + " ms per example");
-                if (trainingStep % evalEveryNrofSteps == evalEveryNrofSteps - 1) {
-                    if (modelInfoMap.get(md).skipEval > 0) {
-                        modelInfoMap.get(md).skipEval--;
-                        printSynchronized("Skip eval! " + modelInfoMap.get(md).skipEval);
-                    } else {
-                        printSynchronized("Begin eval of " + md.name());
-                        final double prevEvalScore = md.getBestEvalScore();
-                        starttime = System.nanoTime();
-                        final Evaluation eval = md.createEvalTemplate();
-                        final ROCMultiClass roc = new ROCMultiClass();
-                        md.eval(eval, roc);
-
-                        //Evaluation eval = new Evaluation();
-                        //evaluate(md, eval);
-                        endtime = System.nanoTime();
-                        final double evalTime = (endtime - starttime) / 1000000d;
-
-                        final double accuracy = eval.accuracy();
-                        final double evalScore = md.getModel().score();
-                        if (accuracy < 0.7) {
-                            modelInfoMap.get(md).skipEval = 3;
-                        } else if (accuracy < 0.8) {
-                            modelInfoMap.get(md).skipEval = 2;
-                        } else if (accuracy < 0.9) {
-                            modelInfoMap.get(md).skipEval = 1;
-                        }
-
-                        final ModelHandle fmdh = md;
-                        final int evalIterNr = modelInfoMap.get(fmdh).currIter;
-                        try { // ROC takes pretty long time to compute; put it in background while we eval the next model
-                            new Thread(() -> {
-
-                                try {
-                                    printSynchronized("Eval report for " + fmdh.name());
-                                    printSynchronized(eval.stats());
-                                    printSynchronized("\n" + eval.confusionToString());
-
-                                    final String lastEvalLabel = lastEvalName(fmdh.name());
-                                    evalPlot.plotData(lastEvalLabel, evalIterNr, accuracy);
-                                    evalPlot.storePlotData(lastEvalLabel);
-                                    scorePlot.plotData(lastEvalLabel, evalIterNr, evalScore);
-                                    scorePlot.storePlotData(lastEvalLabel);
-                                    final String trainEvalLabel = trainEvalName(fmdh.name());
-                                    evalPlot.storePlotData(trainEvalLabel);
-                                    scorePlot.storePlotData(trainEvalLabel);
-
-                                  //  printSynchronized("ROC report for " + fmdh.name() + "\n" + roc.stats());
-                                    printSynchronized("Accuracy = " + accuracy + " Best: " + fmdh.getBestEvalScore());
-                                    printSynchronized("Evaluation took " + evalTime + " ms for " + fmdh.getNrofEvalExamples() + " examples, " + evalTime / (double) fmdh.getNrofEvalExamples() + " ms per example");
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }).start();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        if (accuracy >= saveThreshold * md.getBestEvalScore()) {
-                            try {
-                                new Thread(() -> {
-                                    try {
-                                        synchronized (modelsToTrain) {
-
-                                            String fileBaseName = modelSaveDir + File.separator + md.name().hashCode();
-                                            writeModel(md, eval, roc, fileBaseName);
-                                            if (accuracy >= prevEvalScore) {
-                                                fileBaseName = modelSaveDir + File.separator + md.name().hashCode() + bestSuffix;
-                                                String bestLabel = bestEvalName(fmdh.name());
-                                                evalPlot.plotData(bestLabel, evalIterNr, accuracy);
-                                                evalPlot.storePlotData(bestLabel);
-                                                scorePlot.plotData(bestLabel, evalIterNr, evalScore);
-                                                scorePlot.storePlotData(bestLabel);
-                                                writeModel(md, eval, roc, fileBaseName);
-                                                // EvaluationTools.exportRocChartsToHtmlFile(roc, new File(fileBaseName + "_roc.html"));
-                                            }
-                                        }
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                                ).start();
-
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                }
+            for (ModelHandle mh : modelsToTrain) {
+                log.info("Training model: " + mh.name());
+                mh.fit();
             }
 
-            for (ModelHandle md : modelsToTrain) {
-                md.resetTraining();
+            for (ModelHandle mh : modelsToTrain) {
+                mh.eval();
+                mh.resetTraining();
             }
-
         }
-    }
-
-//	private void evaluate(ModelData md, Evaluation eval) {
-//		while(md.getEvalIter().hasNext()) {
-//            DataSet set = md.getEvalIter().next();
-//            INDArray output = md.model.output(set.getFeatures());
-//            //int timeSeriesLength = timeSeriesOutput.size(0);		//Size of time dimension
-//            //INDArray lastTimeStepProbabilities = timeSeriesOutput.get(NDArrayIndex.point(timeSeriesLength-1), NDArrayIndex.all());
-//            eval.eval(set.getLabels(), output);
-//        }
-//	}
-
-    private void writeModel(ModelHandle mdh, Evaluation eval, ROCMultiClass roc, String fileBaseName) throws IOException {
-        ModelSerializer.writeModel(mdh.getModel(), new File(fileBaseName), true);
-        Path path = Paths.get(fileBaseName + ".score");
-        BufferedWriter writer = Files.newBufferedWriter(path);
-        writer.write(mdh.name() + "\n");
-        writer.write(eval.confusionToString());
-        writer.write(eval.stats());
-       // writer.write(roc.stats());
-        writer.close();
-    }
-
-    private synchronized void printSynchronized(String str) {
-        log.info(str);
     }
 
     private String trainEvalName(String modelName) {
@@ -282,101 +266,6 @@ public class TrainingHarness {
 
     private String bestEvalName(String modelName) {
         return bestEvalPrefix + modelName.hashCode();
-    }
-
-    public static void main(String[] args) {
-        DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
-        String modelBaseDir = "E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\";
-        String model = "ws_100_sgpp_spgr_fft_256_olf_8_pipe_lgsc_4x_C_128_3_ELU_BN_w_Mp2_2_t_2x_dnn_512_ReLU_w_d0p0_t_out_w_0p5_0p5_0p8_1p0Nesterovs";
-        //"ws_100_fft_512_olf_16_nfs_128_sgpp_lgsc_4x_C_128_3_ELU_BN_w_Mp2_2_t_2x_dnn_512_ReLU_w_d0p5_t_out_w_0p5_0p5_0p8_1p0Nesterovs";
-               // "ws_100_fft_512_olf_16_nfs_128_sgpp_lgsc_z3_3_t_3x_rb_C_128_4_ELU_BN_t_se16_ReLU_w_Mp2_2_t_3x_dnn_512_SELU_w_d0p2_t_out_w_0p1_0p3_0p8_1p0";
-        //"ws_100_fft_512_olf_16_nfs_128_Cnn2d_4_layers_128_kernels_4_4_mp_2_2_dnn_2_layers_64_dnnW_best_old";
-        //String model2 = modelBaseDir + "ws_100_fft_512_olf_16_nfs_128_Cnn2d_4_layers_128_kernels_4_4_mp_2_2_dnn_2_layers_64_dnnW_best";
-        //"ws_100_fft_512_olf_16_nfs_128_Cnn2d_4_layers_2_kernelGrowth_16_kernels_4_4_mp_2_2_dnn_2_layers_256_dnnW";
-        //"ws_200_fft_1024_olf_16_nfs_128_Cnn2d_4_layers_128_kernels_4_4_mp_2_2_dnn_2_layers_64_dnnW_best";
-        int clipLengthMs = 1000;
-        int clipSamplingRate = 44100;
-        Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
-        List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
-        int trainingIterations = 20;
-        int trainBatchSize = 32;
-        int evalBatchSize = 1;
-        double evalSetPercentage = 5;
-
-        final ProcessingResult.Factory audioPostProcFactory = new ProcessingFactoryFromString(clipSamplingRate).get(model);
-        final int timeWindowSize = ClassifierInputProviderFactory.parseWindowSize(model);
-        final SilenceProcessor silence = new SilenceProcessor(clipSamplingRate * clipLengthMs / (1000 / timeWindowSize) / 1000, () -> audioPostProcFactory);
-        Map<String, AudioDataProvider.AudioProcessorBuilder> labelToBuilder = new LinkedHashMap<>();
-        labelToBuilder.put("silence", () -> silence);
-        labelToBuilder = Collections.unmodifiableMap(labelToBuilder);
-        MultiplyLabelExpander labelExpander = new MultiplyLabelExpander()
-                .addExpansion("noise", 20)
-                .addExpansion("rythm", 100)
-                .addExpansion("lead", 100);
-        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> audioPostProcFactory, new Random().nextInt());
-        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> audioPostProcFactory, 666);
-
-        try {
-            DataSetFileParser.parseFileProperties(baseDir, new TrainingDescription.DataSetMapper(train, eval, evalSetPercentage));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        final CachingDataSetIterator trainIter = new CachingDataSetIterator(
-                new Cnn2DDataSetIterator(
-                        train.createProvider(), trainBatchSize, labels),
-                trainingIterations);
-
-        final int evalCacheSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
-        //final int evalCacheSize = 1;
-        final CachingDataSetIterator evalIter = new CachingDataSetIterator(
-                new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
-                evalCacheSize);
-
-
-        try {
-            final ComputationGraph classifier = ModelSerializer.restoreComputationGraph(modelBaseDir + model.hashCode() +"_best", false);
-            GenericModelHandle mdh = new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(classifier), model, 1);
-            log.info("shape: " + Arrays.toString(trainIter.next().getFeatures().shape()));
-
-//new TrainingHarness(Collections.singletonList(mdh), modelBaseDir).startTraining();
-            Evaluation evaluation = mdh.createEvalTemplate();
-            //ROCMultiClass roc = new ROCMultiClass();
-           // mdh.eval(evaluation);
-//            for(int i = 0; i< 100; i++) {
-//                log.info(i);
-//                evalIter.next();
-//                evalIter.reset();
-//            }
-//            for(int i = 0; i< 100; i++) {
-//                DataSet ds = evalIter.next();
-//                INDArray[] output = classifier.output(ds.getFeatures());
-//                log.info("output:  " + output[0]);
-//                log.info("label : " + ds.getLabels());
-//                evalIter.reset();
-//                if(!output[0].argMax().equalsWithEps(ds.getLabels().argMax(),1e-10)) {
-//                    PlotSpectrogram.plot(ds.getFeatures(), 2, 3);
-//                }
-//            }
-log.info("Nrof eval files: " + eval.getNrofFiles() + " nrof examples: " + mdh.getNrofEvalExamples());
-             //log.info(evaluation.stats());
-            //log.info(evaluation.confusionToString());
-            //log.info(roc.stats());
-            //log.info(roc.stats());
-            //mdh.fit();
-            //mdh.resetTraining();
-            //mdh.fit();
-            //mdh.eval();
-//            classifier = ModelSerializer.restoreMultiLayerNetwork(model2, false);
-//            mdh = new GenericModelHandle(trainIter, evalIter, new MultiLayerModelAdapter(classifier), model, 1);
-//            evaluation = mdh.createEvalTemplate();
-//            roc = new ROCMultiClass();
-//            mdh.eval(evaluation, roc);
-//            log.info(evaluation.stats());
-//            log.info(roc.stats());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
 }

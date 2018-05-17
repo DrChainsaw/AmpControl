@@ -8,11 +8,14 @@ import ampControl.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampControl.model.training.data.processing.SilenceProcessor;
 import ampControl.model.training.model.ModelHandle;
 import ampControl.model.training.model.description.ResNetConv2DFactory;
+import ampControl.model.training.model.validation.listen.BufferedTextWriter;
+import ampControl.model.visualize.RealTimePlot;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,7 +40,7 @@ public class TrainingDescription {
     private final static int trainingIterations = 10; // 10
     private final static int trainBatchSize = 20;   // 32 64
     private final static int evalBatchSize = 20;
-    private final static double evalSetPercentage = 5;
+    private final static double evalSetPercentage = 1;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -80,16 +83,6 @@ public class TrainingDescription {
         final int timeWindowSizeMs = 50;
 
 
-//        final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new Pipe(
-//                //      new Pipe(
-//                new Spectrogram(256, 32),
-//                //new Mfsc(clipSamplingRate)),
-//                new LogScale()
-//                //  ),
-//
-//                //  new UnitStdZeroMean()
-//        );
-
         final ProcessingResult.Factory audioPostProcessingFactory= new Pipe(
                 new Spectrogram(256, 16),
                 new Fork(
@@ -103,25 +96,15 @@ public class TrainingDescription {
                 )
         );
 
-        //  final Supplier<ProcessingResult.Factory> audioPostProcessingSupplier = () -> new UnitMaxZeroMean();
-
-
-//                () -> new Pipe(
-//                new Spectrogrammm(512, 32, 1),
-//                new UnitStdZeroMean()
-//        );
-
         createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
-
 
         //NativeOpsHolder.getInstance().getDeviceNativeOps().setOmpNumThreads(1);
 
-        for (ModelHandle md : modelData) {
-            log.info(md.name() + ": score: " + md.getBestEvalScore());
-        }
-
-        TrainingHarness harness = new TrainingHarness(modelData, modelDir.toAbsolutePath().toString());
-        harness.startTraining();
+        TrainingHarness harness = new TrainingHarness(modelData,
+                modelDir.toAbsolutePath().toString(),
+                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
+                BufferedTextWriter.defaultFactory);
+        harness.startTraining(4000);
     }
 
     private static void createModels(final ProcessingResult.Factory audioPostProcessingFactory, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {

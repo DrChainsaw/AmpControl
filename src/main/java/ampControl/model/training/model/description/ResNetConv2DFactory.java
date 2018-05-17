@@ -1,10 +1,7 @@
 package ampControl.model.training.model.description;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
-import ampControl.model.training.model.BlockBuilder;
-import ampControl.model.training.model.GenericModelHandle;
-import ampControl.model.training.model.GraphModelAdapter;
-import ampControl.model.training.model.ModelHandle;
+import ampControl.model.training.model.*;
 import ampControl.model.training.model.layerblocks.*;
 import ampControl.model.training.model.layerblocks.graph.MinMaxPool;
 import ampControl.model.training.model.layerblocks.graph.SeBlock;
@@ -42,86 +39,13 @@ public class ResNetConv2DFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
 
-
-//
-//        DoubleStream.of(0).forEach(dropOutProb -> {
-//            BlockBuilder bBuilder = new BlockBuilder()
-//                    .setNamePrefix(namePrefix)
-//                    //.setTrainWs(WorkspaceMode.SEPARATE)
-//                    //.setEvalWs(WorkspaceMode.SEPARATE)
-//                    .first(new ConvType(inputShape))
-//                    .andThen(zeroPad4x4)
-//                    .andThen(new Conv2DBatchNormAfter()
-//                            .setKernelSize(4)
-//                            .setNrofKernels(128))
-//                    .andThen(zeroPad4x4)
-//                    .andThenStack(3)
-//                    .aggRes()
-//                    .aggOf(new Conv2DBatchNormAfter()
-//                            .setKernelSize(4)
-//                            .setNrofKernels(128))
-//                    .andFinally(zeroPad4x4)
-//                    .andFinally(new Pool2D().setSize(2).setStride(2))
-//                    // .andThen(new GlobMeanMax())
-//                    .andThenStack(2)
-//                    .of(new Dense().setActivation(new ActivationSELU()))
-//                    .andThen(new DropOut().setDropProb(dropOutProb))
-//                    .andFinally(new Output(trainIter.totalOutcomes()));
-//            modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.name(), bBuilder.getAccuracy()));
-//        });
-//
         final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
-//        IntStream.of(0, 2, 10, 50).forEach(resDepth -> {
-//            DoubleStream.of(0).forEach(dropOutProb -> {
-//                BlockBuilder bBuilder = new BlockBuilder()
-//                        .setNamePrefix(namePrefix)
-//                        .setStartingLearningRate(0.001)
-//                        .setUpdater(new Nesterovs(0.9))
-//                        //.setTrainWs(WorkspaceMode.SEPARATE)
-//                        //.setEvalWs(WorkspaceMode.SEPARATE)
-//                        .first(new ConvType(inputShape))
-//                        .andThen(zeroPad3x3)
-//                        .andThen(new Conv2DBatchNormAfter()
-//                                .setKernelSize(3)
-//                                .setNrofKernels(64))
-//                        .andThen(new MinMaxPool().setSize(3).setStride(3))
-//                        .andThen(zeroPad3x3)
-//                        .andThen(new Conv2DBatchNormAfter()
-//                                .setKernelSize(3)
-//                                .setNrofKernels(128))
-//                        .andThen(new MinMaxPool().setSize(3).setStride(3))
-//                        .andThen(new SeBlock())
-//                        .andThen(zeroPad3x3)
-//                        .andThen(new Conv2DBatchNormAfter()
-//                                .setKernelSize(3)
-//                                .setNrofKernels(128))
-//                        .andThen(new MinMaxPool().setSize(3).setStride(3))
-//                        .andThen(new SeBlock())
-//                        .andThenStack(resDepth)
-//                        .res()
-//                        .aggOf(zeroPad3x3)
-//                        .andThen(new Conv2DBatchNormAfter()
-//                                .setKernelSize(3)
-//                                .setNrofKernels(256))
-//                        .andThen(zeroPad3x3)
-//                        .andThen(new Conv2DBatchNormAfter()
-//                                .setKernelSize(3)
-//                                .setNrofKernels(256))
-//                        //.andThen(zeroPad3x3)
-//                        .andFinally(new SeBlock())
-//                        //.andFinally(new DropOut().setDropProb(dropOutProb))
-//                        .andThenStack(2)
-//                        .aggOf(new Dense())
-//                        .andFinally(new DropOut().setDropProb(dropOutProb))
-//                        .andFinally(new Output(trainIter.totalOutcomes()));
-//                modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
-//            });
-//        });
 
-        IntStream.of(10).forEach(resDepth -> {
-            DoubleStream.of(0).forEach(dropOutProb -> {
-                DoubleStream.of(0, 0.0003, 0.003, 0.03).forEach(lambda -> {
-                    BlockBuilder bBuilder = new BlockBuilder()
+        IntStream.of(1).forEach(resDepth ->
+            DoubleStream.of(0).forEach(dropOutProb ->
+                DoubleStream.of(0, 0.03).forEach(lambda -> {
+                    ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                            new BlockBuilder()
                             .setNamePrefix(namePrefix)
                             .setStartingLearningRate(0.001)
                             .setUpdater(new Nesterovs(0.9))
@@ -165,10 +89,14 @@ public class ResNetConv2DFactory {
                             .andFinally(new DropOut().setDropProb(dropOutProb))
                             .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                                     .setAlpha(0.6)
-                                    .setLambda(lambda));
-                    modelData.add(new GenericModelHandle(trainIter, evalIter, new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString())), bBuilder.getName(), bBuilder.getAccuracy()));
-                });
-            });
-        });
+                                    .setLambda(lambda)));
+                    modelData.add(new GenericModelHandle(
+                            trainIter,
+                            evalIter,
+                            new GraphModelAdapter(builder.buildGraph()),
+                            builder.name()));
+                })
+            )
+        );
     }
 }

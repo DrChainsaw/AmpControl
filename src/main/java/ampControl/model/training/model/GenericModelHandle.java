@@ -2,20 +2,18 @@ package ampControl.model.training.model;
 
 import ampControl.model.training.data.iterators.CachingDataSetIterator;
 import ampControl.model.training.listen.NanScoreWatcher;
-import ampControl.model.training.listen.TrainEvaluator;
-import org.deeplearning4j.eval.Evaluation;
+import ampControl.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
-import org.deeplearning4j.eval.ROCMultiClass;
 import org.deeplearning4j.nn.api.Model;
-import org.nd4j.linalg.api.ndarray.INDArray;
+import org.deeplearning4j.util.ModelSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 
 /**
  * Handles fitting and evaluation of models encapsulated by a {@link ModelAdapter}. Manages {@link CachingDataSetIterator
@@ -34,26 +32,23 @@ public class GenericModelHandle implements ModelHandle {
     private final CachingDataSetIterator evalIter;
     private final ModelAdapter model;
     private final String name;
-    private Optional<TrainEvaluator> trainEvaluatorListener = Optional.empty();
+    private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
 
-    private double bestEvalScore;
     private int nanTimeOutTimer = nanTimeOutTime;
 
     /**
      * Constructor
-     * @param trainingIter Provides training samples.
-     * @param evalIter Provides evaluation samples.
-     * @param model Model to fit/evaluate
-     * @param name Name of the model
-     * @param bestEvalScore Initial best evaluation metric found so far.
+     *
+     * @param trainingIter  Provides training samples.
+     * @param evalIter      Provides evaluation samples.
+     * @param model         Model to fit/evaluate
+     * @param name          Name of the model
      */
-    public GenericModelHandle(CachingDataSetIterator trainingIter, CachingDataSetIterator evalIter, ModelAdapter model, String name,
-                              double bestEvalScore) {
+    public GenericModelHandle(CachingDataSetIterator trainingIter, CachingDataSetIterator evalIter, ModelAdapter model, String name) {
         this.trainingIter = trainingIter;
         this.evalIter = evalIter;
         this.model = model;
         this.name = name;
-        this.bestEvalScore = bestEvalScore;
 
         model.asModel().addListeners(new NanScoreWatcher(() -> nanTimeOutTimer = 0));
     }
@@ -64,34 +59,19 @@ public class GenericModelHandle implements ModelHandle {
     }
 
     @Override
-    public int getNrofBatchesForTraining() {
-        return trainingIter.getNrofItersToCache();
+    public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
+        validations.add(validationFactory.create(evalIter.getLabels()));
     }
 
     @Override
-    public int getNrofTrainingExamplesPerBatch() {
-        return trainingIter.numExamples();
-    }
-
-    @Override
-    public int getNrofEvalExamples() {
-        return evalIter.numExamples();
-    }
-
-    @Override
-    public void createTrainingEvalListener(BiConsumer<Integer, Double> listener) {
-        trainEvaluatorListener = Optional.of(new TrainEvaluator(getNrofEvalExamples(), listener));
-        getModel().addListeners(trainEvaluatorListener.get());
+    public void saveModel(String fileName) throws IOException {
+        log.info("Saving model: " + name());
+        ModelSerializer.writeModel(model.asModel(), new File(fileName), true);
     }
 
     @Override
     public String name() {
         return name;
-    }
-
-    @Override
-    public double getBestEvalScore() {
-        return bestEvalScore;
     }
 
     @Override
@@ -102,51 +82,30 @@ public class GenericModelHandle implements ModelHandle {
             log.warn("Model " + name() + " broken. Skipping...");
             return;
         }
+
         trainingIter.resetCursor();
-        List<INDArray> labels = new ArrayList<>();
-        while (trainingIter.hasNext()) {
-            labels.add(trainingIter.next().getLabels());
-        }
-        trainEvaluatorListener.ifPresent(te -> te.setLabels(labels));
-        trainingIter.resetCursor();
+
         model.fit(trainingIter);
-        trainEvaluatorListener.ifPresent(te -> te.pollListener());
     }
 
     @Override
-    public <T extends IEvaluation> T[] eval(T... evals) {
+    public void eval() {
         if (nanTimeOutTimer < nanTimeOutTime) {
-            return evals;
+            return;
         }
 
         evalIter.resetCursor();
-        Evaluation eval = null;
-        for (IEvaluation evalInput : evals) {
-            if (evalInput instanceof Evaluation) {
-                eval = (Evaluation) evalInput;
-                eval.setLabelsList(evalIter.getLabels());
-            } else if (evalInput instanceof ROCMultiClass) {
-                ((ROCMultiClass) evalInput).setLabels(evalIter.getLabels());
-            }
-        }
-        T[] evalsExtra = evals;
-        if (eval == null) {
-            eval = createEvalTemplate();
-            evalsExtra = Arrays.copyOf(evals, evals.length + 1);
-            evalsExtra[evalsExtra.length - 1] = (T) eval;
-        }
 
-        model.eval(evalIter, evalsExtra);
-        if (eval.accuracy() > bestEvalScore) {
-            bestEvalScore = eval.accuracy();
+        final IEvaluation[] evalArr = validations.stream()
+                .map(Validation::get)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toArray(IEvaluation[]::new);
+
+        if (evalArr.length > 0) {
+            model.eval(evalIter, evalArr);
+            validations.forEach(Validation::notifyComplete);
         }
-
-        return evals;
-    }
-
-    @Override
-    public Evaluation createEvalTemplate() {
-        return new Evaluation(evalIter.getLabels(), 1);
     }
 
     @Override

@@ -25,7 +25,6 @@ public class GraphModelAdapter implements ModelAdapter {
         this.graph = graph;
         for (GraphVertex l: graph.getVertices()) {
 
-
             if(l.getLayer() != null) {
                 log.info(l.toString());
                 log.info(l.getLayer().toString());

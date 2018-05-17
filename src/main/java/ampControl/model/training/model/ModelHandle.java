@@ -1,10 +1,10 @@
 package ampControl.model.training.model;
 
-import org.deeplearning4j.eval.Evaluation;
+import ampControl.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
 
-import java.util.function.BiConsumer;
+import java.io.IOException;
 
 /**
  * Interface for handling model fitting and evaluation without having to supply the dataset.
@@ -19,18 +19,9 @@ public interface ModelHandle {
     void fit();
 
     /**
-     * Evaluates the model and return the result
-     * @param evals Evaluators to use
-     * @param <T> Type of evaluators
-     * @return Evaluators with statistics
+     * Evaluates the model
      */
-    <T extends IEvaluation> T[] eval(T... evals);
-
-    /**
-     * Create a "template" for evaluation of this model.
-     * @return a "template" for evaluation of this model.
-     */
-    Evaluation createEvalTemplate();
+    void eval();
 
     /**
      * Prepares for another "round" of fitting. Separated from fit as models might (and typically do) share training
@@ -45,38 +36,20 @@ public interface ModelHandle {
     String name();
 
     /**
-     * Returns the best evaluation score so far. Higher is better.
-     * @return the best evaluation score so far
-     */
-    double getBestEvalScore();
-
-    /**
      * Returns the {@link Model}
      * @return the {@link Model}
      */
     Model getModel();
 
     /**
-     * Returns the number of batches in each training round.
-     * @return the number of batches in each training round.
+     * Register a {@link Validation} to perform
+     * @param validationFactory a {@link Validation.Factory} to create the validation.
      */
-    int getNrofBatchesForTraining();
+    void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory);
 
     /**
-     * Returns the number of examples per batch.
-     * @return the number of examples per batch.
+     * Serialize the model to a file with the given name.
+     * @param fileName the filename
      */
-    int getNrofTrainingExamplesPerBatch();
-
-    /**
-     * Returns the number of examples for evaluation
-     * @return the number of examples for evaluation
-     */
-    int getNrofEvalExamples();
-
-    /**
-     * Create a listener for training evaluation. Will typically slow down training by a few percent.
-     * @param accuracyCallback Will be notified of accuracy per iteration.
-     */
-    void createTrainingEvalListener(BiConsumer<Integer, Double> accuracyCallback);
+    void saveModel(String fileName) throws IOException;
 }

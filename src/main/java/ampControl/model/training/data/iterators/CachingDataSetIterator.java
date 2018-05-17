@@ -63,11 +63,7 @@ public class CachingDataSetIterator implements DataSetIterator {
     public CachingDataSetIterator(DataSetIterator sourceIter, int nrofItersToCache) {
         this.sourceIter = sourceIter;
         this.nrofItersToCache = nrofItersToCache;
-        if (Nd4j.getBackend() instanceof org.nd4j.linalg.cpu.nativecpu.CpuBackend) {
-            useWorkspace = false;
-        } else {
-            useWorkspace = true;
-        }
+        useWorkspace = !Nd4j.getBackend().getClass().getSimpleName().equals("CpuBackend");
     }
 
     @Override

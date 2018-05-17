@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 
 /**
  * Description of a bunch of architectures which belong to a family of 1D convolutional neural networks followed by LSTM
- *  which in turn are followed by fully connected layers.
+ * which in turn are followed by fully connected layers.
  *
  * @author Christian Skärby
  */
@@ -38,6 +38,7 @@ public class Conv1DLstmDenseFactory {
 
     /**
      * Adds the ModelHandles defined by this class to the given list
+     *
      * @param modelData list to add models to
      */
     public void addModelData(List<ModelHandle> modelData) {
@@ -54,47 +55,47 @@ public class Conv1DLstmDenseFactory {
 
 
             DoubleStream.of(0).forEach(dropOutProb -> {
-                BlockBuilder bBuilder = new BlockBuilder()
-                        .setNamePrefix(namePrefix)
-                        // .setUpdater(nesterovs)
-                        .setStartingLearningRate(0.05)
-                        .first(new RnnType(inputShape))
-                        .andThen(new Conv1D()
-                                .setNrofKernels(256))
-                        .andThenStack(nrofCnnLayers)
-                        .res()
-                        .aggOf(new Conv1D()
-                                .setNrofKernels(256))
-                        .andThen(new Conv1D()
-                                .setNrofKernels(256)
-                                .setActivation(new ActivationIdentity()))
-                        .andFinally(new ZeroPad1D().setPaddingLeft(3).setPaddingRight(3))
-                        // .andFinally(new DropOut().setDropProb(dropOutProb/8))
-                        //.andThen(new LstmBlock().setWidth(128))
-                        //.andThenStack(1)
-                        //.res()
-                        // .of(new LstmBlock().setWidth(128))
-                        //.andFinally(new LstmBlock().setWidth(128)
-                        //       .setActivation(new ActivationIdentity()))
-                        //.andFinally(new Norm())
-                        //.andFinally(new DropOut().setDropProb(dropOutProb / 4))
-                        //   .andThen(new LastStep())
-                        .andThen(new GlobMeanMax())
-                        .andThenStack(2)
-                        //.res()
-                        .aggOf(new Dense()
-                                .setHiddenWidth(256)
-                                .setActivation(new ActivationReLU()))
-                        .andFinally(new DropOut().setDropProb(dropOutProb))
-                        .andFinally(new Output(trainIter.totalOutcomes()));
+                ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                        new BlockBuilder()
+                                .setNamePrefix(namePrefix)
+                                // .setUpdater(nesterovs)
+                                .setStartingLearningRate(0.05)
+                                .first(new RnnType(inputShape))
+                                .andThen(new Conv1D()
+                                        .setNrofKernels(256))
+                                .andThenStack(nrofCnnLayers)
+                                .res()
+                                .aggOf(new Conv1D()
+                                        .setNrofKernels(256))
+                                .andThen(new Conv1D()
+                                        .setNrofKernels(256)
+                                        .setActivation(new ActivationIdentity()))
+                                .andFinally(new ZeroPad1D().setPaddingLeft(3).setPaddingRight(3))
+                                // .andFinally(new DropOut().setDropProb(dropOutProb/8))
+                                //.andThen(new LstmBlock().setWidth(128))
+                                //.andThenStack(1)
+                                //.res()
+                                // .of(new LstmBlock().setWidth(128))
+                                //.andFinally(new LstmBlock().setWidth(128)
+                                //       .setActivation(new ActivationIdentity()))
+                                //.andFinally(new Norm())
+                                //.andFinally(new DropOut().setDropProb(dropOutProb / 4))
+                                //   .andThen(new LastStep())
+                                .andThen(new GlobMeanMax())
+                                .andThenStack(2)
+                                //.res()
+                                .aggOf(new Dense()
+                                        .setHiddenWidth(256)
+                                        .setActivation(new ActivationReLU()))
+                                .andFinally(new DropOut().setDropProb(dropOutProb))
+                                .andFinally(new Output(trainIter.totalOutcomes())));
 
                 modelData.add(new GenericModelHandle(
                         trainIter,
                         evalIter,
                         new ModelAdapterWithPreProc(rnnPreproc,
-                                new GraphModelAdapter(bBuilder.buildGraph(modelDir.toString()))),
-                        bBuilder.getName(),
-                        bBuilder.getAccuracy()));
+                                new GraphModelAdapter(builder.buildGraph())),
+                        builder.name()));
             });
         });
     }

@@ -1,4 +1,14 @@
 language: java
 sudo: false
-before_script: export BACKEND_PRIORITY_CPU="100000"
-script: mvn clean test
+env:
+  global:
+    - CC_TEST_REPORTER_ID=e35562b8a6ef581798be079625fa963012327fc15a4707ec8ee2d2f28d580558
+    - BACKEND_PRIORITY_CPU="100000"
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+script: mvn clean test jacoco:report
+after_script:
+  - JACOCO_SOURCE_PATH=src/main/java ./cc-test-reporter format-coverage target/site/jacoco/jacoco.xml --input-type jacoco
+  - ./cc-test-reporter upload-coverage
