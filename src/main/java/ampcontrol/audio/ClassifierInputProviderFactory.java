@@ -1,7 +1,7 @@
 package ampcontrol.audio;
 
 
-import ampcontrol.audio.processing.ProcessingResult;
+import ampcontrol.audio.processing.ProcessingResult.Factory;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,10 +17,10 @@ public interface ClassifierInputProviderFactory {
 
     /**
      * Creates a {@link ClassifierInputProvider} from the given string. String is typically expected to contain
-     * information for what {@link ProcessingResult.Factory} shall be
+     * information for what {@link Factory} shall be
      * applied and how large window size.
      *
-     * @param inputDescriptionString
+     * @param inputDescriptionString description of what input the classifier expects
      * @return a {@link ClassifierInputProvider}
      */
     ClassifierInputProvider createInputProvider(String inputDescriptionString);
@@ -34,7 +34,7 @@ public interface ClassifierInputProviderFactory {
 
     /**
      * Generic utility for parsing out the time window size of a modelName
-     * @param windowSizeString
+     * @param windowSizeString string containing window size
      * @return
      */
     static int parseWindowSize(String windowSizeString) {

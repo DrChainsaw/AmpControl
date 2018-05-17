@@ -115,7 +115,8 @@ public class Mfsc implements ProcessingResult.Factory {
     private double[] melFilter(double bin[], int cBin[], int numMelFilters) {
         final double temp[] = new double[numMelFilters + 2];
         for (int k = 1; k <= numMelFilters; k++) {
-            double num1 = 0.0, num2 = 0.0;
+            double num1 = 0.0;
+            double num2 = 0.0;
             for (int i = cBin[k - 1]; i <= cBin[k]; i++) {
                 num1 += ((i - cBin[k - 1] + 1) / (cBin[k] - cBin[k - 1] + 1)) * bin[i];
             }
