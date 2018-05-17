@@ -149,7 +149,7 @@ public class TrainingDescription {
         log.info("Nrof eval files: " + eval.getNrofFiles());
 
         // This knowledge needs to move somewhere else when multiple inputs are implemented
-        final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new RuntimeException("No input!"));
+        final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
         final int[] inputShape = {inputProto.length, inputProto[0].length, (int)silence.getResult().stream().count()};
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";

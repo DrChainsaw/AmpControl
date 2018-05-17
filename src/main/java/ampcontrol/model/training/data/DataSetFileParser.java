@@ -40,9 +40,8 @@ public class DataSetFileParser {
 		.map(file -> dataSetMapper.apply(getSetIdentifier(file)).addFile(file))
 		.sequential()
 		.distinct()
-		.forEach(builder -> labels.forEach(label -> builder.addLabel(label)));
+		.forEach(builder -> labels.forEach(builder::addLabel));
 
-		
 	}
 	
 	private static double getSetIdentifier(Path file) {

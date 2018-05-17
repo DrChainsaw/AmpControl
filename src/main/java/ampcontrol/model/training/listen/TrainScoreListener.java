@@ -22,12 +22,11 @@ public class TrainScoreListener implements TrainingListener {
     private int iterCount = 0;
     private double resultSum = 0;
     private int lastIter;
+    private boolean invoked = false;
 
     public TrainScoreListener(BiConsumer<Integer, Double> iterAndScoreListener) {
         this.iterAndScoreListener = iterAndScoreListener;
     }
-
-    private boolean invoked = false;
 
     @Override
     public boolean invoked() {
@@ -48,7 +47,7 @@ public class TrainScoreListener implements TrainingListener {
 
     @Override
     public void onEpochStart(Model model) {
-
+        // Ignore
     }
 
     @Override
@@ -60,21 +59,21 @@ public class TrainScoreListener implements TrainingListener {
 
     @Override
     public void onForwardPass(Model model, List<INDArray> activations) {
-
+        // Ignore
     }
 
     @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
-
+        // Ignore
     }
 
     @Override
     public void onGradientCalculation(Model model) {
-
+        // Ignore
     }
 
     @Override
     public void onBackwardPass(Model model) {
-
+        // Ignore
     }
 }

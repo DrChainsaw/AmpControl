@@ -39,15 +39,13 @@ public class SequentialHoldFileSupplier implements Supplier<Path> {
 	public SequentialHoldFileSupplier(List<Path> files, int nrToHold, int startInd) {
 		this.files = files;
 		this.nrToHold = nrToHold;
-		if(startInd < 0) {
-			startInd = -startInd;
-		}
-		fileNr = startInd % files.size();
+		final int positiveStartInd = startInd < 0 ? -startInd : startInd;
+		fileNr = positiveStartInd % files.size();
 		if(files.isEmpty()) {
-			throw new RuntimeException("No files given!");
+			throw new IllegalArgumentException("No files given!");
 		}
 		if(nrToHold < 1) {
-			throw new RuntimeException("nrToHold must be > 0!");
+			throw new IllegalArgumentException("nrToHold must be > 0!");
 		}
 	}
 

@@ -7,12 +7,12 @@ import ampcontrol.audio.processing.ProcessingResult.Factory;
  *
  * @author Christian Skärby
  */
-public class Pipe implements ProcessingResult.Factory {
+public class Pipe implements Factory {
 
     private final Factory first;
     private final Factory second;
 
-    public Pipe(ProcessingResult.Factory first, Factory second) {
+    public Pipe(Factory first, Factory second) {
         this.first = first;
         this.second = second;
     }

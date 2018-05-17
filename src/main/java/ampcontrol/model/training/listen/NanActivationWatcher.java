@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * Notifies a callback {@link Runnable} if any activations are NaN
- * 
+ *
  * @author Christian Skärby
  */
 public class NanActivationWatcher implements TrainingListener {
@@ -26,16 +26,20 @@ public class NanActivationWatcher implements TrainingListener {
 
     private final Condition isNan = new IsNaN();
     private final Runnable nanCallback;
+    private boolean invoked = false;
 
     /**
-     * Default constructor. Throws a {@link RuntimeException} if any activations are NaN 
+     * Default constructor. Throws a {@link IllegalStateException} if any activations are NaN
      */
     public NanActivationWatcher() {
-        this(() ->{throw new RuntimeException();});
+        this(() -> {
+            throw new IllegalStateException();
+        });
     }
 
     /**
      * Constructor
+     *
      * @param nanCallback Callback in case of NaN activation
      */
     public NanActivationWatcher(Runnable nanCallback) {
@@ -44,21 +48,22 @@ public class NanActivationWatcher implements TrainingListener {
 
     @Override
     public void onEpochStart(Model model) {
-
+        // Ignore
     }
 
     @Override
     public void onEpochEnd(Model model) {
-
+        // Ignore
     }
 
     @Override
     public void onForwardPass(Model model, List<INDArray> activations) {
+        invoke();
         for (int layer = 0; layer < activations.size(); layer++) {
             INDArray act = activations.get(layer);
             boolean nanExist = BooleanIndexing.or(act, isNan);
-            if(nanExist) {
-                if(log.isWarnEnabled()) {
+            if (nanExist) {
+                if (log.isWarnEnabled()) {
                     log.warn("Layer: " + ((MultiLayerNetwork) model).getLayer(layer));
                     log.warn("Prev Layer: " + ((MultiLayerNetwork) model).getLayer(layer - 1));
                     // log.warn(BooleanIndexing.or(((MultiLayerNetwork)model).getLayer(layer).getParam("W"),isNan));
@@ -72,11 +77,12 @@ public class NanActivationWatcher implements TrainingListener {
 
     @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
-        for (Map.Entry<String, INDArray> actEntry: activations.entrySet()) {
+        invoke();
+        for (Map.Entry<String, INDArray> actEntry : activations.entrySet()) {
             INDArray act = actEntry.getValue();
             boolean nanExist = BooleanIndexing.or(act, isNan);
-            if(nanExist) {
-                if(log.isWarnEnabled()) {
+            if (nanExist) {
+                if (log.isWarnEnabled()) {
                     final String layer = actEntry.getKey();
                     log.warn("Layer: " + ((ComputationGraph) model).getLayer(layer));
                     //log.warn(BooleanIndexing.or(((MultiLayerNetwork)model).getLayer(layer).getParam("W"),isNan));
@@ -90,26 +96,26 @@ public class NanActivationWatcher implements TrainingListener {
 
     @Override
     public void onGradientCalculation(Model model) {
-
+        // Ignore
     }
 
     @Override
     public void onBackwardPass(Model model) {
-
+        // Ignore
     }
 
     @Override
     public boolean invoked() {
-        return false;
+        return invoked;
     }
 
     @Override
     public void invoke() {
-
+        invoked = true;
     }
 
     @Override
     public void iterationDone(Model model, int iteration) {
-
+        // Ignore
     }
 }

@@ -22,6 +22,8 @@ public class TimeMeasurement implements TrainingListener {
 
     private LocalTime startTime;
     private int nrofExamplesCount = 0;
+    private boolean invoked = false;
+
 
     @Override
     public void onEpochStart(Model model) {
@@ -37,25 +39,23 @@ public class TimeMeasurement implements TrainingListener {
 
     @Override
     public void onForwardPass(Model model, List<INDArray> activations) {
-
+        // Ignore
     }
 
     @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
-
+        // Ignore
     }
 
     @Override
     public void onGradientCalculation(Model model) {
-
+        // Ignore
     }
 
     @Override
     public void onBackwardPass(Model model) {
-
+        // Ignore
     }
-
-    private boolean invoked = false;
 
     @Override
     public boolean invoked() {

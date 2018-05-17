@@ -11,12 +11,11 @@ import org.deeplearning4j.optimize.api.IterationListener;
 public class NanScoreWatcher implements IterationListener {
 
     private final Runnable nanCallback;
+    private boolean invoked = false;
 
     public NanScoreWatcher(Runnable nanCallback) {
         this.nanCallback = nanCallback;
     }
-
-    private boolean invoked = false;
 
     @Override
     public boolean invoked() {

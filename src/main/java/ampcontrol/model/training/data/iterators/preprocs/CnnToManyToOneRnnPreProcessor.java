@@ -60,7 +60,7 @@ public class CnnToManyToOneRnnPreProcessor implements DataSetPreProcessor {
 	public static INDArray cnnToRnnFeature(INDArray cnnFeatures) {
 	    if(cnnFeatures.size(1) > 1) {
 	        // Implementation could probably be reworked to do something like [miniBatchSize, width*channels, height]
-            throw new RuntimeException("Hacky implementation assumes single channel only. Got " + cnnFeatures.size(1));
+            throw new IllegalArgumentException("Hacky implementation assumes single channel only. Got " + cnnFeatures.size(1));
         }
 		INDArray rnnFeatures = cnnFeatures.tensorAlongDimension(0, 0, 3, 2);
         rnnFeatures = rnnFeatures.swapAxes(1,2);

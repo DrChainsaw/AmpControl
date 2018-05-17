@@ -19,6 +19,7 @@ import java.util.function.BiConsumer;
  * {@link IterationListener} which evaluates the given {@link Model} and notifies a {@link BiConsumer} of the training
  * accuracy per iteration.
  * TODO: Too painful to test due to dependencies to Dl4j internals. Possible to redesign?
+ *
  * @author Christian Skärby
  */
 public class TrainEvaluator implements TrainingListener {
@@ -27,6 +28,7 @@ public class TrainEvaluator implements TrainingListener {
 
     private final BiConsumer<Integer, Double> iterAndEvalListener;
 
+    private boolean invoked = false;
     private int iterStore = 0;
     private final Evaluation eval;
 
@@ -35,8 +37,6 @@ public class TrainEvaluator implements TrainingListener {
         this.iterAndEvalListener = iterAnEvalListener;
         this.eval = new Evaluation();
     }
-
-    private boolean invoked = false;
 
     @Override
     public boolean invoked() {
@@ -57,7 +57,7 @@ public class TrainEvaluator implements TrainingListener {
             eval.eval(labels, ol.output(false));
             iterStore = iteration;
 
-        } else if (model instanceof ComputationGraph){
+        } else if (model instanceof ComputationGraph) {
             final BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
             final INDArray labels = ol.getLabels();
             eval.eval(labels, ol.output(false));
@@ -74,29 +74,27 @@ public class TrainEvaluator implements TrainingListener {
 
     @Override
     public void onEpochEnd(Model model) {
-        if(eval != null) {
-            log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy());
-            iterAndEvalListener.accept(iterStore, eval.accuracy());
-        }
+        log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy());
+        iterAndEvalListener.accept(iterStore, eval.accuracy());
     }
 
     @Override
     public void onForwardPass(Model model, List<INDArray> activations) {
-
+        // Ignore
     }
 
     @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
-
+        // Ignore
     }
 
     @Override
     public void onGradientCalculation(Model model) {
-
+        // Ignore
     }
 
     @Override
     public void onBackwardPass(Model model) {
-
+        // Ignore
     }
 }

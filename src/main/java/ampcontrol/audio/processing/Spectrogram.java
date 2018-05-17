@@ -32,6 +32,12 @@ import java.util.stream.Stream;
  */
 public class Spectrogram implements ProcessingResult.Factory {
 
+    private static final String fftStr = "fft_";
+    private static final String ol = "_olf_";
+    private static final String numCap = "(\\d*)";
+    private static final Pattern parPattern = Pattern.compile(".*" + fftStr + numCap + ol + numCap + ".*");
+
+
     private final int fftWindowSize; // number of sample in fft, the value needed to be a number to power of 2
     private final int overlapFactor; // 1/overlapFactor overlapping, e.g. 1/4=25% overlapping
     private final double[] window;
@@ -47,10 +53,6 @@ public class Spectrogram implements ProcessingResult.Factory {
         this.fft = new DoubleFFT_1D(fftWindowSize);
     }
 
-    private static final String fftStr = "fft_";
-    private static final String ol = "_olf_";
-    private static final String numCap = "(\\d*)";
-    private static final Pattern parPattern = Pattern.compile(".*" + fftStr + numCap + ol + numCap + ".*");
 
     public Spectrogram(String parString) {
         Matcher m = parPattern.matcher(parString);
