@@ -47,8 +47,8 @@ I do believe there are strict limitations with this approach. I have only attemp
 ## Getting Started
 
 Clone the repo and build with maven or just run from the IDE. The "main" applications are 
-* ampControl.admin.AmpControlMain: Controls an amplifier as described above
-* ampControl.model.training.TrainingDescription: Trains classifiers
+* ampcontrol.admin.AmpControlMain: Controls an amplifier as described above
+* ampcontrol.model.training.TrainingDescription: Trains classifiers
 
 I don't really expect anyone but me to use this project and as of now it does not contain any trained models nor the training data to create them as they are both quite sizey. Should you find this project and wish to try it out then apart from being very flattered I would also happily provide both the training data and any models. Just post it as an issue on the project, preferably with some recommended way of providing them. My dataset is 3.7 Gb and models are 20-100 Mb each. Data set consists of some of my music projects which happened to have consistent and clear track naming enough to automatically label the raw wav-files through a crude python script (not part of this repo as of now).
 
