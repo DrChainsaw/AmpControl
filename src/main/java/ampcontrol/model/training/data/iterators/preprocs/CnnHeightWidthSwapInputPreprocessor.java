@@ -39,7 +39,7 @@ public class CnnHeightWidthSwapInputPreprocessor implements InputPreProcessor {
             InputType.InputTypeConvolutional cnnInput = (InputType.InputTypeConvolutional)inputType;
             return new InputType.InputTypeConvolutional(cnnInput.getWidth(), cnnInput.getHeight(), cnnInput.getDepth());
         }
-        throw new RuntimeException("Only works for CNN types! Was " + inputType);
+        throw new IllegalArgumentException("Only works for CNN types! Was " + inputType);
     }
 
     @Override

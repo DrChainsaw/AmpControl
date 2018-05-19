@@ -32,7 +32,7 @@ public class RandScale implements ProcessingResult.Factory {
         this.rng = rng;
 
         if(maxScalingPerc < minScalingPerc) {
-            throw new RuntimeException("Upper must not be smaller than lower!");
+            throw new IllegalArgumentException("Upper must not be smaller than lower!");
         }
     }
 

@@ -95,7 +95,7 @@ class TrainingHarness {
                 return decorate(new EvalValidation(new Evaluation(labels), listener), bestEvalScore);
 
             } catch (IOException e) {
-                throw new RuntimeException("Could not load file for model " + model.name() + "!", e);
+                throw new IllegalArgumentException("Could not load file for model " + model.name() + "!", e);
             }
         }
 

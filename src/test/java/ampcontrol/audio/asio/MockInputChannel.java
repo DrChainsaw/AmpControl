@@ -15,7 +15,7 @@ public class MockInputChannel implements AsioInputChannel {
     @Override
     public boolean updateBuffer(float[] buffer, Set<AsioChannel> channels) {
         if(buffer.length != newBuffer.length) {
-            throw new RuntimeException("Must be same length!");
+            throw new IllegalArgumentException("Must be same length!");
         }
         System.arraycopy(newBuffer, 0, buffer, 0, buffer.length);
         return true;

@@ -133,7 +133,7 @@ public class TrainingDescription {
         try {
             DataSetFileParser.parseFileProperties(baseDir, new DataSetMapper(train, eval, evalSetPercentage));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
 
         final CachingDataSetIterator trainIter = new CachingDataSetIterator(

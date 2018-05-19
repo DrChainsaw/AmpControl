@@ -36,7 +36,7 @@ public class DenseStack implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Can only stack graphs!");
+        throw new IllegalArgumentException("Can only stack graphs!");
     }
 
     @Override

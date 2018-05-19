@@ -21,7 +21,7 @@ public class ResBlock implements LayerBlockConfig {
 
     private static final Logger log = LoggerFactory.getLogger(ResBlock.class);
 
-    LayerBlockConfig blockConfig = new Conv2DBatchNormAfter();
+    private LayerBlockConfig blockConfig = new Conv2DBatchNormAfter();
 
     @Override
     public String name() {
@@ -30,7 +30,7 @@ public class ResBlock implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Can only do graphs!");
+        throw new IllegalArgumentException("Can only do graphs!");
     }
 
     @Override

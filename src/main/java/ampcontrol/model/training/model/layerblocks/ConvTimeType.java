@@ -19,7 +19,7 @@ public class ConvTimeType implements LayerBlockConfig {
     public ConvTimeType(int[] inputShape) {
         this.inputShape = inputShape;
         if(inputShape.length != 2) {
-            throw new RuntimeException("Input must be length 2!");
+            throw new IllegalArgumentException("Input must be length 2!");
         }
     }
 
@@ -30,7 +30,7 @@ public class ConvTimeType implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Not supported!");
+        throw new UnsupportedOperationException("Not supported!");
     }
 
     @Override

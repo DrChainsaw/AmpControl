@@ -53,7 +53,7 @@ public class PodXtFactory implements AmpInterface.Factory {
             return new MidiInterface(Devices.podXt, probabilitiesToMessageMapping,
                     rec -> midiServiceFactory.createService(msg -> rec.send(msg, System.nanoTime() / 1000)));
         } catch (MidiUnavailableException e) {
-            throw new RuntimeException("Midi device initialization failed!", e);
+            throw new IllegalStateException("Midi device initialization failed!", e);
         }
     }
 

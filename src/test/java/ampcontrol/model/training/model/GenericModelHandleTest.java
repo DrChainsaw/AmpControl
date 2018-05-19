@@ -54,6 +54,7 @@ public class GenericModelHandleTest {
         final ProbeValidation probe = new ProbeValidation();
         final Validation.Factory<Evaluation> factory = labels -> new EvalValidation(new Evaluation(labels), probe);
         toTest.registerValidation(factory);
+        probe.assertWasCalled(false);
         toTest.eval();
         probe.assertWasCalled(true);
         // Not a good test really. Most likely not the class under tests fault if desired accuracy is not reached.
@@ -93,8 +94,7 @@ public class GenericModelHandleTest {
         public DataSet next(int num) {
             final double[] terms1 = rng.ints(num, -10, 10).mapToDouble(i -> i).toArray();
             final double[][] evenOrOdd = DoubleStream.of(terms1).mapToInt(d -> (int) d).mapToObj(i -> i > 0 ? positive : negative).collect(Collectors.toList()).toArray(new double[][]{});
-            final DataSet ds =  new DataSet(Nd4j.create(terms1).transpose(), Nd4j.create(evenOrOdd));
-            return ds;
+            return new DataSet(Nd4j.create(terms1).transpose(), Nd4j.create(evenOrOdd));
         }
 
         @Override
@@ -124,7 +124,7 @@ public class GenericModelHandleTest {
 
         @Override
         public void reset() {
-
+            //Ignore
         }
 
         @Override
@@ -144,7 +144,7 @@ public class GenericModelHandleTest {
 
         @Override
         public void setPreProcessor(DataSetPreProcessor preProcessor) {
-
+            //Ignore
         }
 
         @Override

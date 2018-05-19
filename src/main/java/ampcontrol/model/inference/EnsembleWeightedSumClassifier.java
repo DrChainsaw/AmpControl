@@ -17,6 +17,10 @@ import java.util.function.BiFunction;
  */
 class EnsembleWeightedSumClassifier implements Classifier {
 
+
+    final static BiFunction<Double, INDArray, INDArray>  avgNormalizer = (sumAcc, aggClass) -> aggClass.div(sumAcc);
+    final static BiFunction<Double, INDArray, INDArray> softMaxNormalizer =  (sumAcc, aggClass) -> Nd4j.getExecutioner().execAndReturn(new SoftMax(aggClass));
+
     private final List<Classifier> ensemble;
     private final BiFunction<Double, INDArray, INDArray> normalizer;
     private final double accuracy;
@@ -32,7 +36,7 @@ class EnsembleWeightedSumClassifier implements Classifier {
         this.ensemble = new ArrayList<>(ensemble);
         this.normalizer = normalizer;
         accuracy = ensemble.stream()
-        		.mapToDouble(cls -> cls.getAccuracy())
+        		.mapToDouble(Classifier::getAccuracy)
         		.max()
         		.orElse(0);
     }
@@ -57,7 +61,4 @@ class EnsembleWeightedSumClassifier implements Classifier {
 		return accuracy;
 	}
 
-	public final static BiFunction<Double, INDArray, INDArray>  avgNormalizer = (sumAcc, aggClass) -> aggClass.div(sumAcc);
-
-    public final static BiFunction<Double, INDArray, INDArray> softMaxNormalizer =  (sumAcc, aggClass) -> Nd4j.getExecutioner().execAndReturn(new SoftMax(aggClass));
 }

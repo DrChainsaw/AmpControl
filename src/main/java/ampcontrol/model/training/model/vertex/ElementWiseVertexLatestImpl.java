@@ -148,7 +148,7 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
     @Override
     public void setBackpropGradientsViewArray(INDArray backpropGradientsViewArray) {
         if (backpropGradientsViewArray != null)
-            throw new RuntimeException("Vertex does not have gradients; gradients view array cannot be set here");
+            throw new IllegalArgumentException("Vertex does not have gradients; gradients view array cannot be set here");
     }
 
     @Override

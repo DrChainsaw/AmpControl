@@ -9,7 +9,6 @@ import ampcontrol.model.training.data.*;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.DataSet;
-import org.nd4j.linalg.factory.Nd4j;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -49,11 +48,11 @@ public class ValidateCachingIter {
         labelToBuilder.put("silence", () -> silence);
         labelToBuilder = Collections.unmodifiableMap(labelToBuilder);
         final int seed = 666;
-        final DataProviderBuilder train1 = new TrainingDataProviderBuilder(labelToBuilder, s->new ArrayList<>(s), clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
-        final DataProviderBuilder train2 = new TrainingDataProviderBuilder(labelToBuilder, s->new ArrayList<>(s), clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
+        final DataProviderBuilder train1 = new TrainingDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
+        final DataProviderBuilder train2 = new TrainingDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
 
-        final DataProviderBuilder eval1 = new EvalDataProviderBuilder(labelToBuilder, s->new ArrayList<>(s), clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
-        final DataProviderBuilder eval2 = new EvalDataProviderBuilder(labelToBuilder, s->new ArrayList<>(s), clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
+        final DataProviderBuilder eval1 = new EvalDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
+        final DataProviderBuilder eval2 = new EvalDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
 
         try {
             DataSetFileParser.parseFileProperties(baseDir, new TrainingDescription.DataSetMapper(train1, eval1, evalSetPercentage));
@@ -61,7 +60,6 @@ public class ValidateCachingIter {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-INDArray aa= Nd4j.create(1);
 
         Thread.sleep(5000);
         final int evalCacheSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval1.getNrofFiles() / evalBatchSize)));
@@ -107,8 +105,7 @@ INDArray aa= Nd4j.create(1);
 
     private static void checkEquality(INDArray arr1, INDArray arr2) {
         if (!arr1.equalsWithEps(arr2, 1e-12)) {
-            System.out.println("Mistmatch! \n" + arr1.sum(0) + "\nOther: \n" + arr2.sum(0));
-            throw new RuntimeException();
+            throw new IllegalStateException("Mistmatch! \n" + arr1.sum(0) + "\nOther: \n" + arr2.sum(0));
         }
     }
 
@@ -124,7 +121,7 @@ INDArray aa= Nd4j.create(1);
             }
             if (!match) {
                 //System.out.println("Mistmatch! \n" + arr1.sum(0));
-                throw new RuntimeException("Mismatch!");
+                throw new IllegalStateException("Mismatch!");
             }
         }
     }

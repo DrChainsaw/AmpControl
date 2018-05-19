@@ -36,15 +36,16 @@ import org.nd4j.shade.jackson.annotation.JsonProperty;
 @Data
 public class ElementWiseVertexLatest extends GraphVertex {
 
-    public ElementWiseVertexLatest(@JsonProperty("op") Op op) {
-        this.op = op;
-    }
+    protected Op op;
 
     public enum Op {
         Add, Subtract, Product, Average, Max
     }
 
-    protected Op op;
+    public ElementWiseVertexLatest(@JsonProperty("op") Op op) {
+        this.op = op;
+    }
+
 
     @Override
     public ElementWiseVertexLatest clone() {
@@ -107,7 +108,7 @@ public class ElementWiseVertexLatest extends GraphVertex {
                 op = ElementWiseVertexLatestImpl.Op.Product;
                 break;
             default:
-                throw new RuntimeException();
+                throw new UnsupportedOperationException("No support for op: " + this.op);
         }
         return new ElementWiseVertexLatestImpl(graph, name, idx, op);
     }

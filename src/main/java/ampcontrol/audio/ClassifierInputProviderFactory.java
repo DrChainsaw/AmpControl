@@ -40,7 +40,7 @@ public interface ClassifierInputProviderFactory {
     static int parseWindowSize(String windowSizeString) {
         Matcher m = timeWindowPattern.matcher(windowSizeString);
         if(!m.find()) {
-            throw new RuntimeException("Could not find window size from " + windowSizeString);
+            throw new IllegalArgumentException("Could not find window size from " + windowSizeString);
         }
         return Integer.parseInt(m.group(1));
     }

@@ -25,7 +25,7 @@ public class MinMaxPool implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Must work on graphBuilders!");
+        throw new IllegalArgumentException("Must work on graphBuilders!");
     }
 
     @Override

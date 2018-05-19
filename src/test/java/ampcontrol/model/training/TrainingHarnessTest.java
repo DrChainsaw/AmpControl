@@ -86,7 +86,7 @@ public class TrainingHarnessTest {
 
         @Override
         public void resetTraining() {
-
+            //Ignore
         }
 
         @Override
@@ -115,17 +115,17 @@ public class TrainingHarnessTest {
 
         @Override
         public void createSeries(String label) {
-
+            //Ignore
         }
 
         @Override
         public void plotData(String label, Integer integer, Double aDouble) {
-
+            //Ignore
         }
 
         @Override
         public void storePlotData(String label) {
-
+            //Ignore
         }
     }
 }

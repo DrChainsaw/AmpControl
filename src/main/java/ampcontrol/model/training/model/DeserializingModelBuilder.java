@@ -42,7 +42,7 @@ public class DeserializingModelBuilder implements ModelBuilder {
                 // load updater with Adam results in score NaN for some unknown reason
                 return ModelSerializer.restoreMultiLayerNetwork(modelFile, !name().contains("Adam"));
             } catch (IOException e) {
-                throw new RuntimeException("Failed to load model");
+                throw new IllegalStateException("Failed to load model");
             }
         }
         return sourceBuilder.build();
@@ -56,7 +56,7 @@ public class DeserializingModelBuilder implements ModelBuilder {
                 // load updater with Adam results in score NaN for some unknown reason
                 return ModelSerializer.restoreComputationGraph(modelFile, !name().contains("Adam"));
             } catch (IOException e) {
-                throw new RuntimeException("Failed to load model " + modelFile, e);
+                throw new IllegalStateException("Failed to load model " + modelFile, e);
             }
         }
         return sourceBuilder.buildGraph();

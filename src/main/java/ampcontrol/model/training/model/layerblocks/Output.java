@@ -19,12 +19,11 @@ public class Output implements LayerBlockConfig {
     private static final Logger log = LoggerFactory.getLogger(Output.class);
 
     private final int nrofLabels;
+    private INDArray weights = Nd4j.create(new double[]{1, 1, 1, 1});
 
     public Output(int nrofLabels) {
         this.nrofLabels = nrofLabels;
     }
-
-    private INDArray weights = Nd4j.create(new double[]{1, 1, 1, 1});
 
     @Override
     public String name() {

@@ -15,37 +15,37 @@ public class MockModel implements Model {
 
     @Override
     public void init() {
-
+        //Ignore
     }
 
     @Override
     public void setListeners(Collection<IterationListener> listeners) {
-
+        //Ignore
     }
 
     @Override
     public void setListeners(IterationListener... listeners) {
-
+        //Ignore
     }
 
     @Override
     public void addListeners(IterationListener... listener) {
-
+        //Ignore
     }
 
     @Override
     public void fit() {
-
+        //Ignore
     }
 
     @Override
     public void update(Gradient gradient) {
-
+        //Ignore
     }
 
     @Override
     public void update(INDArray gradient, String paramType) {
-
+        //Ignore
     }
 
     @Override
@@ -55,12 +55,12 @@ public class MockModel implements Model {
 
     @Override
     public void computeGradientAndScore() {
-
+        //Ignore
     }
 
     @Override
     public void accumulateScore(double accum) {
-
+        //Ignore
     }
 
     @Override
@@ -80,12 +80,12 @@ public class MockModel implements Model {
 
     @Override
     public void setParams(INDArray params) {
-
+        //Ignore
     }
 
     @Override
     public void setParamsViewArray(INDArray params) {
-
+        //Ignore
     }
 
     @Override
@@ -95,22 +95,22 @@ public class MockModel implements Model {
 
     @Override
     public void setBackpropGradientsViewArray(INDArray gradients) {
-
+        //Ignore
     }
 
     @Override
     public void applyLearningRateScoreDecay() {
-
+        //Ignore
     }
 
     @Override
     public void fit(INDArray data) {
-
+        //Ignore
     }
 
     @Override
     public void iterate(INDArray input) {
-
+        //Ignore
     }
 
     @Override
@@ -135,7 +135,7 @@ public class MockModel implements Model {
 
     @Override
     public void setConf(NeuralNetConfiguration conf) {
-
+        //Ignore
     }
 
     @Override
@@ -145,7 +145,7 @@ public class MockModel implements Model {
 
     @Override
     public void validateInput() {
-
+        //Ignore
     }
 
     @Override
@@ -160,7 +160,7 @@ public class MockModel implements Model {
 
     @Override
     public void initParams() {
-
+        //Ignore
     }
 
     @Override
@@ -175,16 +175,16 @@ public class MockModel implements Model {
 
     @Override
     public void setParamTable(Map<String, INDArray> paramTable) {
-
+        //Ignore
     }
 
     @Override
     public void setParam(String key, INDArray val) {
-
+        //Ignore
     }
 
     @Override
     public void clear() {
-
+        //Ignore
     }
 }

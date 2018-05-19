@@ -44,7 +44,7 @@ public class ForkAgg implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Can only do graphs!");
+        throw new UnsupportedOperationException("Can only do graphs!");
     }
 
     @Override

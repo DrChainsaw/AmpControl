@@ -120,11 +120,11 @@ public class BlockBuilder implements ModelBuilder {
     private AggBlock layerBlockConfig;
 
     private double startingLearningRate = 0.01;
-
-    public interface LearningRateSchedulePolicy {
-        void apply(NeuralNetConfiguration.Builder aBuilder);
-    }
-
+    private String namePrefix = "";
+    private int seed = 666;
+    private WorkspaceMode trainWs = WorkspaceMode.SINGLE;
+    private WorkspaceMode evalWs = WorkspaceMode.SINGLE;
+    private IUpdater updater = new Adam(startingLearningRate, 0.9, 0.999, 1e-8);
     private LearningRateSchedulePolicy lrPolicy = getLearningRateSchedulePolicy(startingLearningRate);
 
     @NotNull
@@ -154,12 +154,9 @@ public class BlockBuilder implements ModelBuilder {
         };
     }
 
-    private String namePrefix = "";
-    private int seed = 666;
-    private WorkspaceMode trainWs = WorkspaceMode.SINGLE;
-    private WorkspaceMode evalWs = WorkspaceMode.SINGLE;
-
-    private IUpdater updater = new Adam(startingLearningRate, 0.9, 0.999, 1e-8);
+    public interface LearningRateSchedulePolicy {
+        void apply(NeuralNetConfiguration.Builder aBuilder);
+    }
 
     @Override
     public MultiLayerNetwork build() {
