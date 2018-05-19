@@ -27,7 +27,7 @@ public class PreprocVertex implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Can only do graphs!");
+        throw new UnsupportedOperationException("Can only do graphs!");
     }
 
     @Override
@@ -45,7 +45,7 @@ public class PreprocVertex implements LayerBlockConfig {
 
     /**
      * Set the {@link InputPreProcessor} to use.
-     * @param preProcessor
+     * @param preProcessor the {@link InputPreProcessor} to use
      * @return the {@link PreprocVertex}
      */
     public PreprocVertex setPreProcessor(InputPreProcessor preProcessor) {

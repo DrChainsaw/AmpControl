@@ -28,7 +28,7 @@ public class Cnn2DtoCnn1DInputPreprocessor implements InputPreProcessor {
       //  int[] inputShape = input.shape();
         if(input.size(1) > 1) {
             // Implementation could probably be reworked to do something like [miniBatchSize, width*channels, height]
-            throw new RuntimeException("Hacky implementation assumes single channel only. Got " + input.size(1));
+            throw new UnsupportedOperationException("Hacky implementation assumes single channel only. Got " + input.size(1));
         }
         INDArray rnnFeatures = input.tensorAlongDimension(0, 0, 3, 2);
         //int[] shape = rnnFeatures.shape();

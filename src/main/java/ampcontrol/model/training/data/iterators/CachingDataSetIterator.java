@@ -38,7 +38,7 @@ public class CachingDataSetIterator implements DataSetIterator {
 
     private DataSetPreProcessor preProcessor;
 
-    WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
+    private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
             .policyAllocation(AllocationPolicy.STRICT)
             .policyLearning(LearningPolicy.FIRST_LOOP)
             .policyMirroring(MirroringPolicy.HOST_ONLY)
@@ -100,7 +100,7 @@ public class CachingDataSetIterator implements DataSetIterator {
                 ds = new DataSet(ds.getFeatures(), ds.getLabels(), ds.getFeaturesMaskArray(), ds.getLabelsMaskArray());
                 preProcessor.preProcess(ds);
             } else if (sourceIter.getPreProcessor() != preProcessor) {
-                throw new RuntimeException("Different preprocessors for source and cache! Source: "
+                throw new IllegalStateException("Different preprocessors for source and cache! Source: "
                         + sourceIter.getPreProcessor() + " cache: " + preProcessor);
             }
         }
@@ -111,7 +111,7 @@ public class CachingDataSetIterator implements DataSetIterator {
 
     @Override
     public DataSet next(int num) {
-        throw new RuntimeException("No supported!");
+        throw new UnsupportedOperationException("Not supported!");
     }
 
     @Override
@@ -171,7 +171,7 @@ public class CachingDataSetIterator implements DataSetIterator {
      * one must only call this method after cache has been created when training different models with different
      * pre-processing.
      *
-     * @param preProcessor
+     * @param preProcessor the preprocessor to use
      */
     @Override
     public void setPreProcessor(DataSetPreProcessor preProcessor) {
@@ -196,15 +196,6 @@ public class CachingDataSetIterator implements DataSetIterator {
      */
     public void resetCursor() {
         cursor = -1;
-    }
-
-    /**
-     * Returns nrofItersToCache
-     *
-     * @return nrofItersToCache
-     */
-    public int getNrofItersToCache() {
-        return nrofItersToCache;
     }
 
 }

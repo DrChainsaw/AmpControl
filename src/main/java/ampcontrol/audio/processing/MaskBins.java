@@ -20,10 +20,10 @@ public class MaskBins implements ProcessingResult.Factory {
     public MaskBins(String parStr) {
         String[] chop = parStr.split(nameStatic());
         if(chop.length != 2) {
-            throw new RuntimeException("Can't create mask from! " + parStr);
+            throw new IllegalArgumentException("Can't create mask from! " + parStr);
         }
         binsToMask = Arrays.stream(chop[1].split(delim()))
-                .mapToInt(str -> Integer.parseInt(str))
+                .mapToInt(Integer::parseInt)
                 .toArray();
 
     }
@@ -66,13 +66,12 @@ public class MaskBins implements ProcessingResult.Factory {
     @Override
     public String name() {
         return nameStatic() + Arrays.stream(binsToMask)
-                .mapToObj(i -> String.valueOf(i))
+                .mapToObj(String::valueOf)
                 .collect(Collectors.joining(delim()));
     }
 
 
     public static void main(String[] args) {
         System.out.println("Created: " + new MaskBins("mask0c1c2c3c4").name());
-
     }
 }

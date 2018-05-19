@@ -55,7 +55,7 @@ public class MidiProgChangeFactory implements AmpInterface.Factory {
         try {
             return new MidiInterface(device, probabilitiesToMessageMapping, rec -> new NoService());
         } catch (MidiUnavailableException e) {
-            throw new RuntimeException("Midi device initialization failed!", e);
+            throw new IllegalStateException("Midi device initialization failed!", e);
         }
     }
 }

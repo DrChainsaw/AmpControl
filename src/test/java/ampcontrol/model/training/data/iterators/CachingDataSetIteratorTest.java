@@ -39,7 +39,7 @@ public class CachingDataSetIteratorTest {
         final DataSet ds0 = new DataSet();
         final DataSet ds1 = new DataSet();
         final DataSetIterator sourceMock = new MockDataSetIterator() {
-            boolean toggle = false;
+            private boolean toggle = false;
 
             @Override
             public DataSet next() {
@@ -145,20 +145,10 @@ public class CachingDataSetIteratorTest {
         iter.next(); // Exception!
     }
 
-    /**
-     * Test getNrofItersToCache
-     */
-    @Test
-    public void getNrofItersToCache() {
-        final int cacheSize = 666;
-        assertEquals("Incorrect cache size!", cacheSize,
-                new CachingDataSetIterator(new MockDataSetIterator(), cacheSize).getNrofItersToCache());
-    }
-
 
     private static final class ProbingPreProcessor implements DataSetPreProcessor {
 
-        boolean wasCalled = false;
+        private boolean wasCalled = false;
 
         @Override
         public void preProcess(org.nd4j.linalg.dataset.api.DataSet toPreProcess) {

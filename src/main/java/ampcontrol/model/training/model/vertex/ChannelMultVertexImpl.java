@@ -21,12 +21,12 @@ import org.nd4j.linalg.primitives.Pair;
  */
 public class ChannelMultVertexImpl extends BaseGraphVertex {
 
-    public ChannelMultVertexImpl(ComputationGraph graph, String name, int vertexIndex) {
+    ChannelMultVertexImpl(ComputationGraph graph, String name, int vertexIndex) {
         this(graph, name, vertexIndex, null, null);
 
     }
 
-    public ChannelMultVertexImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices,
+    ChannelMultVertexImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices,
                                  VertexIndices[] outputVertices) {
         super(graph, name, vertexIndex, inputVertices, outputVertices);
     }
@@ -156,7 +156,7 @@ public class ChannelMultVertexImpl extends BaseGraphVertex {
     @Override
     public void setBackpropGradientsViewArray(INDArray backpropGradientsViewArray) {
         if (backpropGradientsViewArray != null)
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Vertex does not have gradients; gradients view array cannot be set here " + this.toString());
     }
 

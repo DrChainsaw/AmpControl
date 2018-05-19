@@ -29,8 +29,8 @@ public class AsioAudioInputBuffer implements AsioDriverListener, AudioInputBuffe
         this.bufferRetreiver = new float[bufferSize];
         this.samples = new double[desiredSamples];
         desiredNrofSamples = desiredSamples;
-        if (desiredSamples == 0) {
-            throw new RuntimeException("Desired number of samples must not be 0!!");
+        if (desiredSamples <= 0) {
+            throw new IllegalArgumentException("Desired number of samples must be > 0!!");
         }
     }
 

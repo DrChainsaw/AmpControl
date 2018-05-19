@@ -27,7 +27,7 @@ public class GlobMeanMax implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Must work with a graphbuilder");
+        throw new UnsupportedOperationException("Must work with a graphbuilder");
     }
 
     @Override

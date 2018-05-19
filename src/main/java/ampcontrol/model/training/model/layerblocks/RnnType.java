@@ -28,7 +28,7 @@ public class RnnType implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new RuntimeException("Not supported!");
+        throw new UnsupportedOperationException("Not supported!");
     }
 
     @Override

@@ -20,7 +20,7 @@ import org.nd4j.linalg.factory.Nd4j;
  */
 public class CnnToRnnToLastStepToFfPreProcessor implements DataSetPreProcessor {
 
-    WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
+    private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
             .initialSize(1024L*1024L)
             .policyAllocation(AllocationPolicy.STRICT)
             .policyLearning(LearningPolicy.FIRST_LOOP)

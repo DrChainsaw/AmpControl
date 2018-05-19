@@ -63,7 +63,7 @@ public class TrainEvaluator implements TrainingListener {
             eval.eval(labels, ol.output(false));
             iterStore = iteration;
         } else {
-            throw new RuntimeException("Not supported: " + model);
+            throw new IllegalArgumentException("Not supported: " + model);
         }
     }
 

@@ -108,7 +108,7 @@ public class ElementWiseVertexLatest extends GraphVertex {
                 op = ElementWiseVertexLatestImpl.Op.Product;
                 break;
             default:
-                throw new RuntimeException();
+                throw new UnsupportedOperationException("No support for op: " + this.op);
         }
         return new ElementWiseVertexLatestImpl(graph, name, idx, op);
     }

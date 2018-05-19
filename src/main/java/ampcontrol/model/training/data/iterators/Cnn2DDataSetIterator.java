@@ -108,7 +108,7 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
 
     @Override
     public int inputColumns() {
-        throw new RuntimeException("Anybody needs this?");
+        throw new UnsupportedOperationException("Anybody needs this?");
     }
 
     @Override
@@ -128,7 +128,7 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
 
     @Override
     public void reset() {
-        throw new RuntimeException("Can't reset!");
+        throw new UnsupportedOperationException("Can't reset!");
     }
 
     @Override

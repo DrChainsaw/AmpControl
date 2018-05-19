@@ -24,7 +24,7 @@ public class ConvType implements LayerBlockConfig {
     }
 
     @Override
-    public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {throw new RuntimeException("Not supported!");}
+    public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {throw new UnsupportedOperationException("Not supported!");}
 
     @Override
     public BlockInfo addLayers(NeuralNetConfiguration.ListBuilder listBuilder, BlockInfo info) {

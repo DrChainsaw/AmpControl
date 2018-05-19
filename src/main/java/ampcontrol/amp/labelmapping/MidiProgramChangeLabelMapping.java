@@ -4,7 +4,7 @@ import ampcontrol.amp.midi.program.ProgramChange;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.ShortMessage;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -25,7 +25,7 @@ public class MidiProgramChangeLabelMapping implements LabelMapping<ShortMessage>
                     try {
                         return new ShortMessage(ShortMessage.PROGRAM_CHANGE, channel, cmd.program(), cmd.bank());
                     } catch (InvalidMidiDataException e) {
-                        throw new RuntimeException("Failed to create message for prog: " + cmd.program() + " bank: " + cmd.bank() + "\n" + e);
+                        throw new IllegalArgumentException("Failed to create message for prog: " + cmd.program() + " bank: " + cmd.bank() + "\n", e);
                     }
                 })
                 .collect(Collectors.toList());
@@ -34,7 +34,6 @@ public class MidiProgramChangeLabelMapping implements LabelMapping<ShortMessage>
 
     @Override
     public List<ShortMessage> apply(Integer labelInd) {
-
-        return Arrays.asList(messageMap.get(labelInd));
+        return Collections.singletonList(messageMap.get(labelInd));
     }
 }
