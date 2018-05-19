@@ -40,7 +40,7 @@ public class MockDataSetIterator implements DataSetIterator {
 
     @Override
     public void reset() {
-
+        //Ignore
     }
 
     @Override

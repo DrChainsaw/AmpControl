@@ -18,129 +18,129 @@ public class MockMqttClient implements IMqttClient {
 
     private boolean isConnected = false;
 
-    public Set<String> getSubscribedTopics() {
+    Set<String> getSubscribedTopics() {
         return subscribedTopics;
     }
 
-    public String getLastPublishedTopic() {
+    String getLastPublishedTopic() {
         return lastPublishedTopic;
     }
 
-    public String getLastPublishedMessage() {
+    String getLastPublishedMessage() {
         return lastPublishedMessage;
     }
 
-    public void clearLastPublished() {
+    void clearLastPublished() {
         lastPublishedMessage = "";
         lastPublishedTopic = "";
     }
 
     @Override
-    public void connect() throws MqttSecurityException, MqttException {
+    public void connect() {
         isConnected = true;
     }
 
     @Override
-    public void connect(MqttConnectOptions options) throws MqttSecurityException, MqttException {
+    public void connect(MqttConnectOptions options) {
         isConnected = true;
     }
 
     @Override
-    public IMqttToken connectWithResult(MqttConnectOptions options) throws MqttSecurityException, MqttException {
+    public IMqttToken connectWithResult(MqttConnectOptions options) {
         isConnected = true;
         return null;
     }
 
     @Override
-    public void disconnect() throws MqttException {
+    public void disconnect() {
         isConnected = false;
     }
 
     @Override
-    public void disconnect(long quiesceTimeout) throws MqttException {
+    public void disconnect(long quiesceTimeout) {
         isConnected = false;
     }
 
     @Override
-    public void disconnectForcibly() throws MqttException {
+    public void disconnectForcibly() {
         isConnected = false;
     }
 
     @Override
-    public void disconnectForcibly(long disconnectTimeout) throws MqttException {
+    public void disconnectForcibly(long disconnectTimeout) {
         isConnected = false;
     }
 
     @Override
-    public void disconnectForcibly(long quiesceTimeout, long disconnectTimeout) throws MqttException {
+    public void disconnectForcibly(long quiesceTimeout, long disconnectTimeout) {
         isConnected = false;
     }
 
     @Override
-    public void subscribe(String topicFilter) throws MqttException, MqttSecurityException {
+    public void subscribe(String topicFilter)  {
         subscribedTopics.add(topicFilter);
     }
 
     @Override
-    public void subscribe(String[] topicFilters) throws MqttException {
+    public void subscribe(String[] topicFilters) {
         subscribedTopics.addAll(Arrays.asList(topicFilters));
     }
 
     @Override
-    public void subscribe(String topicFilter, int qos) throws MqttException {
+    public void subscribe(String topicFilter, int qos) {
         subscribedTopics.add(topicFilter);
     }
 
     @Override
-    public void subscribe(String[] topicFilters, int[] qos) throws MqttException {
+    public void subscribe(String[] topicFilters, int[] qos) {
         subscribedTopics.addAll(Arrays.asList(topicFilters));
     }
 
     @Override
-    public void subscribe(String topicFilter, IMqttMessageListener messageListener) throws MqttException, MqttSecurityException {
+    public void subscribe(String topicFilter, IMqttMessageListener messageListener) {
         subscribedTopics.add(topicFilter);
     }
 
     @Override
-    public void subscribe(String[] topicFilters, IMqttMessageListener[] messageListeners) throws MqttException {
+    public void subscribe(String[] topicFilters, IMqttMessageListener[] messageListeners) {
         subscribedTopics.addAll(Arrays.asList(topicFilters));
     }
 
     @Override
-    public void subscribe(String topicFilter, int qos, IMqttMessageListener messageListener) throws MqttException {
+    public void subscribe(String topicFilter, int qos, IMqttMessageListener messageListener) {
         subscribedTopics.add(topicFilter);
     }
 
     @Override
-    public void subscribe(String[] topicFilters, int[] qos, IMqttMessageListener[] messageListeners) throws MqttException {
+    public void subscribe(String[] topicFilters, int[] qos, IMqttMessageListener[] messageListeners) {
         subscribedTopics.addAll(Arrays.asList(topicFilters));
     }
 
     @Override
-    public void unsubscribe(String topicFilter) throws MqttException {
-
+    public void unsubscribe(String topicFilter) {
+        //Ignore
     }
 
     @Override
-    public void unsubscribe(String[] topicFilters) throws MqttException {
-
+    public void unsubscribe(String[] topicFilters) {
+        //Ignore
     }
 
     @Override
-    public void publish(String topic, byte[] payload, int qos, boolean retained) throws MqttException, MqttPersistenceException {
+    public void publish(String topic, byte[] payload, int qos, boolean retained) {
         lastPublishedTopic = topic;
         lastPublishedMessage = new String(payload, StandardCharsets.UTF_8);
     }
 
     @Override
-    public void publish(String topic, MqttMessage message) throws MqttException, MqttPersistenceException {
+    public void publish(String topic, MqttMessage message) {
         lastPublishedTopic = topic;
         lastPublishedMessage = new String(message.getPayload(), StandardCharsets.UTF_8);
     }
 
     @Override
     public void setCallback(MqttCallback callback) {
-
+        //Ignore
     }
 
     @Override
@@ -170,16 +170,16 @@ public class MockMqttClient implements IMqttClient {
 
     @Override
     public void setManualAcks(boolean manualAcks) {
-
+        //Ignore
     }
 
     @Override
-    public void messageArrivedComplete(int messageId, int qos) throws MqttException {
-
+    public void messageArrivedComplete(int messageId, int qos) {
+        //Ignore
     }
 
     @Override
-    public void close() throws MqttException {
-
+    public void close() {
+        //Ignore
     }
 }

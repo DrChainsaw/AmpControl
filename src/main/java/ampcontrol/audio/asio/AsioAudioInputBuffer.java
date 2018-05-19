@@ -7,6 +7,7 @@ import com.synthbot.jasiohost.AsioDriverListener;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -14,7 +15,6 @@ import java.util.Set;
  * Use for online classification of audio from an ASIO device.
  *
  * @author Christian Skärby
- *
  */
 public class AsioAudioInputBuffer implements AsioDriverListener, AudioInputBuffer {
 
@@ -24,12 +24,12 @@ public class AsioAudioInputBuffer implements AsioDriverListener, AudioInputBuffe
     private final int desiredNrofSamples;
     private int cursor = 0;
 
-    public AsioAudioInputBuffer(AsioInputChannel inputChannel, int bufferSize, int desiredSamples) {
+    AsioAudioInputBuffer(AsioInputChannel inputChannel, int bufferSize, int desiredSamples) {
         this.inputChannel = inputChannel;
         this.bufferRetreiver = new float[bufferSize];
         this.samples = new double[desiredSamples];
         desiredNrofSamples = desiredSamples;
-        if(desiredSamples == 0) {
+        if (desiredSamples == 0) {
             throw new RuntimeException("Desired number of samples must not be 0!!");
         }
     }
@@ -49,17 +49,17 @@ public class AsioAudioInputBuffer implements AsioDriverListener, AudioInputBuffe
 
     @Override
     public void sampleRateDidChange(double v) {
-
+        //Ignore
     }
 
     @Override
     public void resetRequest() {
-
+        //Ignore
     }
 
     @Override
     public void resyncRequest() {
-
+        //Ignore
     }
 
     @Override
@@ -69,18 +69,18 @@ public class AsioAudioInputBuffer implements AsioDriverListener, AudioInputBuffe
 
     @Override
     public void latenciesChanged(int i, int i1) {
-
+        //Ignore
     }
 
     @Override
     public void bufferSwitch(long l, long l1, Set<AsioChannel> set) {
-        if(inputChannel.updateBuffer(bufferRetreiver, set)) {
+        if (inputChannel.updateBuffer(bufferRetreiver, set)) {
             synchronized (this) {
                 for (int i = 0; i < bufferRetreiver.length; i++) {
                     int samplesInd = getSamplesInd(i);
                     // Models trained in this framework use shorts for waveinput.
                     // More "accurate" to cast to double before multiplying with a large value?
-                    samples[samplesInd] = ((double)bufferRetreiver[i] * Short.MAX_VALUE);
+                    samples[samplesInd] = ((double) bufferRetreiver[i] * Short.MAX_VALUE);
                 }
                 cursor += bufferRetreiver.length;
                 cursor %= samples.length;
@@ -100,9 +100,9 @@ public class AsioAudioInputBuffer implements AsioDriverListener, AudioInputBuffe
             driver = AsioDriver.getDriver(driverNameList.get(0));
 
             AsioChannel channel = driver.getChannelInput(0);
-System.out.println("size; " + driver.getBufferPreferredSize());
+            System.out.println("size; " + driver.getBufferPreferredSize());
             System.out.println("max; " + driver.getBufferMaxSize());
-System.out.println("gran: " + driver.getBufferGranularity());
+            System.out.println("gran: " + driver.getBufferGranularity());
 
             Set<AsioChannel> activeChannels = Collections.singleton(channel);
 
@@ -115,14 +115,14 @@ System.out.println("gran: " + driver.getBufferGranularity());
             Thread.sleep(2000);
 
 
-           // System.out.println("short: " + Arrays.toString(stream.getAudio2(4410)));
-           // System.out.println("short: " + Arrays.toString(stream.getAudio(4410)));
+            // System.out.println("short: " + Arrays.toString(stream.getAudio2(4410)));
+            // System.out.println("short: " + Arrays.toString(stream.getAudio(4410)));
 
 
         } catch (Exception ie) {
             ie.printStackTrace(System.err);
         } finally {
-            driver.shutdownAndUnloadDriver();
+            Objects.requireNonNull(driver).shutdownAndUnloadDriver();
         }
     }
 

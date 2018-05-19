@@ -40,12 +40,12 @@ public class ZeroPadding1DVertexImpl extends BaseGraphVertex {
 
     private final int[] padding; // [padLeft, padRight]
 
-    public ZeroPadding1DVertexImpl(ComputationGraph graph, String name, int vertexIndex, int[] padding) {
+    ZeroPadding1DVertexImpl(ComputationGraph graph, String name, int vertexIndex, int[] padding) {
         this(graph, name, vertexIndex, null, null, padding);
 
     }
 
-    public ZeroPadding1DVertexImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices, VertexIndices[] outputVertices, int[] padding) {
+    ZeroPadding1DVertexImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices, VertexIndices[] outputVertices, int[] padding) {
         super(graph, name, vertexIndex, inputVertices, outputVertices);
         this.padding = padding;
     }
@@ -96,7 +96,7 @@ public class ZeroPadding1DVertexImpl extends BaseGraphVertex {
 
     @Override
     public void setBackpropGradientsViewArray(INDArray backpropGradientsViewArray) {
-
+        //Ignore
     }
 
     @Override

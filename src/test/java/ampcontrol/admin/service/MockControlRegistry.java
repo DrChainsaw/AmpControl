@@ -19,7 +19,7 @@ public class MockControlRegistry implements ControlRegistry {
 
     @Override
     public void setConnectionFailedAction(Runnable action) {
-
+        //Ignore
     }
 
     @Override

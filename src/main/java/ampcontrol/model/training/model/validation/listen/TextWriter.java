@@ -34,6 +34,6 @@ public interface TextWriter {
      * Closes the file for writing
      */
     default void close() throws IOException {
-
+        //Ignore
     }
 }
