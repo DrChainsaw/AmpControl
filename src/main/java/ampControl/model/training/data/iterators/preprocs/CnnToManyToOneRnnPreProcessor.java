@@ -33,11 +33,11 @@ public class CnnToManyToOneRnnPreProcessor implements DataSetPreProcessor {
 
         INDArray oldLabels = toPreProcess.getLabels().dup();
       //  System.out.println("OldLabs: \\n" + oldLabels);
-        int[] labelsShape = oldLabels.shape();
-        int[] featuresShape = toPreProcess.getFeatures().shape();
+        long[] labelsShape = oldLabels.shape();
+        long[] featuresShape = toPreProcess.getFeatures().shape();
 
-        INDArray newLabels = Nd4j.create(new int[]{labelsShape[0], labelsShape[1], featuresShape[2]});
-        INDArray labelMask = Nd4j.create(new int[]{labelsShape[0], featuresShape[2]});
+        INDArray newLabels = Nd4j.create(new long[]{labelsShape[0], labelsShape[1], featuresShape[2]});
+        INDArray labelMask = Nd4j.create(new long[]{labelsShape[0], featuresShape[2]});
         INDArrayIndex[] lastTimeStep = new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(featuresShape[2]-1)};
         newLabels.put(lastTimeStep, oldLabels);
         lastTimeStep = new INDArrayIndex[]{NDArrayIndex.all(), NDArrayIndex.point(featuresShape[2]-1)};

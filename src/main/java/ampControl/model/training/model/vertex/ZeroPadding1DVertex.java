@@ -64,7 +64,7 @@ public class ZeroPadding1DVertex extends GraphVertex {
     public InputType getOutputType(int layerIndex, InputType... vertexInputs) throws InvalidInputTypeException {
         InputType first = vertexInputs[0];
 
-        int size = 0;
+        long size = 0;
         if (first instanceof InputType.InputTypeRecurrent) {
             size = ((InputType.InputTypeRecurrent) first).getSize();
         } else {

@@ -51,8 +51,8 @@ public class SeBlockTest {
         graph.setInputs(input);
         // Only way to get hold of channel scale vertex output it seems...
         Map<String, INDArray> activations = graph.feedForward(false, true, true);
-        final int[] expectedShape = {batchSize, nrofChannels,  height,  width};
-        final Optional<int[]> actualShape = activations.values().stream().reduce((a, b) -> b).map(arr -> arr.shape());
+        final long[] expectedShape = {batchSize, nrofChannels,  height,  width};
+        final Optional<long[]> actualShape = activations.values().stream().reduce((a, b) -> b).map(arr -> arr.shape());
         assertTrue("No activations found!", actualShape.isPresent());
         assertArrayEquals("Incorrect activation shape!", expectedShape, actualShape.get());
     }

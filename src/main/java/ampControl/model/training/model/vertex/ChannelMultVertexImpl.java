@@ -87,8 +87,8 @@ public class ChannelMultVertexImpl extends BaseGraphVertex {
 
         // Goal: multiply each h*w activation a_i with the corresponding scale factor s_i, i in range [0, b*c-1]
 
-        final int nrofChannelBatch = channelActivations.tensorssAlongDimension(2, 3); // view each channel and each batch
-        final int nrofFeaturesInActivation = channelActivations.tensorssAlongDimension(0, 1); // view each h and w activation for all batches
+        final long nrofChannelBatch = channelActivations.tensorssAlongDimension(2, 3); // view each channel and each batch
+        final long nrofFeaturesInActivation = channelActivations.tensorssAlongDimension(0, 1); // view each h and w activation for all batches
 
         // From empiric testing: Whatever makes the fewest number of loops is fastest
         if (nrofChannelBatch < nrofFeaturesInActivation) {

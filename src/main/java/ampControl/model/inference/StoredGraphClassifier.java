@@ -1,20 +1,19 @@
 package ampControl.model.inference;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.function.Function;
-import java.util.regex.Pattern;
-
+import ampControl.audio.ClassifierInputProvider;
+import ampControl.model.training.data.iterators.preprocs.CnnToManyToOneRnnPreProcessor;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.util.ModelSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 
-import ampControl.audio.ClassifierInputProvider;
-import ampControl.model.training.data.iterators.preprocs.CnnToManyToOneRnnPreProcessor;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /**
  * {@link Classifier} which loads a stored {@link ComputationGraph}.
@@ -40,7 +39,7 @@ public class StoredGraphClassifier implements Classifier {
 			this.inputProvider = () ->  CnnToManyToOneRnnPreProcessor.cnnToRnnFeature(inputProvider.getModelInput().dup());
 
 			this.postProcessor = output -> {
-				final int lastTimeStep = output.size(2)-1;
+				final long lastTimeStep = output.size(2)-1;
 				return output.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(lastTimeStep));
 			};
 		} else {		

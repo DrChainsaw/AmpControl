@@ -1,7 +1,5 @@
 package ampControl.model.visualize;
 
-import java.util.Arrays;
-
 import org.jzy3d.analysis.AbstractAnalysis;
 import org.jzy3d.analysis.AnalysisLauncher;
 import org.jzy3d.chart.factories.AWTChartComponentFactory;
@@ -15,6 +13,8 @@ import org.jzy3d.plot3d.builder.concrete.OrthonormalGrid;
 import org.jzy3d.plot3d.primitives.Shape;
 import org.jzy3d.plot3d.rendering.canvas.Quality;
 import org.nd4j.linalg.api.ndarray.INDArray;
+
+import java.util.Arrays;
 
 /**
  * Utility class for plotting spectrograms and other 2D representations of sound.
@@ -58,7 +58,7 @@ public class PlotSpectrogram {
 	}
 	
 	public static void plot(final INDArray specgram, int timeInd, int freqInd) {
-		final int[] shape = specgram.shape();
+		final long[] shape = specgram.shape();
 		System.out.println("shape: " + Arrays.toString(shape));
 		final Range rangeTime = new Range(0, shape[timeInd]-1);
 		final Range rangeFreq = new Range(0, shape[freqInd]-1);

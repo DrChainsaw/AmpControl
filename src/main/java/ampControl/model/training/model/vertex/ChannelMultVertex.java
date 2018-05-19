@@ -57,7 +57,7 @@ public class ChannelMultVertex extends GraphVertex {
     public InputType getOutputType(int layerIndex, InputType... vertexInputs) throws InvalidInputTypeException {
         InputType first = vertexInputs[0];
 
-        int numChannels = 0;
+        long numChannels = 0;
         if (first instanceof InputType.InputTypeConvolutional) {
             numChannels = ((InputType.InputTypeConvolutional) first).getDepth();
         } else if (first instanceof InputType.InputTypeConvolutionalFlat) {

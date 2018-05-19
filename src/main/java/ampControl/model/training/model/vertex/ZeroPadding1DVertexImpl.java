@@ -74,9 +74,9 @@ public class ZeroPadding1DVertexImpl extends BaseGraphVertex {
     @Override
     public INDArray doForward(boolean training, LayerWorkspaceMgr workspaceMgr) {
 
-        int[] inShape = getInputs()[0].shape();
-        int paddedOut = inShape[2] + padding[0] + padding[1];
-        int[] outShape = new int[] {inShape[0], inShape[1], paddedOut};
+        long[] inShape = getInputs()[0].shape();
+        long paddedOut = inShape[2] + padding[0] + padding[1];
+        long[] outShape = new long[] {inShape[0], inShape[1], paddedOut};
 
         INDArray out = workspaceMgr.create(ArrayType.ACTIVATIONS, outShape);
         out.put(new INDArrayIndex[] {NDArrayIndex.all(), NDArrayIndex.all(),
@@ -87,7 +87,7 @@ public class ZeroPadding1DVertexImpl extends BaseGraphVertex {
 
     @Override
     public Pair<Gradient, INDArray[]> doBackward(boolean tbptt, LayerWorkspaceMgr workspaceMgr) {
-        int[] inShape = inputs[0].shape();
+        long[] inShape = inputs[0].shape();
 
         INDArray epsNext = epsilon.get(NDArrayIndex.all(), NDArrayIndex.all(),
                 NDArrayIndex.interval(padding[0], padding[0] + inShape[2]));

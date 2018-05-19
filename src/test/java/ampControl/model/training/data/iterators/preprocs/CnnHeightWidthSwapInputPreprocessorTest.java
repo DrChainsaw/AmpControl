@@ -24,10 +24,10 @@ public class CnnHeightWidthSwapInputPreprocessorTest {
      */
     @Test
     public void preProcess() {
-        final int[] shapeIn = {3, 5, 7, 11};
-        final int[] expectedShape = {3, 5, 11, 7};
+        final long[] shapeIn = {3, 5, 7, 11};
+        final long[] expectedShape = {3, 5, 11, 7};
         final InputPreProcessor pp = new CnnHeightWidthSwapInputPreprocessor();
-        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), shapeIn[0], wsMgr).shape());
+        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), (int)shapeIn[0], wsMgr).shape());
     }
 
     /**
@@ -35,10 +35,10 @@ public class CnnHeightWidthSwapInputPreprocessorTest {
      */
     @Test
     public void backprop() {
-        final int[] shapeIn = {3, 5, 7, 11};
-        final int[] expectedShape = {3, 5, 11, 7};
+        final long[] shapeIn = {3, 5, 7, 11};
+        final long[] expectedShape = {3, 5, 11, 7};
         final InputPreProcessor pp = new CnnHeightWidthSwapInputPreprocessor();
-        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), shapeIn[0], wsMgr).shape());
+        assertArrayEquals("Incorrect shape!",expectedShape, pp.preProcess(Nd4j.create(shapeIn), (int)shapeIn[0], wsMgr).shape());
     }
 
     /**
