@@ -18,6 +18,8 @@ import static org.junit.Assert.assertTrue;
  */
 public class Conv2DTest {
 
+    static final Function<Layer, Boolean> conv2dLayerChecker = layer -> layer instanceof ConvolutionLayer && !(layer instanceof Convolution1DLayer);
+
     /**
      * Test that name contains all set parameters
      */
@@ -48,6 +50,4 @@ public class Conv2DTest {
         final LayerBlockConfig toTest = new Conv2D();
         ProbingBuilderAdapter.testLayerBlock(layerChecker, toTest, 1);
     }
-
-    static final Function<Layer, Boolean> conv2dLayerChecker = layer -> layer instanceof ConvolutionLayer && !(layer instanceof Convolution1DLayer);
 }

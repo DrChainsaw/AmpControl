@@ -20,12 +20,14 @@ import java.util.regex.Pattern;
  */
 public class BestEvalScore implements Consumer<Evaluation>, Supplier<Double> {
 
+    private final static Pattern accPattern = Pattern.compile("\\s*Accuracy:\\s*(\\d*,?\\d*)");
+
     private double bestAccuracy = 0;
 
     /**
      * Constructor
      * @param fileName file name for accuracy data
-     * @throws IOException
+     * @throws IOException if file can not be opened
      */
     public BestEvalScore(String fileName) throws IOException {
         final File modelFile = new File(fileName);
@@ -45,7 +47,6 @@ public class BestEvalScore implements Consumer<Evaluation>, Supplier<Double> {
         return bestAccuracy;
     }
 
-    private final static Pattern accPattern = Pattern.compile("\\s*Accuracy:\\s*(\\d*,?\\d*)");
     public static double getAccuracy(String path) throws IOException {
         BufferedReader scoreReader = Files.newBufferedReader(Paths.get(path));
 

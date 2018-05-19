@@ -31,10 +31,6 @@ public class PublishingClassificationListener implements ClassificationListener 
 
         private final TopicPublisher topicPublisher;
 
-        public Factory(TopicPublisher topicPublisher) {
-            this.topicPublisher = topicPublisher;
-        }
-
         @Parameter(names = "-mqttClassificationTopic", description = "MQTT topic to publish labels to")
         private String classificationTopic = "podxtcontrol/classification/label";
 
@@ -46,6 +42,10 @@ public class PublishingClassificationListener implements ClassificationListener 
 
         @Parameter(names = {"-updateProhibitTime", "-upt"}, description = "Shortest time in milli seconds between new updates")
         private int updateProhibitTimeMs = 1000;
+
+        public Factory(TopicPublisher topicPublisher) {
+            this.topicPublisher = topicPublisher;
+        }
 
         @Override
         public ClassificationListener create() {

@@ -13,10 +13,6 @@ import java.nio.file.Paths;
  */
 class FactoryInitializer {
 
-    interface FactoryFactory {
-        void init(CachingDataSetIterator tr, CachingDataSetIterator ev, int[] is, String np, Path md);
-    }
-
     // Create setters if needed...
     private CachingDataSetIterator train = new CachingDataSetIterator(new MockDataSetIterator() {
         @Override
@@ -29,11 +25,15 @@ class FactoryInitializer {
     private String namePrefix = "testDummy_";
     private Path modelSaveDir = Paths.get(".");
 
+    interface FactoryFactory {
+        void init(CachingDataSetIterator tr, CachingDataSetIterator ev, int[] is, String np, Path md);
+    }
+
     void initialize(FactoryFactory ff) {
         ff.init(train,eval,inputSize, namePrefix, modelSaveDir);
     }
 
-    public FactoryInitializer setInputSize(int[] inputSize) {
+    FactoryInitializer setInputSize(int[] inputSize) {
         this.inputSize = inputSize;
         return this;
     }

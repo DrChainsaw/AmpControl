@@ -24,12 +24,16 @@ import java.util.stream.Stream;
  */
 public class PrintClassificationListener implements AmpInterface {
 
-    public static final String RESET = "\033[0m";      // RESET as color sticks otherwise
-    public static final String RED_BOLD = "\033[1;31m";    // RED
-    public static final String GREEN_BOLD = "\033[1;32m";  // GREEN
-    public static final String PURPLE_BOLD = "\033[1;35m"; // PURPLE
-    public static final String BLUE_BOLD = "\033[1;34m";   // BLUE
+    private static final String RESET = "\033[0m";      // RESET as color sticks otherwise
+    private static final String RED_BOLD = "\033[1;31m";    // RED
+    private static final String GREEN_BOLD = "\033[1;32m";  // GREEN
+    private static final String PURPLE_BOLD = "\033[1;35m"; // PURPLE
+    private static final String BLUE_BOLD = "\033[1;34m";   // BLUE
 
+    private final Interpreter<Integer> interpreter;
+    private final Service serviceDelegate;
+    private final List<String> labelMap;
+    private Consumer<String> labelConsumer = System.out::println;
 
     public static class Factory implements AmpInterface.Factory {
 
@@ -57,11 +61,6 @@ public class PrintClassificationListener implements AmpInterface {
             return new PrintClassificationListener(interpretProbabilities, midiServiceFactory.createService(msg -> System.out.println(msgToString(msg))));
         }
     }
-
-    private final Interpreter<Integer> interpreter;
-    private final Service serviceDelegate;
-    private final List<String> labelMap;
-    private Consumer<String> labelConsumer = System.out::println;
 
     private PrintClassificationListener(Interpreter<Integer> interpreter, Service serviceDelegate) {
         this.interpreter = interpreter;

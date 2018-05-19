@@ -16,11 +16,11 @@ import java.util.Arrays;
  */
 public class ZeroPadding1DVertex extends GraphVertex {
 
+    private final int[] padding;
+
     public ZeroPadding1DVertex(int[] padding) {
         this.padding = padding;
     }
-
-    private final int[] padding;
 
     @Override
     public ZeroPadding1DVertex clone() {

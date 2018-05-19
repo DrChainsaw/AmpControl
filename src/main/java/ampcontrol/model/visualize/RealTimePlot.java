@@ -39,12 +39,12 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
     private static class DataXY<X extends Number, Y extends Number> implements Serializable {
 
         private static final long serialVersionUID = 7526471155622776891L;
-        DataXY(String series) {this.series = series;}
-
         private final String series;
 
         private final LinkedList<X> xData = new LinkedList<>();
         private final LinkedList<Y> yData = new LinkedList<>();
+
+        DataXY(String series) {this.series = series;}
 
         private void addPoint(X x, Y y, XYChart xyChart, SwingWrapper<XYChart> swingWrapper) {
             xData.addLast(x);
@@ -56,7 +56,6 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
                 }
 
             }
-
 
             if (!xyChart.getSeriesMap().containsKey(series)) {
                 xyChart.addSeries(series, xData, yData, null);
@@ -74,9 +73,7 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
             }
             try {
                 javax.swing.SwingUtilities.invokeAndWait(swingWrapper::repaintChart);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
+            } catch (InterruptedException | InvocationTargetException e) {
                 e.printStackTrace();
             }
         }

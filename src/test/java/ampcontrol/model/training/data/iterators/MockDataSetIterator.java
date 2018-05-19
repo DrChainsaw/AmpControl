@@ -8,6 +8,8 @@ import java.util.List;
 
 public class MockDataSetIterator implements DataSetIterator {
 
+    private DataSetPreProcessor preProcessor;
+
     @Override
     public DataSet next(int num) {
         return null;
@@ -57,8 +59,6 @@ public class MockDataSetIterator implements DataSetIterator {
     public int numExamples() {
         return 0;
     }
-
-    private DataSetPreProcessor preProcessor;
 
     @Override
     public void setPreProcessor(DataSetPreProcessor preProcessor) {

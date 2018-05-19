@@ -145,6 +145,8 @@ public class EngineTest {
         private final String start;
         private final String stop;
 
+        private boolean isStarted = false;
+
         MockService() {
             this("start", "stop");
         }
@@ -153,8 +155,6 @@ public class EngineTest {
             this.start = start;
             this.stop = stop;
         }
-
-        private boolean isStarted = false;
 
         @Override
         public void stop() {
@@ -166,7 +166,6 @@ public class EngineTest {
             subscriptionRegistry.registerSubscription(start, () -> isStarted = true);
             subscriptionRegistry.registerSubscription(stop, () -> isStarted = false);
         }
-
 
         void assertRunningState(boolean expected) {
             assertEquals("Incorrect running state!", expected, isStarted);

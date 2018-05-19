@@ -14,6 +14,10 @@ import java.util.stream.Stream;
  */
 public class Fork implements ProcessingResult.Factory {
 
+    private final static String fork = "fork_";
+    private final static String split = "_split_";
+    private final static String krof = "_krof";
+
     private final Factory path1;
     private final Factory path2;
 
@@ -48,11 +52,11 @@ public class Fork implements ProcessingResult.Factory {
         return fork + path1.name() + split + path2.name() + krof;
     }
 
-    public static String[] splitFirst(String str) {
+    static String[] splitFirst(String str) {
         return str.split(fork, 2);
     }
 
-    public static String[] splitMid(String str) {
+    static String[] splitMid(String str) {
         int forkInd = str.indexOf(fork);
         int splitInd = str.indexOf(split);
         if (forkInd != -1 && forkInd < splitInd) {
@@ -64,7 +68,7 @@ public class Fork implements ProcessingResult.Factory {
         return str.split(split, 2);
     }
 
-    public static String[] splitEnd(String str) {
+    static String[] splitEnd(String str) {
         return splitLastDelim(str, krof);
     }
 
@@ -76,11 +80,8 @@ public class Fork implements ProcessingResult.Factory {
     }
 
 
-    public static String matchStrStatic() {
+    static String matchStrStatic() {
         return fork + ".*" + split + ".*" + krof;
     }
 
-    final static String fork = "fork_";
-    final static String split = "_split_";
-    final static String krof = "_krof";
 }
