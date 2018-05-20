@@ -7,6 +7,7 @@ import ampcontrol.model.training.model.layerblocks.graph.DenseStack;
 import ampcontrol.model.training.model.layerblocks.graph.MultiLevelAgg;
 import ampcontrol.model.training.model.layerblocks.graph.ResBlock;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
+import org.deeplearning4j.nn.conf.CacheMode;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration.ListBuilder;
@@ -170,7 +171,8 @@ public class BlockBuilder implements ModelBuilder {
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(updater)
                 .trainingWorkspaceMode(trainWs)
-                .inferenceWorkspaceMode(evalWs);
+                .inferenceWorkspaceMode(evalWs)
+                .cacheMode(CacheMode.DEVICE);
     }
 
 

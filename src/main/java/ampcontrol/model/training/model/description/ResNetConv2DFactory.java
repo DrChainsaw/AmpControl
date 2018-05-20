@@ -43,9 +43,9 @@ public class ResNetConv2DFactory {
 
         final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
 
-        IntStream.of(1).forEach(resDepth ->
+        IntStream.of(10).forEach(resDepth ->
             DoubleStream.of(0).forEach(dropOutProb ->
-                DoubleStream.of(0, 0.03).forEach(lambda -> {
+                DoubleStream.of(0.04).forEach(lambda -> {
                     ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                             new BlockBuilder()
                             .setNamePrefix(namePrefix)

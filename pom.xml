@@ -189,7 +189,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <nd4j-backend>nd4j-cuda-8.0-platform</nd4j-backend>
+                <nd4j-backend>nd4j-cuda-9.0-platform</nd4j-backend>
             </properties>
         </profile>
     </profiles>
@@ -197,7 +197,7 @@
     <dependencies>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-cuda-8.0</artifactId>
+            <artifactId>deeplearning4j-cuda-9.0</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
@@ -223,7 +223,7 @@
         <dependency>
             <groupId>org.datavec</groupId>
             <artifactId>datavec-data-audio</artifactId>
-            <version>1.0.0-beta</version>
+            <version>${datavec.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jzy3d</groupId>
