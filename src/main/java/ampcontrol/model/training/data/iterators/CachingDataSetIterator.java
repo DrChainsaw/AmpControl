@@ -82,7 +82,7 @@ public class CachingDataSetIterator implements DataSetIterator {
                         if(useWorkspace) {
                             // Create a new workspace for each thread started or else data becomes all zeroes
                             try (MemoryWorkspace ws = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, "CachingDataSetWs" + i)) {
-                                return sourceIter.next();
+                                return migrate(sourceIter.next());
                             }
                         }
                         return sourceIter.next();
@@ -94,6 +94,7 @@ public class CachingDataSetIterator implements DataSetIterator {
         }
         cursor++;
         DataSet ds = cache.get(cursor);
+
         // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
         if (preProcessor != null) {
             if (sourceIter.getPreProcessor() == null) {
@@ -104,9 +105,15 @@ public class CachingDataSetIterator implements DataSetIterator {
                         + sourceIter.getPreProcessor() + " cache: " + preProcessor);
             }
         }
-
         return ds;
+    }
 
+    private DataSet migrate(DataSet ds) {
+        if (ds == null) { // Happens in testing. CBA to change it
+            return ds;
+        }
+        ds.detach();
+        return ds;
     }
 
     @Override

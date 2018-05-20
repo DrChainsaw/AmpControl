@@ -40,13 +40,13 @@ public class TrainEvaluator extends BaseTrainingListener {
         if (model instanceof MultiLayerNetwork) {
             final BaseOutputLayer ol = (BaseOutputLayer) ((MultiLayerNetwork) model).getOutputLayer();
             final INDArray labels = ol.getLabels();
-            eval.eval(labels, ol.output(false));
+            eval.eval(labels, output(ol));
             iterStore = iteration;
 
         } else if (model instanceof ComputationGraph) {
             final BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
             final INDArray labels = ol.getLabels();
-            eval.eval(labels, ol.output(false));
+            eval.eval(labels, output(ol));
             iterStore = iteration;
         } else {
             throw new IllegalArgumentException("Not supported: " + model);
@@ -62,5 +62,9 @@ public class TrainEvaluator extends BaseTrainingListener {
     public void onEpochEnd(Model model) {
         log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy());
         iterAndEvalListener.accept(iterStore, eval.accuracy());
+    }
+
+    private INDArray output(BaseOutputLayer outputLayer) {
+        return outputLayer.layerConf().getActivationFn().getActivation(outputLayer.getPreOutput(), false);
     }
 }

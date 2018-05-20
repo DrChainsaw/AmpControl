@@ -5,7 +5,9 @@ import ampcontrol.model.training.data.iterators.preprocs.Cnn2DtoCnn1DInputPrepro
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.PreprocVertex;
-import ampcontrol.model.training.model.layerblocks.graph.ZeroPad1D;
+import org.nd4j.linalg.learning.config.Adam;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -45,8 +47,7 @@ public class SampleCnnFactory {
             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                     new BlockBuilder()
                             .setNamePrefix(namePrefix)
-                            //.setUpdater(new Nesterovs(0.9))
-                            .setStartingLearningRate(0.01)
+                            .setUpdater(new Adam(new StepSchedule(ScheduleType.ITERATION, 0.01, 0.1, 40000)))
                             .first(new ConvTimeType(inputShape))
                             .andThen(new PreprocVertex()
                                     .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))
@@ -113,8 +114,7 @@ public class SampleCnnFactory {
             // Very heavy 93.5% after 70k iters with potential improvement
             BlockBuilder bBuilder = new BlockBuilder()
                     .setNamePrefix(namePrefix)
-                    //.setUpdater(new Nesterovs(0.9))
-                    .setStartingLearningRate(0.01)
+                    .setUpdater(new Adam(new StepSchedule(ScheduleType.ITERATION, 0.01, 0.1, 40000)))
                     .first(new ConvTimeType(inputShape))
                     .andThen(new PreprocVertex()
                             .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))

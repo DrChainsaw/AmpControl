@@ -7,6 +7,8 @@ import ampcontrol.model.training.model.layerblocks.graph.MinMaxPool;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.learning.config.Nesterovs;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -53,8 +55,7 @@ public class StackedConv2DFactory {
                 DoubleStream.of(0).forEach(dropOutProb -> {
                     ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                             new BlockBuilder()
-                            .setStartingLearningRate(0.005)
-                            .setUpdater(new Nesterovs(0.9))
+                            .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.005, 0.1, 40000)))
                             .setNamePrefix(namePrefix)
                             .first(new ConvType(inputShape))
                             .andThenStack(2)

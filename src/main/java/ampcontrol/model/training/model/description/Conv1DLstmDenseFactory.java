@@ -5,10 +5,12 @@ import ampcontrol.model.training.data.iterators.preprocs.CnnToRnnToLastStepToFfP
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.GlobMeanMax;
-import ampcontrol.model.training.model.layerblocks.graph.ZeroPad1D;
 import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
+import org.nd4j.linalg.learning.config.Adam;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -58,8 +60,7 @@ public class Conv1DLstmDenseFactory {
                 ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                         new BlockBuilder()
                                 .setNamePrefix(namePrefix)
-                                // .setUpdater(nesterovs)
-                                .setStartingLearningRate(0.05)
+                                .setUpdater(new Adam(new StepSchedule(ScheduleType.ITERATION, 0.05, 0.1, 40000)))
                                 .first(new RnnType(inputShape))
                                 .andThen(new Conv1D()
                                         .setNrofKernels(256))

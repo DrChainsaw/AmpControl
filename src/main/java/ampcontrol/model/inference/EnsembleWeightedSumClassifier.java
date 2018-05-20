@@ -1,7 +1,7 @@
 package ampcontrol.model.inference;
 
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ops.impl.transforms.SoftMax;
+import org.nd4j.linalg.api.ops.impl.transforms.OldSoftMax;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ class EnsembleWeightedSumClassifier implements Classifier {
 
 
     final static BiFunction<Double, INDArray, INDArray>  avgNormalizer = (sumAcc, aggClass) -> aggClass.div(sumAcc);
-    final static BiFunction<Double, INDArray, INDArray> softMaxNormalizer =  (sumAcc, aggClass) -> Nd4j.getExecutioner().execAndReturn(new SoftMax(aggClass));
+    final static BiFunction<Double, INDArray, INDArray> softMaxNormalizer =  (sumAcc, aggClass) -> Nd4j.getExecutioner().execAndReturn(new OldSoftMax(aggClass));
 
     private final List<Classifier> ensemble;
     private final BiFunction<Double, INDArray, INDArray> normalizer;

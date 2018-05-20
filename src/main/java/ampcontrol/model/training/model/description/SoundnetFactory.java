@@ -6,7 +6,9 @@ import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.GlobMeanMax;
 import ampcontrol.model.training.model.layerblocks.graph.PreprocVertex;
-import ampcontrol.model.training.model.layerblocks.graph.ZeroPad1D;
+import org.nd4j.linalg.learning.config.Nesterovs;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -43,8 +45,7 @@ public class SoundnetFactory {
             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                     new BlockBuilder()
                             .setNamePrefix(namePrefix)
-                            // .setUpdater(nesterovs)
-                            .setStartingLearningRate(0.001)
+                            .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.001, 0.1, 40000)))
                             .first(new ConvTimeType(inputShape))
                             .andThen(new PreprocVertex()
                                     .setPreProcessor(new Cnn2DtoCnn1DInputPreprocessor()))

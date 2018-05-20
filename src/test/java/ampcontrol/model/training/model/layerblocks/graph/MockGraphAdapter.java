@@ -35,7 +35,8 @@ public class MockGraphAdapter implements GraphBuilderAdapter {
     @NotNull
     static ComputationGraph createRealComputationGraph(LayerBlockConfig toTest, int prevNrofOutputs, InputType inputType) {
         final String inputName = "input";
-        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder().graphBuilder()
+        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
                 .addInputs(inputName)
                 .setInputTypes(inputType);
         final LayerBlockConfig.BlockInfo seb = toTest

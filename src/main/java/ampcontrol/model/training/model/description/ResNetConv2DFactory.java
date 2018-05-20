@@ -6,6 +6,8 @@ import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.MinMaxPool;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
 import org.nd4j.linalg.learning.config.Nesterovs;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -47,8 +49,7 @@ public class ResNetConv2DFactory {
                     ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                             new BlockBuilder()
                             .setNamePrefix(namePrefix)
-                            .setStartingLearningRate(0.001)
-                            .setUpdater(new Nesterovs(0.9))
+                            .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.001, 0.1, 40000)))
                             //.setTrainWs(WorkspaceMode.SEPARATE)
                             //.setEvalWs(WorkspaceMode.SEPARATE)
                             .first(new ConvType(inputShape))
