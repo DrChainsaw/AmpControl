@@ -131,9 +131,9 @@ public class ElementWiseVertexLatest extends GraphVertex {
         } else {
             //CNN inputs... also check that the depth, width and heights match:
             InputType.InputTypeConvolutional firstConv = (InputType.InputTypeConvolutional) first;
-            int fd = firstConv.getDepth();
-            int fw = firstConv.getWidth();
-            int fh = firstConv.getHeight();
+            long fd = firstConv.getChannels();
+            long fw = firstConv.getWidth();
+            long fh = firstConv.getHeight();
 
             for (int i = 1; i < vertexInputs.length; i++) {
                 if (vertexInputs[i].getType() != InputType.Type.CNN) {
@@ -145,9 +145,9 @@ public class ElementWiseVertexLatest extends GraphVertex {
 
                 InputType.InputTypeConvolutional otherConv = (InputType.InputTypeConvolutional) vertexInputs[i];
 
-                int od = otherConv.getDepth();
-                int ow = otherConv.getWidth();
-                int oh = otherConv.getHeight();
+                long od = otherConv.getChannels();
+                long ow = otherConv.getWidth();
+                long oh = otherConv.getHeight();
 
                 if (fd != od || fw != ow || fh != oh) {
                     throw new InvalidInputTypeException(

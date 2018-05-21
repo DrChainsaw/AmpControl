@@ -38,7 +38,7 @@ public class DummyOutputLayer implements LayerBlockConfig {
      * @param graph
      */
     public static void setEyeOutput(ComputationGraph graph) {
-        final int[] wShape = graph.getOutputLayer(0).getParam("W").shape();
+        final long[] wShape = graph.getOutputLayer(0).getParam("W").shape();
         graph.getOutputLayer(0).setParam("W", Nd4j.eye(wShape[0]));
     }
 }

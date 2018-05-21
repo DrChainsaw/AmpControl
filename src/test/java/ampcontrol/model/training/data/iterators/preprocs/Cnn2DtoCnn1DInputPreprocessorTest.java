@@ -21,8 +21,8 @@ public class Cnn2DtoCnn1DInputPreprocessorTest {
      */
     @Test
     public void preProcess() {
-        final int[] featureShapeIn = {3,1,7,11};
-        final int[] expectedFeatureShape = {3,7,11};
+        final long[] featureShapeIn = {3,1,7,11};
+        final long[] expectedFeatureShape = {3,7,11};
         final InputPreProcessor pp = new Cnn2DtoCnn1DInputPreprocessor();
         assertArrayEquals("Incorrect shape!", expectedFeatureShape,
                 pp.preProcess(Nd4j.create(featureShapeIn),1, wsMgr).shape());
