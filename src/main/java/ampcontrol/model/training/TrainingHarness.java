@@ -204,7 +204,7 @@ class TrainingHarness {
                 uiServer.attach(statsStorage);
                 mh.getModel().addListeners(new StatsListener(statsStorage, 20));
             }
-            mh.getModel().setListeners(new TimeMeasurement());
+            mh.getModel().addListeners(new TimeMeasurement());
             mh.getModel().addListeners(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
         }
     }

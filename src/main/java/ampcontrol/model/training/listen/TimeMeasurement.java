@@ -19,7 +19,6 @@ public class TimeMeasurement extends BaseTrainingListener {
 
     private LocalTime startTime;
     private int nrofExamplesCount = 0;
-    private int lastEpoch = -1;
 
     @Override
     public void onEpochStart(Model model) {
@@ -35,13 +34,6 @@ public class TimeMeasurement extends BaseTrainingListener {
 
     @Override
     public void iterationDone(Model model, int iteration, int epoch) {
-        if(epoch > lastEpoch) {
-            if(lastEpoch > -1) {
-                onEpochEnd(model);
-            }
-            onEpochStart(model);
-            lastEpoch = epoch;
-        }
         nrofExamplesCount += model.batchSize();
     }
 }

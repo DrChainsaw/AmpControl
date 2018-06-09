@@ -42,8 +42,10 @@ public class ResNetConv2DFactory {
     public void addModelData(List<ModelHandle> modelData) {
 
         final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
+        //final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3);
+        final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3);
 
-        IntStream.of(10).forEach(resDepth ->
+        IntStream.of(2,5,10,20).forEach(resDepth ->
             DoubleStream.of(0).forEach(dropOutProb ->
                 DoubleStream.of(0.04).forEach(lambda -> {
                     ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
@@ -57,18 +59,18 @@ public class ResNetConv2DFactory {
                             .andThen(new Conv2DBatchNormAfter()
                                     .setKernelSize(3)
                                     .setNrofKernels(64))
-                            .andThen(new MinMaxPool().setSize(3).setStride(3))
+                            .andThen(pool)
                             .andThen(zeroPad3x3)
                             .andThen(new Conv2DBatchNormAfter()
                                     .setKernelSize(3)
                                     .setNrofKernels(128))
-                            .andThen(new MinMaxPool().setSize(3).setStride(3))
+                            .andThen(pool)
                             .andThen(new SeBlock())
                             .andThen(zeroPad3x3)
                             .andThen(new Conv2DBatchNormAfter()
                                     .setKernelSize(3)
                                     .setNrofKernels(128))
-                            .andThen(new MinMaxPool().setSize(3).setStride(3))
+                            .andThen(pool)
                             .andThen(new SeBlock())
                             .andThenStack(resDepth)
                             .res()
