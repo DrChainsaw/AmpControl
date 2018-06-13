@@ -45,7 +45,7 @@ public class ResNetConv2DFactory {
         //final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3);
         final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3);
 
-        IntStream.of(2,5,10,20).forEach(resDepth ->
+        IntStream.of(10).forEach(resDepth ->
             DoubleStream.of(0).forEach(dropOutProb ->
                 DoubleStream.of(0.04).forEach(lambda -> {
                     ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
