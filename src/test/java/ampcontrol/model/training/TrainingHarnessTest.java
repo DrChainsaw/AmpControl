@@ -33,7 +33,7 @@ public class TrainingHarnessTest {
         final Plot.Factory<Integer, Double> plotFac = title -> new MockPlot();
 
         final TrainingHarness harness = new TrainingHarness(new ArrayList<>(models), "dummy", plotFac, path -> str -> {/* ignore */});
-        final int nrofTrainingSteps = 100;
+        final int nrofTrainingSteps = 200;
         harness.startTraining(nrofTrainingSteps);
 
         models.forEach(model -> model.assertNrofFitCalls(nrofTrainingSteps));

@@ -120,6 +120,9 @@ public class CachingDataSetIterator implements DataSetIterator {
     }
 
     private DataSet detach(DataSet ds) {
+        if(ds == null) {
+            return ds; // Happens in testing. CBA to change it
+        }
         INDArray features = ds.getFeatures();
         INDArray labels = ds.getLabels();
         INDArray featuresMask = ds.getFeaturesMaskArray();
