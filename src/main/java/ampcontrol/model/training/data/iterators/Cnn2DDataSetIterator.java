@@ -47,7 +47,7 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
         @Override
         public synchronized void accept(TrainingData data) {
             List<double[][]> features = data.result().stream().collect(Collectors.toList());
-            for(int featureInd = 0; featureInd < features.size(); featureInd++) {
+            for (int featureInd = 0; featureInd < features.size(); featureInd++) {
                 double[][] feature = features.get(featureInd);
                 if (featureArr == null) {
                     featureArr = Nd4j.create(new int[]{batchSize, features.size(), feature.length, feature[0].length}, 'f');
@@ -59,8 +59,8 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
                     }
                 }
             }
-                final int labelInd = labels.indexOf(data.getLabel());
-                labelsArr.putScalar(batchCnt, labelInd, 1.0);
+            final int labelInd = labels.indexOf(data.getLabel());
+            labelsArr.putScalar(batchCnt, labelInd, 1.0);
 
             batchCnt++;
         }
@@ -91,14 +91,14 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
     @Override
     public DataSet next(int num) {
 
-            final DataAccumulator dataAcc = new DataAccumulator(batchSize, labels);
-            dataProvider.generateData().limit(num)
-                    .forEach(dataAcc);
-            DataSet ds = dataAcc.create();
-            if (preProcessor != null) {
-                preProcessor.preProcess(ds);
-            }
-            return ds;
+        final DataAccumulator dataAcc = new DataAccumulator(batchSize, labels);
+        dataProvider.generateData().limit(num)
+                .forEach(dataAcc);
+        DataSet ds = dataAcc.create();
+        if (preProcessor != null) {
+            preProcessor.preProcess(ds);
+        }
+        return ds;
     }
 
     @Override

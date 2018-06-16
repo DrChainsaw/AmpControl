@@ -3,9 +3,8 @@ package ampcontrol.model.training.data.iterators;
 
 import org.nd4j.linalg.api.memory.MemoryWorkspace;
 import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
-import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
-import org.nd4j.linalg.api.memory.enums.LearningPolicy;
-import org.nd4j.linalg.api.memory.enums.MirroringPolicy;
+import org.nd4j.linalg.api.memory.enums.*;
+import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
@@ -13,7 +12,9 @@ import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -34,6 +35,7 @@ public class CachingDataSetIterator implements DataSetIterator {
     private final int nrofItersToCache;
     private final boolean useWorkspace;
     private List<DataSet> cache;
+    private List<MemoryWorkspace> workspaces = new ArrayList<>();
     private int cursor = -1;
 
     private DataSetPreProcessor preProcessor;
@@ -42,8 +44,11 @@ public class CachingDataSetIterator implements DataSetIterator {
             .policyAllocation(AllocationPolicy.STRICT)
             .policyLearning(LearningPolicy.FIRST_LOOP)
             .policyMirroring(MirroringPolicy.HOST_ONLY)
+            .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
+            .minSize(1024L*1024L)
+            .policySpill(SpillPolicy.REALLOCATE)
+            //.overallocationLimit(20)
             .build();
-
 
     /**
      * Constructor
@@ -73,20 +78,26 @@ public class CachingDataSetIterator implements DataSetIterator {
 
     @Override
     public DataSet next() {
+
         if (cache == null) {
             log.info("create cache of size " + nrofItersToCache);
+            workspaces.stream().filter(Objects::nonNull).forEach(MemoryWorkspace::destroyWorkspace);
+            workspaces.clear();
+
             cache = IntStream.range(0, nrofItersToCache)
                     .parallel()
 
                     .mapToObj(i -> {
-                        if(useWorkspace) {
-                            // Create a new workspace for each thread started or else data becomes all zeroes
-                            try (MemoryWorkspace ws = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, "CachingDataSetWs" + i)) {
-                                return migrate(sourceIter.next());
+                        if (useWorkspace) {
+                            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, "CachingDataSetWs" + i);
+                            workspaces.add(ws);
+                            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+                              DataSet ds = sourceIter.next();
+                              Nd4j.getExecutioner().commit();
+                              return ds;
                             }
                         }
                         return sourceIter.next();
-
                     })
                     .collect(Collectors.toList());
 
@@ -108,11 +119,32 @@ public class CachingDataSetIterator implements DataSetIterator {
         return ds;
     }
 
-    private DataSet migrate(DataSet ds) {
-        if (ds == null) { // Happens in testing. CBA to change it
-            return ds;
-        }
-        ds.detach();
+    private DataSet detach(DataSet ds) {
+        INDArray features = ds.getFeatures();
+        INDArray labels = ds.getLabels();
+        INDArray featuresMask = ds.getFeaturesMaskArray();
+        INDArray labelsMask = ds.getLabelsMaskArray();
+
+        if (features != null)
+            features = features.detach();
+
+        if (labels != null)
+            labels = labels.detach();
+
+        if (featuresMask != null)
+            featuresMask = featuresMask.detach();
+
+        if (labelsMask != null)
+            labelsMask = labelsMask.detach();
+
+        return new DataSet(features,labels,featuresMask, labelsMask);
+
+    }
+
+    private DataSet logAndReturn(int ind, String pref, DataSet ds) {
+        log.info(pref + " feature " + ind + " checksum: " + ds.getFeatures().sumNumber() + " samp " + ds.getFeatures().getDouble(0,1,2,3));
+        log.info(pref + " label " + ind + " checksum: " + ds.getLabels().sumNumber());
+        //log.info(pref + ds.getLabels());
         return ds;
     }
 
@@ -204,5 +236,4 @@ public class CachingDataSetIterator implements DataSetIterator {
     public void resetCursor() {
         cursor = -1;
     }
-
 }
