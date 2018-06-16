@@ -96,11 +96,6 @@ public class GenericModelHandleTest {
         }
 
         @Override
-        public int totalExamples() {
-            return 0;
-        }
-
-        @Override
         public int inputColumns() {
             return 0;
         }
@@ -128,16 +123,6 @@ public class GenericModelHandleTest {
         @Override
         public int batch() {
             return batchSize;
-        }
-
-        @Override
-        public int cursor() {
-            return 0;
-        }
-
-        @Override
-        public int numExamples() {
-            return 0;
         }
 
         @Override

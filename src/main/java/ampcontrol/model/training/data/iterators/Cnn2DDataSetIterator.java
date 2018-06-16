@@ -102,11 +102,6 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
     }
 
     @Override
-    public int totalExamples() {
-        return Integer.MAX_VALUE;
-    }
-
-    @Override
     public int inputColumns() {
         throw new UnsupportedOperationException("Anybody needs this?");
     }
@@ -133,17 +128,6 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
 
     @Override
     public int batch() {
-        return numExamples();
-    }
-
-    @Override
-    public int cursor() {
-        // TODO Auto-generated method stub
-        return 0;
-    }
-
-    @Override
-    public int numExamples() {
         return batchSize;
     }
 

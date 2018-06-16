@@ -104,7 +104,7 @@ public class CachingDataSetIterator implements DataSetIterator {
             resetCursor();
         }
         cursor++;
-        DataSet ds = cache.get(cursor);
+        DataSet ds = detach(cache.get(cursor));
 
         // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
         if (preProcessor != null) {
@@ -154,11 +154,6 @@ public class CachingDataSetIterator implements DataSetIterator {
     }
 
     @Override
-    public int totalExamples() {
-        return sourceIter.totalExamples();
-    }
-
-    @Override
     public int inputColumns() {
         return sourceIter.inputColumns();
     }
@@ -189,16 +184,6 @@ public class CachingDataSetIterator implements DataSetIterator {
     @Override
     public int batch() {
         return sourceIter.batch();
-    }
-
-    @Override
-    public int cursor() {
-        return cursor;
-    }
-
-    @Override
-    public int numExamples() {
-        return sourceIter.numExamples() * nrofItersToCache;
     }
 
     /**
