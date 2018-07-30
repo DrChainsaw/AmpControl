@@ -3,6 +3,7 @@ package ampcontrol.model.training.listen;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.Model;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
@@ -35,6 +36,7 @@ public class TrainEvaluator extends BaseTrainingListener {
     private final Evaluation eval;
 
     private int iterStore = 0;
+    private int epochStore = 0;
     private INDArray labels;
     private INDArray output;
 
@@ -49,6 +51,8 @@ public class TrainEvaluator extends BaseTrainingListener {
     public void iterationDone(Model model, int iteration, int epoch) {
         eval.eval(labels, output);
         iterStore = iteration;
+        epochStore = epoch;
+
     }
 
     @Override
@@ -58,8 +62,11 @@ public class TrainEvaluator extends BaseTrainingListener {
 
     @Override
     public void onEpochEnd(Model model) {
-        log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy());
+    if(model instanceof ComputationGraph) {
+        final NeuralNetConfiguration conf = ((ComputationGraph) model).getOutputLayer(0).conf();
+        log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy() + " curr learning rate: " + conf.getLayer().getUpdaterByParam("").getLearningRate(iterStore, epochStore));
         iterAndEvalListener.accept(iterStore, eval.accuracy());
+    }
     }
 
     private INDArray getActivation(Map<String, INDArray> activations, GraphVertex[] vertices, int vertexInd) {

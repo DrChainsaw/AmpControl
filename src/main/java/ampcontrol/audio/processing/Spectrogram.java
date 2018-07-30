@@ -102,9 +102,7 @@ public class Spectrogram implements ProcessingResult.Factory {
                     if (specgram == null) {
                         specgram = new double[nrofFrames * specgramPart.length][nrofSamplesInFrame];
                     }
-                    for (int j = 0; j < specgramPart.length; j++) {
-                        specgram[i * specgramPart.length + j] = specgramPart[j];
-                    }
+                    System.arraycopy(specgramPart, 0, specgram, i * specgramPart.length, specgramPart.length);
                 }
                 return specgram;
             });

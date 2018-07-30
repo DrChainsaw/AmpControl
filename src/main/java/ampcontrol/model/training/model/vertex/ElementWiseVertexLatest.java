@@ -16,7 +16,6 @@ package ampcontrol.model.training.model.vertex;/*-
  *
  */
 
-import lombok.Data;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.inputs.InvalidInputTypeException;
@@ -33,7 +32,6 @@ import org.nd4j.shade.jackson.annotation.JsonProperty;
  * TODO: Remove when upgrading dl4j to 9.2-xxx
  * @author Alex Black
  */
-@Data
 public class ElementWiseVertexLatest extends GraphVertex {
 
     protected Op op;

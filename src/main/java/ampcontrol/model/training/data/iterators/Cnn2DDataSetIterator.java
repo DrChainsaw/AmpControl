@@ -41,7 +41,7 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
         private DataAccumulator(int batchSize, List<String> labels) {
             this.batchSize = batchSize;
             this.labels = labels;
-            labelsArr = Nd4j.create(new int[]{batchSize, labels.size()}, 'f');
+            labelsArr = Nd4j.zeros(new int[]{batchSize, labels.size()}, 'f');
         }
 
         @Override
@@ -50,7 +50,7 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
             for (int featureInd = 0; featureInd < features.size(); featureInd++) {
                 double[][] feature = features.get(featureInd);
                 if (featureArr == null) {
-                    featureArr = Nd4j.create(new int[]{batchSize, features.size(), feature.length, feature[0].length}, 'f');
+                    featureArr = Nd4j.createUninitialized(new int[]{batchSize, features.size(), feature.length, feature[0].length}, 'f');
                 }
 
                 for (int timeInd = 0; timeInd < feature.length; timeInd++) {
@@ -91,7 +91,7 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
     @Override
     public DataSet next(int num) {
 
-        final DataAccumulator dataAcc = new DataAccumulator(batchSize, labels);
+        final DataAccumulator dataAcc = new DataAccumulator(num, labels);
         dataProvider.generateData().limit(num)
                 .forEach(dataAcc);
         DataSet ds = dataAcc.create();

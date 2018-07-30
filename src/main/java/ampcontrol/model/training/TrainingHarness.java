@@ -1,9 +1,6 @@
 package ampcontrol.model.training;
 
-import ampcontrol.model.training.listen.IterationSupplier;
-import ampcontrol.model.training.listen.TimeMeasurement;
-import ampcontrol.model.training.listen.TrainEvaluator;
-import ampcontrol.model.training.listen.TrainScoreListener;
+import ampcontrol.model.training.listen.*;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.validation.*;
 import ampcontrol.model.training.model.validation.listen.*;
@@ -207,6 +204,7 @@ class TrainingHarness {
             }
             mh.getModel().addListeners(new TimeMeasurement());
             mh.getModel().addListeners(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
+           // mh.getModel().addListeners(new SeBlockInspection());
         }
     }
 

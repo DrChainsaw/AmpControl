@@ -32,7 +32,7 @@ public class EvalLog implements Consumer<Evaluation> {
         final double newAccuracy = eval.accuracy();
         log.info("Eval report for " + modelName);
         log.info(eval.stats());
-        log.info("\n" + eval.confusionToString());
+        //log.info("\n" + eval.confusionToString());
         log.info("Accuracy = " + newAccuracy + " Best: " + bestAccuracy.get());
     }
 }
