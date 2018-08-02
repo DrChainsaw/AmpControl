@@ -4,9 +4,9 @@ import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
+import ampcontrol.model.training.schedule.epoch.Triangular;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ScheduleType;
-import org.nd4j.linalg.schedule.StepSchedule;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -44,13 +44,14 @@ public class ResNetConv2DFactory {
         final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3); final int resblockOutFac = 1;
        // final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3); final int resblockOutFac = 2;
 
-        IntStream.of(10).forEach(resDepth ->
+        IntStream.of(5).forEach(resDepth ->
             DoubleStream.of(0).forEach(dropOutProb ->
                 DoubleStream.of(0.003).forEach(lambda -> {
                     ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                             new BlockBuilder()
                             .setNamePrefix(namePrefix)
-                            .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.001, 0.1, 40000)))
+                           // .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.EPOCH, 0.001, 10, 2)))
+                                    .setUpdater(new Nesterovs(new Triangular(200, 1e-6,0.001, ScheduleType.EPOCH)))
                             .first(new ConvType(inputShape))
                             .andThen(zeroPad3x3)
                             .andThen(new Conv2DBatchNormAfter()

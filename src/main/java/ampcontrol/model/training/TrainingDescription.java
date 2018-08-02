@@ -38,8 +38,8 @@ public class TrainingDescription {
     private final static Path modelDir = Paths.get("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models");
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10; // 10
-    private final static int trainBatchSize = 32;   // 32 64
-    private final static int evalBatchSize = 32;
+    private final static int trainBatchSize = 64;   // 32 64
+    private final static int evalBatchSize = 64;
     private final static double evalSetPercentage = 3;
 
     /**
@@ -85,20 +85,15 @@ public class TrainingDescription {
 
         final ProcessingResult.Factory audioPostProcessingFactory = new Pipe(
                 new Spectrogram(256, 16),
-                new Pipe(
-                        new Log10(),
-                        new ZeroMean())
-
-        );
-
-        createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
-
-        final ProcessingResult.Factory audioPostProcessingFactoryCoord = new Pipe(
-                new Spectrogram(256, 16),
                 new Fork(
-                        new Pipe(
-                                new Log10(),
-                                new ZeroMean()),
+                        new Fork(
+                                new Pipe(
+                                        new Log10(),
+                                        new ZeroMean()),
+                                new Pipe(
+                                        new Mfsc(44100),
+                                        new ZeroMean())
+                        ),
                         new Pipe(
                                 new Ycoord(),
                                 new UnitMaxZeroMean()
@@ -106,8 +101,7 @@ public class TrainingDescription {
                 )
         );
 
-        createModels(audioPostProcessingFactoryCoord, timeWindowSizeMs, modelData, trainingSeed);
-
+        createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
 
         //NativeOpsHolder.getInstance().getDeviceNativeOps().setOmpNumThreads(1);
 

@@ -105,7 +105,7 @@ public class TrainingHarnessTest {
         }
 
         @Override
-        public void saveModel(String fileName) {
+        public synchronized void saveModel(String fileName) {
             savedModelNames.add(fileName);
         }
     }
