@@ -38,9 +38,9 @@ public class TrainingDescription {
     private final static Path modelDir = Paths.get("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models");
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10; // 10
-    private final static int trainBatchSize = 20;   // 32 64
-    private final static int evalBatchSize = 20;
-    private final static double evalSetPercentage = 5;
+    private final static int trainBatchSize = 32;   // 32 64
+    private final static int evalBatchSize = 32;
+    private final static double evalSetPercentage = 3;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -83,20 +83,31 @@ public class TrainingDescription {
         final int timeWindowSizeMs = 50;
 
 
-        final ProcessingResult.Factory audioPostProcessingFactory= new Pipe(
+        final ProcessingResult.Factory audioPostProcessingFactory = new Pipe(
+                new Spectrogram(256, 16),
+                new Pipe(
+                        new Log10(),
+                        new ZeroMean())
+
+        );
+
+        createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
+
+        final ProcessingResult.Factory audioPostProcessingFactoryCoord = new Pipe(
                 new Spectrogram(256, 16),
                 new Fork(
                         new Pipe(
                                 new Log10(),
                                 new ZeroMean()),
                         new Pipe(
-                                new Mfsc(clipSamplingRate),
-                                new ZeroMean()
+                                new Ycoord(),
+                                new UnitMaxZeroMean()
                         )
                 )
         );
 
-        createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
+        createModels(audioPostProcessingFactoryCoord, timeWindowSizeMs, modelData, trainingSeed);
+
 
         //NativeOpsHolder.getInstance().getDeviceNativeOps().setOmpNumThreads(1);
 
@@ -122,12 +133,12 @@ public class TrainingDescription {
                 .addExpansion("lead", 100);
 
         final Random volScaleRng = new Random(trainingSeed + 1);
-        final ProcessingResult.Factory trainFactory =  new Pipe(
+        final ProcessingResult.Factory trainFactory = new Pipe(
                 new RandScale(1000, 10, volScaleRng),
                 audioPostProcessingFactory
         );
 
-        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, ()-> trainFactory, trainingSeed);
+        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> trainFactory, trainingSeed);
         final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, 666);
 
         try {
@@ -150,7 +161,7 @@ public class TrainingDescription {
 
         // This knowledge needs to move somewhere else when multiple inputs are implemented
         final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
-        final int[] inputShape = {inputProto.length, inputProto[0].length, (int)silence.getResult().stream().count()};
+        final int[] inputShape = {inputProto.length, inputProto[0].length, (int) silence.getResult().stream().count()};
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 

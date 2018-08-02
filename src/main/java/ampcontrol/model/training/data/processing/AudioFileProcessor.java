@@ -87,8 +87,8 @@ public class AudioFileProcessor implements AudioProcessor {
 
                 new Fork(
                         new Pipe(
-                                new Mfsc(44100),
-                                new ZeroMean()),
+                                new Ycoord(),
+                                new UnitMaxZeroMean()),
                         new Pipe(
                                 new Log10(),
                                 new ZeroMean()

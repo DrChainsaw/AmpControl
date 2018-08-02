@@ -39,6 +39,7 @@ public class CachingDataSetIterator implements DataSetIterator {
     private int cursor = -1;
 
     private DataSetPreProcessor preProcessor;
+    private final String wsName = "CachingDataSetWs" + this.toString().split("@")[1];
 
     private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
             .policyAllocation(AllocationPolicy.STRICT)
@@ -89,7 +90,7 @@ public class CachingDataSetIterator implements DataSetIterator {
 
                     .mapToObj(i -> {
                         if (useWorkspace) {
-                            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, "CachingDataSetWs" + i);
+                            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig,wsName + i);
                             workspaces.add(ws);
                             try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
                               DataSet ds = sourceIter.next();
@@ -140,8 +141,7 @@ public class CachingDataSetIterator implements DataSetIterator {
         if (labelsMask != null)
             labelsMask = labelsMask.detach();
 
-        return new DataSet(features,labels,featuresMask, labelsMask);
-
+        return new DataSet(features, labels, featuresMask, labelsMask);
     }
 
     private DataSet logAndReturn(int ind, String pref, DataSet ds) {

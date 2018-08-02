@@ -59,12 +59,6 @@ public class MockModel implements Model {
         //Ignore
     }
 
-
-    @Override
-    public void accumulateScore(double accum) {
-        //Ignore
-    }
-
     @Override
     public INDArray params() {
         return null;
@@ -136,11 +130,6 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void validateInput() {
-        //Ignore
-    }
-
-    @Override
     public ConvexOptimizer getOptimizer() {
         return null;
     }
@@ -150,10 +139,6 @@ public class MockModel implements Model {
         return null;
     }
 
-    @Override
-    public void initParams() {
-        //Ignore
-    }
 
     @Override
     public Map<String, INDArray> paramTable() {

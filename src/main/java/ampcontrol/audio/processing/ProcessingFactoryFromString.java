@@ -95,6 +95,10 @@ public class ProcessingFactoryFromString {
             return new ZeroMean();
         }
 
+        if (preForkStr.matches(matchStr(Ycoord.nameStatic()))) {
+            return new Ycoord();
+        }
+
         if (preForkStr.matches(matchStr(Log10.nameStatic()))) {
             return new Log10();
         }

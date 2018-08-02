@@ -1,6 +1,9 @@
 package ampcontrol.model.training;
 
-import ampcontrol.model.training.listen.*;
+import ampcontrol.model.training.listen.IterationSupplier;
+import ampcontrol.model.training.listen.TimeMeasurement;
+import ampcontrol.model.training.listen.TrainEvaluator;
+import ampcontrol.model.training.listen.TrainScoreListener;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.validation.*;
 import ampcontrol.model.training.model.validation.listen.*;
@@ -34,7 +37,7 @@ class TrainingHarness {
 
     private static final boolean doStatsLogging = false;
     private static final int evalEveryNrofSteps = 40;
-    private static final int nrofStepsBeforeFirstEval = 100;
+    private static final int nrofStepsBeforeFirstEval = 10;
     private static final String bestSuffix = "_best";
     private static final String scoreSuffix = ".score";
     private static final double saveThreshold = 0.9;

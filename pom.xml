@@ -189,7 +189,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <nd4j-backend>nd4j-cuda-8.0</nd4j-backend>
+                <nd4j-backend>nd4j-cuda-9.2</nd4j-backend>
             </properties>
         </profile>
     </profiles>
@@ -197,7 +197,7 @@
     <dependencies>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-cuda-8.0</artifactId>
+            <artifactId>deeplearning4j-cuda-9.2</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
@@ -217,6 +217,7 @@
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
+          <!--  <artifactId>nd4j-cuda-9.1</artifactId> -->
             <artifactId>${nd4j-backend}</artifactId>
             <version>${nd4j.version}</version>
         </dependency>
