@@ -3,7 +3,6 @@ package ampcontrol.model.training.schedule.epoch;
 import ampcontrol.model.training.schedule.ScheduleBaseTest;
 import org.junit.Test;
 import org.nd4j.linalg.schedule.ISchedule;
-import org.nd4j.linalg.schedule.ScheduleType;
 
 import java.util.DoubleSummaryStatistics;
 import java.util.HashSet;
@@ -15,15 +14,15 @@ import java.util.stream.IntStream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Test cases for {@link Triangular}
+ * Test cases for {@link SawTooth}
  *
  * @author Christian Skärby
  */
-public class TriangularTest extends ScheduleBaseTest {
+public class SawToothTest extends ScheduleBaseTest {
 
     @Override
     protected ISchedule createBaseTestInstance() {
-        return new Triangular(666,0.123,4.567, ScheduleType.EPOCH);
+        return new SawTooth(666,0.123,4.567);
     }
 
     /**
@@ -35,7 +34,7 @@ public class TriangularTest extends ScheduleBaseTest {
         final double minLr = 1e-5;
         final double maxLr = 1e-2;
 
-        final ISchedule sched = new Triangular(period, minLr, maxLr, ScheduleType.EPOCH);
+        final ISchedule sched = new SawTooth(period, minLr, maxLr);
 
         List<Double> twoPeriods = IntStream.range(0, 2 * period)
                 .mapToDouble(epoch -> sched.valueAt(0, epoch))

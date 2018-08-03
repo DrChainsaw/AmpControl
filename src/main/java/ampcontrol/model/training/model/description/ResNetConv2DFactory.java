@@ -4,9 +4,8 @@ import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
-import ampcontrol.model.training.schedule.epoch.Triangular;
+import ampcontrol.model.training.schedule.epoch.SawTooth;
 import org.nd4j.linalg.learning.config.Nesterovs;
-import org.nd4j.linalg.schedule.ScheduleType;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -51,7 +50,7 @@ public class ResNetConv2DFactory {
                             new BlockBuilder()
                             .setNamePrefix(namePrefix)
                            // .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.EPOCH, 0.001, 10, 2)))
-                                    .setUpdater(new Nesterovs(new Triangular(200, 1e-6,0.001, ScheduleType.EPOCH)))
+                                    .setUpdater(new Nesterovs(new SawTooth(200, 1e-6,0.001)))
                             .first(new ConvType(inputShape))
                             .andThen(zeroPad3x3)
                             .andThen(new Conv2DBatchNormAfter()
