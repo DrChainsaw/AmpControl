@@ -26,7 +26,7 @@ public class ForkAgg implements LayerBlockConfig {
     private final String sep;
 
     public ForkAgg() {
-        this( "_b_");
+        this( "_f_");
     }
 
     public ForkAgg(String sep) {
