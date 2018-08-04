@@ -35,7 +35,7 @@ public class DummyOutputLayer implements LayerBlockConfig {
 
     /**
      * Sets weights output layer to the identity matrix.
-     * @param graph
+     * @param graph the {@link ComputationGraph} to modify
      */
     public static void setEyeOutput(ComputationGraph graph) {
         final long[] wShape = graph.getOutputLayer(0).getParam("W").shape();
