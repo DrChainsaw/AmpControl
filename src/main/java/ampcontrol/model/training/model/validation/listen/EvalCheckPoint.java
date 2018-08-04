@@ -33,7 +33,6 @@ public class EvalCheckPoint implements Consumer<Evaluation> {
             Path path = Paths.get(fileName);
             TextWriter writer = writerFactory.create(path);
             writer.write(modelName + "\n");
-            writer.write(eval.confusionToString());
             writer.write(eval.stats());
             writer.close();
 

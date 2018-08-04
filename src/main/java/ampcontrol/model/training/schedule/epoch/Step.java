@@ -5,8 +5,8 @@ import org.nd4j.linalg.schedule.ISchedule;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
 /**
- * Divides epoch by a given step, practially causing epochs in an underlying {@link ISchedule} to appear to increase
- * a factor step slower. Most likely the result of serialization-means-no-refactoring induced insanity...
+ * Divides epoch by a given step, practically causing epochs in an underlying {@link ISchedule} to appear to increase
+ * a factor step slower. Design is most likely the result of serialization-means-no-refactoring induced insanity...
  *
  * @author Christian Skärby
  */

@@ -5,7 +5,7 @@ import org.nd4j.linalg.schedule.ISchedule;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
 /**
- * Limits value from an {@link ISchedule} to a maximum value. Most likely the result of
+ * Limits value from an {@link ISchedule} to a maximum value. Design is most likely the result of
  * serialization-means-no-refactoring induced insanity...
  *
  * @author Christian Skärby

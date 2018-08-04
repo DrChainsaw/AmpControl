@@ -1,6 +1,7 @@
 package ampcontrol.model.training.schedule.epoch;
 
 import ampcontrol.model.training.schedule.Add;
+import ampcontrol.model.training.schedule.Div;
 import ampcontrol.model.training.schedule.MaxLim;
 import ampcontrol.model.visualize.Plot;
 import lombok.Data;
@@ -27,40 +28,44 @@ public class SawTooth implements ISchedule {
     private final ISchedule schedule;
 
     public SawTooth(int period,
-                    double minLr,
-                    double maxLr) {
-        this(new Cyclic(period, createTriangle(period, minLr, maxLr)));
+                    double min,
+                    double max) {
+        this(new Cyclic(period, createTriangle(period, min, max)));
     }
 
     /**
      * Convenience method to create a "triangular" {@link ISchedule} which looks like this:
      * <pre>
-     *     maxLr      ^
+     *     max        ^
      *               / \
      *              /   \
      *             /     \
-     *     minrLr /       \
+     *     minr   /       \
      *            <------->\
      *              period  \
      *                       \
      * </pre>
-     *
+     * <p>
      * Typically combined with {@link Cyclic} using "period" to create the cyclic learning rate pattern from the paper
      * cited in class javadoc.
      *
      * @param period See figure above
-     * @param minLr See figure above
-     * @param maxLr See figure above
+     * @param min  See figure above
+     * @param max  See figure above
      * @return ISchedule with a triangular shape
      */
-    public static ISchedule createTriangle(int period, double minLr, double maxLr) {
+    public static ISchedule createTriangle(int period, double min, double max) {
+        if (min > max) {
+            throw new IllegalArgumentException("Min larger than max!!");
+        }
+        // Crude addition of truncated slopes instead of using abs in order to use simpler components
         // Slope of the lines which make up the "triangle"
-        final double slope = 2*(maxLr - minLr) / period; // Goes from minLr to maxLr in period / 2
-        final ISchedule posSlope = new Add(new Linear(slope), new Fixed(minLr)); // y = k*x+m in clunky object notation
-        final ISchedule negSlope = new Add(new Linear(-1 * slope), new Fixed(maxLr - minLr)); // ^^
+        final double slope = 2 * (max - min) / period; // Goes from min to max in period / 2
+        final ISchedule posSlope = new Add(new Linear(slope), new Fixed(min)); // y = k*x+m in clunky object notation
+        final ISchedule negSlope = new Add(new Linear(-slope), new Fixed(max - min)); // ^^
 
         return new Add( // Create triangle by adding truncated slopes
-                new MaxLim(maxLr, posSlope),  // Will stop increasing after period / 2 since y = maxLr when x = period / 2
+                new MaxLim(max, posSlope),  // Will stop increasing after period / 2 since y = max when x = period / 2
                 new MaxLim(0, negSlope) // Will start decreasing after period / 2 since y = 0 when x = period / 2
         );
     }
@@ -68,7 +73,7 @@ public class SawTooth implements ISchedule {
     private static double calcCoeff(int period,
                                     double minLr,
                                     double maxLr) {
-        return 2*(maxLr - minLr) / period;
+        return 2 * (maxLr - minLr) / period;
     }
 
     private SawTooth(
@@ -88,17 +93,23 @@ public class SawTooth implements ISchedule {
     }
 
     public static void main(String[] args) {
-        final int period = 100;
-        final double minLr = -1;
-        final double maxLr = 10;
+        final int period = 20;
+        final double minLr = 0.1;
+        final double maxLr = 0.2;
 
-        final ISchedule sched = new SawTooth(period, minLr, maxLr);
+        final ISchedule sched =
+                new Div(
+                        new Fixed(minLr),
+                       new SawTooth(period, minLr, maxLr)
+                      //  new Step(period,
+                       //         new Exponential(0.9))
+                );
 
-        List<Double> twoPeriods = IntStream.range(0, 2 * period)
+        List<Double> values = IntStream.range(0, 20 * period)
                 .mapToDouble(epoch -> sched.valueAt(0, epoch))
                 .boxed()
                 .collect(Collectors.toList());
-        DoubleSummaryStatistics stats = twoPeriods.stream().mapToDouble(d -> d).summaryStatistics();
-        Plot.plot(twoPeriods, "learningrate");
+        DoubleSummaryStatistics stats = values.stream().mapToDouble(d -> d).summaryStatistics();
+        Plot.plot(values, "values");
     }
 }

@@ -5,8 +5,8 @@ import org.nd4j.linalg.schedule.ISchedule;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
 /**
- * Adds the result of two {@link ISchedule}s. Most likely the result of serialization-means-no-refactoring induced
- * insanity...
+ * Adds the result of two {@link ISchedule}s. Design is most likely the result of serialization-means-no-refactoring
+ * induced insanity...
  *
  * @author Christian Skärby
  */

@@ -5,7 +5,7 @@ import org.nd4j.linalg.schedule.ISchedule;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
 /**
- * Makes a given {@link ISchedule} cyclic. . Most likely the result of serialization-means-no-refactoring induced
+ * Makes a given {@link ISchedule} cyclic. Design is most likely the result of serialization-means-no-refactoring induced
  * insanity...
  *
  * @author Christian Skärby

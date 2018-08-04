@@ -109,7 +109,7 @@ public class TrainingDescription {
                 modelDir.toAbsolutePath().toString(),
                 title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
                 BufferedTextWriter.defaultFactory);
-        harness.startTraining(10000);
+        harness.startTraining(100000);
     }
 
     private static void createModels(final ProcessingResult.Factory audioPostProcessingFactory, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {

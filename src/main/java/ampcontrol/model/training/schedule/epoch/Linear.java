@@ -5,8 +5,8 @@ import org.nd4j.linalg.schedule.ISchedule;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
 /**
- * Value is epoch times a fixed coefficient. . Most likely the result of serialization-means-no-refactoring induced
- * insanity...
+ * Value is epoch times a fixed coefficient. Design is most likely the result of serialization-means-no-refactoring
+ * induced insanity...
  *
  * @author Christian Skärby
  */

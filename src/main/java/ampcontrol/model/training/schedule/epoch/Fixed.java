@@ -5,7 +5,7 @@ import org.nd4j.linalg.schedule.ISchedule;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
 /**
- * "Fixed" schedule. Most likely the result of serialization-means-no-refactoring induced insanity...
+ * "Fixed" schedule. Design is most likely the result of serialization-means-no-refactoring induced insanity...
  *
  * @author Christian Skärby
  */
