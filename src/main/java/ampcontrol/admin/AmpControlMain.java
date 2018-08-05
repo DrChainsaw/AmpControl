@@ -14,6 +14,7 @@ import com.beust.jcommander.JCommander;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
+import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -62,6 +63,7 @@ public class AmpControlMain {
         try {
             // Might need to move into concrete Classifiers if something else is used in training
             DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
+            Nd4j.getMemoryManager().setAutoGcWindow(5000);
             NeuralNetConfiguration.registerLegacyCustomClassesForJSON(ChannelMultVertex.class, ElementWiseVertexLatest.class);
             final Classifier classifier = classifierFromParameters.getClassifier(inputProviderFactory);
             audioClassificationService.initialize(

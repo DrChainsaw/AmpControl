@@ -46,8 +46,8 @@ public class CachingDataSetIterator implements DataSetIterator {
             .policyLearning(LearningPolicy.FIRST_LOOP)
             .policyMirroring(MirroringPolicy.HOST_ONLY)
             .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
-            .minSize(1024L)
             .policySpill(SpillPolicy.REALLOCATE)
+            .initialSize(0)
             //.overallocationLimit(20)
             .build();
 

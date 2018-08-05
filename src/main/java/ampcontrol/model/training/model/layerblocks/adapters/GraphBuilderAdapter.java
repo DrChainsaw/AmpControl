@@ -24,7 +24,7 @@ public interface GraphBuilderAdapter extends BuilderAdapter {
     GraphBuilderAdapter addLayer(String layerName, Layer layer, String... layerInputs);
 
     /**
-     * AAdd a {@link GraphVertex} with the specified name and specified inputs.
+     * Add a {@link GraphVertex} with the specified name and specified inputs.
      *
      * @param vertexName
      * @param vertex

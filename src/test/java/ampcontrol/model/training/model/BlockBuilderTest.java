@@ -37,7 +37,7 @@ public class BlockBuilderTest {
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
-        assertEquals("Incorrect number of layers!", 6, nrofLayers);
+        assertEquals("Incorrect number of layers!", 4, nrofLayers);
     }
 
     /**
@@ -52,7 +52,7 @@ public class BlockBuilderTest {
                 .andFinally(new ZeroPad().setPad(1))
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
-        assertEquals("Incorrect number of layers!", 7, nrofLayers);
+        assertEquals("Incorrect number of layers!", 5, nrofLayers);
     }
 
     /**
@@ -68,7 +68,7 @@ public class BlockBuilderTest {
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
-        assertEquals("Incorrect number of layers!", nrofStacks + 5, nrofLayers);
+        assertEquals("Incorrect number of layers!", nrofStacks + 3, nrofLayers);
     }
 
     /**
@@ -182,7 +182,7 @@ public class BlockBuilderTest {
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
-        assertEquals("Incorrect number of layers!", 4 * nrofStacks + 2, nrofLayers);
+        assertEquals("Incorrect number of layers!", 2 * nrofStacks + 2, nrofLayers);
     }
 
     /**
@@ -199,7 +199,7 @@ public class BlockBuilderTest {
                 .andFinally(new Act()) // Just something which preserves input size
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
-        assertEquals("Incorrect number of layers!", 5 * nrofStacks + 2, nrofLayers);
+        assertEquals("Incorrect number of layers!", 3 * nrofStacks + 2, nrofLayers);
     }
 
     /**
@@ -264,7 +264,7 @@ public class BlockBuilderTest {
                 .done()
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
-        assertEquals("Incorrect number of layers!", 10, nrofLayers);
+        assertEquals("Incorrect number of layers!", 8, nrofLayers);
     }
 
     /**
@@ -281,7 +281,7 @@ public class BlockBuilderTest {
                 .done()
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
-        assertEquals("Incorrect number of layers!", 11, nrofLayers);
+        assertEquals("Incorrect number of layers!", 9, nrofLayers);
     }
 
     /**
@@ -299,6 +299,81 @@ public class BlockBuilderTest {
                 .andFinally(new Output(1))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 6 + nrofStacks, nrofLayers);
+    }
+
+    /**
+     * Test that a very simple model can be built without crashing
+     */
+    @Test
+    public void buildResFork() {
+        final int nrofChannels = 64;
+        final int nrofLayers = new BlockBuilder()
+                .first(new ConvType(new int[]{3, 3, nrofChannels}))
+                .andThenRes()
+                .ofFork()
+                .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
+                .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
+                .done()
+                .andFinally(new Output(1))
+                .buildGraph().getVertices().length;
+        assertEquals("Incorrect number of layers!", 6, nrofLayers);
+    }
+
+    /**
+     * Test that a very simple model can be built without crashing
+     */
+    @Test
+    public void buildResAggFork() {
+        final int nrofChannels = 64;
+        final int nrofLayers = new BlockBuilder()
+                .first(new ConvType(new int[]{3, 3, nrofChannels}))
+                .andThenRes()
+                .aggFork()
+                .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels*2))
+                .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels*2))
+                .done()
+                .andFinally(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels))
+                .andFinally(new Output(1))
+                .buildGraph().getVertices().length;
+        assertEquals("Incorrect number of layers!", 7, nrofLayers);
+    }
+
+    /**
+     * Test that a very simple model can be built without crashing
+     */
+    @Test
+    public void buildResForkAgg() {
+        final int nrofChannels = 64;
+        final int nrofLayers = new BlockBuilder()
+                .first(new ConvType(new int[]{3, 3, nrofChannels}))
+                .andThenRes()
+                .ofFork()
+                .addAgg(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels * 2))
+                .andFinally(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
+                .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
+                .done()
+                .andFinally(new Output(1))
+                .buildGraph().getVertices().length;
+        assertEquals("Incorrect number of layers!", 7, nrofLayers);
+    }
+
+    /**
+     * Test that a very simple model can be built without crashing
+     */
+    @Test
+    public void buildResForkStack() {
+        final int nrofChannels = 64;
+        final int nrofLayers = new BlockBuilder()
+                .first(new ConvType(new int[]{3, 3, nrofChannels}))
+                .andThenRes()
+                .ofFork()
+                .addStack(2)
+                .of(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
+                .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
+                .done()
+                .andFinally(new Output(1))
+                .buildGraph().getVertices().length;
+        assertEquals("Incorrect number of layers!", 7, nrofLayers);
     }
 
 }

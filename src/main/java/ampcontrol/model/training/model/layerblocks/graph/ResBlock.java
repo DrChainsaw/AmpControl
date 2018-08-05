@@ -39,19 +39,26 @@ public class ResBlock implements LayerBlockConfig {
         log.info("Res block starting at " + info);
         BlockInfo nextLayer = blockConfig.addLayers(graphBuilder, info);
 
-        final String merge1 = "rbMv" + nextLayer.getPrevLayerInd();
-        graphBuilder.addVertex(merge1, new MergeVertex(), info.getInputsNames());
-        final String merge2 = "rbMv" + nextLayer.getPrevLayerInd()+1;
-        graphBuilder.addVertex(merge2, new MergeVertex(), nextLayer.getInputsNames());
+        final String add1 = handleMultipleInputs(nextLayer.getPrevLayerInd(), info.getInputsNames(), graphBuilder);
+        final String add2 = handleMultipleInputs(nextLayer.getPrevLayerInd()+1, nextLayer.getInputsNames(), graphBuilder);
 
         final String add = "rbAdd" + info.getPrevLayerInd();
         log.info("rb add: " + info + " and " +nextLayer);
         graphBuilder.addVertex(add,
-                new ElementWiseVertex(ElementWiseVertex.Op.Add), merge1, merge2);
+                new ElementWiseVertex(ElementWiseVertex.Op.Add), add1, add2);
 
         return new SimpleBlockInfo.Builder(nextLayer)
                 .setInputs(new String[] {add})
                 .build();
+    }
+
+    private String handleMultipleInputs(int layerInd, String[] inputs, GraphBuilderAdapter graphBuilder) {
+        if(inputs.length == 1) {
+            return inputs[0];
+        }
+        final String merge = "rbMv" + layerInd;
+        graphBuilder.addVertex(merge, new MergeVertex(), inputs);
+        return merge;
     }
 
 

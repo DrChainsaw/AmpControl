@@ -22,22 +22,25 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
     /**
      * Name of the config as a string
+     *
      * @return Name of the config as a string
      */
     String name();
 
     /**
      * Add layers to a {@link BuilderAdapter}.
+     *
      * @param builder the builder
-     * @param info contains info on what the inputs are
+     * @param info    contains info on what the inputs are
      * @return {@link BlockInfo} with outputs
      */
     BlockInfo addLayers(BuilderAdapter builder, BlockInfo info);
 
     /**
      * Add layers to a {@link NeuralNetConfiguration.ListBuilder}.
+     *
      * @param listBuilder the builder
-     * @param info contains info on what the inputs are
+     * @param info        contains info on what the inputs are
      * @return {@link BlockInfo} with outputs
      */
     default BlockInfo addLayers(NeuralNetConfiguration.ListBuilder listBuilder, BlockInfo info) {
@@ -46,11 +49,12 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
     @Override
     default BlockInfo addLayers(GraphBuilderAdapter graphBuilder, BlockInfo info) {
-        return addLayers((BuilderAdapter)graphBuilder, info);
+        return addLayers((BuilderAdapter) graphBuilder, info);
     }
 
     /**
      * Utility method to create a short name for an {@link IActivation} based on class.
+     *
      * @param activation
      * @return short name of provided {@link IActivation}
      */
@@ -67,12 +71,14 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
         /**
          * Returns index of previous layer
+         *
          * @return index of previous layer
          */
         int getPrevLayerInd();
 
         /**
          * Returns number of outputs from the previous block
+         *
          * @return number of outputs from the previous block
          */
         int getPrevNrofOutputs();
@@ -80,6 +86,7 @@ public interface LayerBlockConfig extends GraphBlockConfig {
         /**
          * Creates a name based on a partial name. Typically used for adding prefix/suffix in nestled graphs to avoid
          * name aliasing.
+         *
          * @param partName
          * @return a named based on a partial name.
          */
@@ -87,14 +94,15 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
         /**
          * Returns the names of the input to the next block
-         * @return  the names of the input to the next block
+         *
+         * @return the names of the input to the next block
          */
         String[] getInputsNames();
 
     }
 
     /**
-     * A simple builadble {@link BlockInfo}.
+     * A simple buildable {@link BlockInfo}.
      *
      * @author Christian Skärby
      */
@@ -107,10 +115,11 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
         /**
          * Constructor
-         * @param prevLayerInd index of previous layer
+         *
+         * @param prevLayerInd    index of previous layer
          * @param prevNrofOutputs number of outputs from previous layer
-         * @param nameMapper maps a partial name to a "full" name
-         * @param inputs input names to a next layer
+         * @param nameMapper      maps a partial name to a "full" name
+         * @param inputs          input names to a next layer
          */
         public SimpleBlockInfo(int prevLayerInd, int prevNrofOutputs, Function<String, String> nameMapper, String[] inputs) {
             this.prevLayerInd = prevLayerInd;
@@ -167,6 +176,7 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
             /**
              * Constructor
+             *
              * @param info default values will be set from this
              */
             public Builder(BlockInfo info) {
@@ -178,6 +188,7 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
             /**
              * Builds a {@link SimpleBlockInfo}
+             *
              * @return a {@link SimpleBlockInfo}
              */
             public SimpleBlockInfo build() {
@@ -186,6 +197,7 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
             /**
              * Sets the prevLayerInd
+             *
              * @param prevLayerInd
              * @return the {@link Builder}
              */
@@ -196,6 +208,7 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
             /**
              * Sets the prevNrofOutputs
+             *
              * @param prevNrofOutputs
              * @return the {@link Builder}
              */
@@ -206,6 +219,7 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
             /**
              * Sets the nameMapper. Typically used for adding prefix/suffix to names in nestled graphs
+             *
              * @param nameMapper
              * @return the {@link Builder}
              */
@@ -216,6 +230,7 @@ public interface LayerBlockConfig extends GraphBlockConfig {
 
             /**
              * Sets the inputs
+             *
              * @param inputs
              * @return the {@link Builder}
              */

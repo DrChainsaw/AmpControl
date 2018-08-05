@@ -95,7 +95,7 @@ public class AudioClassificationService implements Service {
             log.info(Duration.between(lastTime, endtime).toMillis() + " classification: " + classification);
             lastTime = endtime;
             
-            //Step 3: Give classifiction to listener
+            //Step 3: Give classification to listener
             ampInterface.indicateAudioClassification(classification);
         }, 0, TimeUnit.MILLISECONDS.toNanos(minTimeBetweenUpdatesMs), TimeUnit.NANOSECONDS);
            

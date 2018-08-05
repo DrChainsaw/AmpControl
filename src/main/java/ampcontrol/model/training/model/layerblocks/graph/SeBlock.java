@@ -70,20 +70,28 @@ public class SeBlock implements LayerBlockConfig {
                         .activation(new ActivationSigmoid())
                         .build(), squeeze);
 
-        final String merge = "seMv" + nextLayerInd;
-        graphBuilder.addVertex(merge, new MergeVertex(), info.getInputsNames());
+        final String inputsToScale = handleMultipleInputs(nextLayerInd, info.getInputsNames(), graphBuilder);
 
         String gate = "seGate" + nextLayerInd;
         log.info("chann receive vertex " + gate + " with inputs " + excite + " and " + info);
         graphBuilder.addVertex(gate,
                 new ChannelMultVertex(),
-                merge,
+                inputsToScale,
                 excite);
 
 
         return new SimpleBlockInfo.Builder(nextLayer)
                 .setInputs(new String[] {gate})
                 .build();
+    }
+
+    private String handleMultipleInputs(int layerInd, String[] inputs, GraphBuilderAdapter graphBuilder) {
+        if(inputs.length == 1) {
+            return inputs[0];
+        }
+        final String merge = "seMv" + layerInd;
+        graphBuilder.addVertex(merge, new MergeVertex(), inputs);
+        return merge;
     }
 
 
