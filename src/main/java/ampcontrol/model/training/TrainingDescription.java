@@ -39,7 +39,7 @@ public class TrainingDescription {
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10; // 10
     private final static int trainBatchSize = 64;   // 32 64
-    private final static int evalBatchSize = 128;
+    private final static int evalBatchSize = 64;
     private final static double evalSetPercentage = 4;
 
     /**
@@ -157,7 +157,7 @@ public class TrainingDescription {
         final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
         final int[] inputShape = {inputProto.length, inputProto[0].length, (int) silence.getResult().stream().count()};
 
-        String prefix = "_ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
+        String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
         //new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
