@@ -9,6 +9,7 @@ import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ISchedule;
@@ -45,7 +46,6 @@ public class InceptionResNetFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
 
-        final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
         final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3); final int resblockOutFac = 1;
         // final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3); final int resblockOutFac = 2;
 
@@ -65,19 +65,19 @@ public class InceptionResNetFactory {
                                             // .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.EPOCH, 0.001, 10, 2)))
                                             .setUpdater(new Nesterovs(lrSched, momSched))
                                             .first(new ConvType(inputShape))
-                                            .andThen(zeroPad3x3)
                                             .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(64))
                                             .andThen(pool)
-                                            .andThen(zeroPad3x3)
                                             .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
                                             .andThen(pool)
                                             .andThen(new SeBlock())
-                                            .andThen(zeroPad3x3)
                                             .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(2*resNrofChannels))
                                             .andThen(pool)
@@ -92,23 +92,20 @@ public class InceptionResNetFactory {
                                             .addAgg(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad3x3)
                                             .andFinally(new Conv2DBatchNormAfter()
-                                                    .setKernelSize_h(3)
-                                                    .setKernelSize_w(3)
+                                                    .setConvolutionMode(ConvolutionMode.Same)
+                                                    .setKernelSize(3)
                                                     .setNrofKernels(resNrofChannels))
                                             .addAgg(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad3x3)
                                             .andThen(new Conv2DBatchNormAfter()
-                                                    .setKernelSize_h(3)
-                                                    .setKernelSize_w(3)
+                                                    .setConvolutionMode(ConvolutionMode.Same)
+                                                    .setKernelSize(3)
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad3x3)
                                             .andFinally(new Conv2DBatchNormAfter()
-                                                    .setKernelSize_h(3)
-                                                    .setKernelSize_w(3)
+                                                    .setConvolutionMode(ConvolutionMode.Same)
+                                                    .setKernelSize(3)
                                                     .setNrofKernels(resNrofChannels))
                                             .done()
                                             .andThen(new Conv2DBatchNormAfter()
@@ -132,8 +129,6 @@ public class InceptionResNetFactory {
         );
 
         // Same thing as above but with factorized convolutions (does not seem to improve performance)
-        final LayerBlockConfig zeroPad1x3 = new ZeroPad().setPad_h(1).setPad_w(0);
-        final LayerBlockConfig zeroPad3x1 = new ZeroPad().setPad_h(0).setPad_w(1);
         IntStream.of(5).forEach(resDepth ->
                 DoubleStream.of(0).forEach(dropOutProb ->
                         DoubleStream.of(0.004).forEach(lambda -> {
@@ -143,19 +138,19 @@ public class InceptionResNetFactory {
                                             // .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.EPOCH, 0.001, 10, 2)))
                                             .setUpdater(new Nesterovs(lrSched, momSched))
                                             .first(new ConvType(inputShape))
-                                            .andThen(zeroPad3x3)
                                             .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(64))
                                             .andThen(pool)
-                                            .andThen(zeroPad3x3)
                                             .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
                                             .andThen(pool)
                                             .andThen(new SeBlock())
-                                            .andThen(zeroPad3x3)
                                             .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(2*resNrofChannels))
                                             .andThen(pool)
@@ -172,14 +167,15 @@ public class InceptionResNetFactory {
                                                     .setNrofKernels(resNrofChannels))
 
 
-                                            .andThen(zeroPad1x3)
+
                                             .andThen(new Conv2D()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize_h(3)
                                                     .setKernelSize_w(1)
                                                     .setActivation(new ActivationIdentity())
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad3x1)
                                             .andFinally(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize_h(1)
                                                     .setKernelSize_w(3)
                                                     .setNrofKernels(resNrofChannels))
@@ -188,25 +184,25 @@ public class InceptionResNetFactory {
                                             .addAgg(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad1x3)
                                             .andThen(new Conv2D()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize_h(3)
                                                     .setKernelSize_w(1)
                                                     .setActivation(new ActivationIdentity())
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad3x1)
                                             .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize_h(1)
                                                     .setKernelSize_w(3)
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad1x3)
                                             .andThen(new Conv2D()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize_h(3)
                                                     .setKernelSize_w(1)
                                                     .setActivation(new ActivationIdentity())
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(zeroPad3x1)
                                             .andFinally(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize_h(1)
                                                     .setKernelSize_w(3)
                                                     .setNrofKernels(resNrofChannels))

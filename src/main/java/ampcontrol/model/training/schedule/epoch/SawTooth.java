@@ -70,12 +70,6 @@ public class SawTooth implements ISchedule {
         );
     }
 
-    private static double calcCoeff(int period,
-                                    double minLr,
-                                    double maxLr) {
-        return 2 * (maxLr - minLr) / period;
-    }
-
     private SawTooth(
             @JsonProperty("schedule") ISchedule schedule) {
         this.schedule = schedule;
