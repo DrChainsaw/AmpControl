@@ -10,14 +10,12 @@ import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
-import ampcontrol.model.visualize.Plot;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ISchedule;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -59,14 +57,13 @@ public class ResNetConv2DFactory {
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
-        IntStream.of(0, 3).forEach(resDepth ->
+        IntStream.of(5).forEach(resDepth ->
                 Stream.of(new IdBlock(), new SeBlock()).forEach(seOrId ->
                         DoubleStream.of(0).forEach(dropOutProb ->
-                                DoubleStream.of(0.004).forEach(lambda -> {
+                                DoubleStream.of(0.002).forEach(lambda -> {
                                     ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                                             new BlockBuilder()
                                                     .setNamePrefix(namePrefix)
-                                                    // .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.EPOCH, 0.001, 10, 2)))
                                                     .setUpdater(new Nesterovs(lrSched, momSched))
                                                     .first(new ConvType(inputShape))
 
@@ -117,14 +114,5 @@ public class ResNetConv2DFactory {
                         )
                 )
         );
-    }
-
-    public static void main(String[] args) {
-        final int schedPeriod = 100;
-        final ISchedule lrSched = new Mul(new SawTooth(schedPeriod, 1e-6, 1e-2), new MinLim(0.04, new Step(schedPeriod, new Exponential(0.2))));
-        final ISchedule momSched = new Offset(schedPeriod / 2, new SawTooth(schedPeriod, 0.85, 0.95));
-
-        Plot.plot(IntStream.range(0, 4 * schedPeriod).mapToDouble(e -> lrSched.valueAt(0, e)).boxed().collect(Collectors.toList()), "Lr sched");
-        // Plot.plot(IntStream.range(0, 2 * schedPeriod).mapToDouble(e -> momSched.valueAt(0, e)).boxed().collect(Collectors.toList()), "mom sched");
     }
 }
