@@ -1,17 +1,10 @@
 package ampcontrol.model.training.schedule.epoch;
 
 import ampcontrol.model.training.schedule.Add;
-import ampcontrol.model.training.schedule.Div;
 import ampcontrol.model.training.schedule.MaxLim;
-import ampcontrol.model.visualize.Plot;
 import lombok.Data;
 import org.nd4j.linalg.schedule.ISchedule;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
-
-import java.util.DoubleSummaryStatistics;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * SawTooth learning rate inspired by https://arxiv.org/abs/1506.01186
@@ -75,7 +68,6 @@ public class SawTooth implements ISchedule {
         this.schedule = schedule;
     }
 
-
     @Override
     public double valueAt(int iteration, int epoch) {
         return schedule.valueAt(iteration, epoch);
@@ -84,26 +76,5 @@ public class SawTooth implements ISchedule {
     @Override
     public ISchedule clone() {
         return new SawTooth(schedule.clone());
-    }
-
-    public static void main(String[] args) {
-        final int period = 20;
-        final double minLr = 0.1;
-        final double maxLr = 0.2;
-
-        final ISchedule sched =
-                new Div(
-                        new Fixed(minLr),
-                       new SawTooth(period, minLr, maxLr)
-                      //  new Step(period,
-                       //         new Exponential(0.9))
-                );
-
-        List<Double> values = IntStream.range(0, 20 * period)
-                .mapToDouble(epoch -> sched.valueAt(0, epoch))
-                .boxed()
-                .collect(Collectors.toList());
-        DoubleSummaryStatistics stats = values.stream().mapToDouble(d -> d).summaryStatistics();
-        Plot.plot(values, "values");
     }
 }

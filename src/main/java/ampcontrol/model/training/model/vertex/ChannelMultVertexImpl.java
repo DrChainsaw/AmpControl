@@ -153,7 +153,7 @@ public class ChannelMultVertexImpl extends BaseGraphVertex {
     @Override
     public void setBackpropGradientsViewArray(INDArray backpropGradientsViewArray) {
         if (backpropGradientsViewArray != null)
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Vertex does not have gradients; gradients view array cannot be set here " + this.toString());
     }
 

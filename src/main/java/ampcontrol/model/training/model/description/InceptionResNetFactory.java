@@ -168,7 +168,7 @@ public class InceptionResNetFactory {
                                             .done()
                                             .andThen(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
-                                                    .setNrofKernels(2*resNrofChannels))
+                                                    .setNrofKernels(2*resNrofChannels * resblockOutFac))
                                             .andFinally(new SeBlock())
                                             //.andFinally(new DropOut().setDropProb(dropOutProb))
                                             .andThenStack(2)

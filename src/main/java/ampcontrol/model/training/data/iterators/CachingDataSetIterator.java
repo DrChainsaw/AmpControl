@@ -134,9 +134,9 @@ public class CachingDataSetIterator implements DataSetIterator {
 
     private INDArray detachIfExists(INDArray array) {
         if(array != null) {
-            array = array.detach();
+            return array.detach();
         }
-        return array;
+        return null;
     }
 
     private DataSet logAndReturn(int ind, String pref, DataSet ds) {
