@@ -124,24 +124,19 @@ public class CachingDataSetIterator implements DataSetIterator {
         if(ds == null) {
             return ds; // Happens in testing. CBA to change it
         }
-        INDArray features = ds.getFeatures();
-        INDArray labels = ds.getLabels();
-        INDArray featuresMask = ds.getFeaturesMaskArray();
-        INDArray labelsMask = ds.getLabelsMaskArray();
-
-        if (features != null)
-            features = features.detach();
-
-        if (labels != null)
-            labels = labels.detach();
-
-        if (featuresMask != null)
-            featuresMask = featuresMask.detach();
-
-        if (labelsMask != null)
-            labelsMask = labelsMask.detach();
+        final INDArray features = detachIfExists(ds.getFeatures());
+        final INDArray labels = detachIfExists(ds.getLabels());
+        final INDArray featuresMask = detachIfExists(ds.getFeaturesMaskArray());
+        final INDArray labelsMask =detachIfExists(ds.getLabelsMaskArray());
 
         return new DataSet(features, labels, featuresMask, labelsMask);
+    }
+
+    private INDArray detachIfExists(INDArray array) {
+        if(array != null) {
+            array = array.detach();
+        }
+        return array;
     }
 
     private DataSet logAndReturn(int ind, String pref, DataSet ds) {

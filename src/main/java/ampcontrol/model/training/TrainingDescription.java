@@ -11,6 +11,7 @@ import ampcontrol.model.training.model.description.ResNetConv2DFactory;
 import ampcontrol.model.training.model.description.StackedConv2DFactory;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
@@ -71,11 +72,6 @@ public class TrainingDescription {
 
     public static void main(String[] args) {
         DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
-//        CudaEnvironment.getInstance().getConfiguration()
-//                .setMaximumDeviceCacheableLength(1024 * 1024 * 1024L)
-//                .setMaximumDeviceCache(6L * 1024 * 1024 * 1024L)
-//                .setMaximumHostCacheableLength(1024 * 1024 * 1024L)
-//                .setMaximumHostCache(6L * 1024 * 1024 * 1024L);
 
         List<ModelHandle> modelData = new ArrayList<>();
 
@@ -83,8 +79,20 @@ public class TrainingDescription {
         //final int trainingSeed = 666;
         final int timeWindowSizeMs = 50;
 
+        final ProcessingResult.Factory audioPostProcessingFactory = getAudioProcessingFactory();
 
-        final ProcessingResult.Factory audioPostProcessingFactory = new Pipe(
+        createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
+
+        TrainingHarness harness = new TrainingHarness(modelData,
+                modelDir.toAbsolutePath().toString(),
+                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
+                BufferedTextWriter.defaultFactory);
+        harness.startTraining(100000);
+    }
+
+    @NotNull
+    private static ProcessingResult.Factory getAudioProcessingFactory() {
+        return new Pipe(
                 new Spectrogram(256, 16),
                 new Fork(
                         new Fork(
@@ -92,7 +100,7 @@ public class TrainingDescription {
                                         new Log10(),
                                         new ZeroMean()),
                                 new Pipe(
-                                        new Mfsc(44100),
+                                        new Mfsc(clipSamplingRate),
                                         new ZeroMean())
                         ),
                         new Pipe(
@@ -101,16 +109,6 @@ public class TrainingDescription {
                         )
                 )
         );
-
-        createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
-
-        //NativeOpsHolder.getInstance().getDeviceNativeOps().setOmpNumThreads(1);
-
-        TrainingHarness harness = new TrainingHarness(modelData,
-                modelDir.toAbsolutePath().toString(),
-                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
-                BufferedTextWriter.defaultFactory);
-        harness.startTraining(100000);
     }
 
     private static void createModels(final ProcessingResult.Factory audioPostProcessingFactory, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {

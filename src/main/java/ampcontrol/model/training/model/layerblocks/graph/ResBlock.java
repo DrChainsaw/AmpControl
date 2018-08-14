@@ -5,7 +5,6 @@ import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
-import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +38,8 @@ public class ResBlock implements LayerBlockConfig {
         log.info("Res block starting at " + info);
         BlockInfo nextLayer = blockConfig.addLayers(graphBuilder, info);
 
-        final String add1 = handleMultipleInputs(nextLayer.getPrevLayerInd(), info.getInputsNames(), graphBuilder);
-        final String add2 = handleMultipleInputs(nextLayer.getPrevLayerInd()+1, nextLayer.getInputsNames(), graphBuilder);
+        final String add1 = graphBuilder.mergeIfMultiple("rbMv" + nextLayer.getPrevLayerInd(), info.getInputsNames());
+        final String add2 = graphBuilder.mergeIfMultiple("rbMv" + (nextLayer.getPrevLayerInd()+1), nextLayer.getInputsNames());
 
         final String add = "rbAdd" + info.getPrevLayerInd();
         log.info("rb add: " + info + " and " +nextLayer);
@@ -52,19 +51,9 @@ public class ResBlock implements LayerBlockConfig {
                 .build();
     }
 
-    private String handleMultipleInputs(int layerInd, String[] inputs, GraphBuilderAdapter graphBuilder) {
-        if(inputs.length == 1) {
-            return inputs[0];
-        }
-        final String merge = "rbMv" + layerInd;
-        graphBuilder.addVertex(merge, new MergeVertex(), inputs);
-        return merge;
-    }
-
-
     /**
      * Sets the {@link LayerBlockConfig} which defines the structure for the residual features.
-     * @param blockConfig
+     * @param blockConfig The block which shall be treated as a residual
      * @return the {@link ResBlock}
      */
     public ResBlock setBlockConfig(LayerBlockConfig blockConfig) {

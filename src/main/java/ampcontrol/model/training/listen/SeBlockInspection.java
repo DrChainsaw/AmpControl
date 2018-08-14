@@ -56,6 +56,13 @@ public class SeBlockInspection extends BaseTrainingListener {
             final BaseOutputLayer ol = (BaseOutputLayer) ((ComputationGraph) model).getOutputLayer(0);
             final INDArray labelInds = ol.getLabels().argMax(1);
 
+            plotActivationsPerLabel(labelInds);
+        } else {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+    }
+
+    private void plotActivationsPerLabel(INDArray labelInds) {
         for (Map.Entry<String, double[][]> actEntry : this.activations.entrySet()) {
 
             final double[][] acts = actEntry.getValue();
@@ -65,9 +72,6 @@ public class SeBlockInspection extends BaseTrainingListener {
                 final ActivationListener listener = plots.computeIfAbsent(plotName, name -> new ActivationListener(30, plotFactory.create(name)));
                 listener.plotActivation(acts[i]);
             }
-        }
-        } else {
-            throw new UnsupportedOperationException("Not implemented!");
         }
     }
 }

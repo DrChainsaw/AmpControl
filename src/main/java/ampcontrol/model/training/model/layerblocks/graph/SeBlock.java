@@ -5,7 +5,6 @@ import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import ampcontrol.model.training.model.vertex.ChannelMultVertex;
-import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.PoolingType;
 import org.nd4j.linalg.activations.IActivation;
@@ -70,7 +69,7 @@ public class SeBlock implements LayerBlockConfig {
                         .activation(new ActivationSigmoid())
                         .build(), squeeze);
 
-        final String inputsToScale = handleMultipleInputs(nextLayerInd, info.getInputsNames(), graphBuilder);
+        final String inputsToScale = graphBuilder.mergeIfMultiple("seMv" + nextLayerInd, info.getInputsNames());
 
         String gate = "seGate" + nextLayerInd;
         log.info("chann receive vertex " + gate + " with inputs " + excite + " and " + info);
@@ -84,16 +83,6 @@ public class SeBlock implements LayerBlockConfig {
                 .setInputs(new String[] {gate})
                 .build();
     }
-
-    private String handleMultipleInputs(int layerInd, String[] inputs, GraphBuilderAdapter graphBuilder) {
-        if(inputs.length == 1) {
-            return inputs[0];
-        }
-        final String merge = "seMv" + layerInd;
-        graphBuilder.addVertex(merge, new MergeVertex(), inputs);
-        return merge;
-    }
-
 
     /**
      * Number of nodes in dense layers will be nrofChannels / reduction

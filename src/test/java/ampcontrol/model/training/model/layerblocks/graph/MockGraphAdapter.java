@@ -28,6 +28,11 @@ public class MockGraphAdapter implements GraphBuilderAdapter {
     }
 
     @Override
+    public String mergeIfMultiple(String mergeName, String[] inputs) {
+        return inputs.length == 1 ? inputs[0] : mergeName;
+    }
+
+    @Override
     public LayerBlockConfig.BlockInfo layer(LayerBlockConfig.BlockInfo info, Layer layer) {
         return info;
     }
