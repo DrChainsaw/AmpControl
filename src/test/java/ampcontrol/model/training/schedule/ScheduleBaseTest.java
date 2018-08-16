@@ -8,7 +8,7 @@ import java.io.IOException;
 
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 
 /**
  * Tests functionality common to all {@link ISchedule}s, such as clone and serialization/deserialization
@@ -26,7 +26,7 @@ public abstract class ScheduleBaseTest {
     public void testClone() {
         final ISchedule sched = createBaseTestInstance();
         final ISchedule clone = sched.clone();
-        assertFalse("Different instance expected!", sched==clone);
+        assertNotSame("Different instance expected!", sched, clone);
         assertEquals("Expected instances to be equal!", sched, clone);
         assertEquals("Incorrect value!", sched.valueAt(123,456), clone.valueAt(123,456), 1e-10);
     }

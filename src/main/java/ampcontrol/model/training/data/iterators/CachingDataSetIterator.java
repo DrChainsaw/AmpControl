@@ -139,13 +139,6 @@ public class CachingDataSetIterator implements DataSetIterator {
         return null;
     }
 
-    private DataSet logAndReturn(int ind, String pref, DataSet ds) {
-        log.info(pref + " feature " + ind + " checksum: " + ds.getFeatures().sumNumber() + " samp " + ds.getFeatures().getDouble(0,1,2,3));
-        log.info(pref + " label " + ind + " checksum: " + ds.getLabels().sumNumber());
-        //log.info(pref + ds.getLabels());
-        return ds;
-    }
-
     @Override
     public DataSet next(int num) {
         throw new UnsupportedOperationException("Not supported!");

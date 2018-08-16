@@ -81,22 +81,8 @@ public class AudioFileProcessor implements AudioProcessor {
         final AudioSamplingInfo aInfo = new AudioSamplingInfo(0.3, 0.05);
 
         final ProcessingResult.Factory fac = new Pipe(
-                new Spectrogram(256, 16),
-                new Fork(
-                        new Fork(
-                                new Pipe(
-                                        new Log10(),
-                                        new ZeroMean()),
-                                new Pipe(
-                                        new Mfsc(44100),
-                                        new ZeroMean())
-                        ),
-                        new Pipe(
-                                new Ycoord(),
-                                new UnitMaxZeroMean()
-                        )
-                )
-        );
+                new Spectrogram(256, 16), new Log10());
+
         final AudioProcessor proc = new AudioFileProcessor(pathSupplier, file -> aInfo, () -> fac);
 
         for(int i = 0; i < 4; i++) {

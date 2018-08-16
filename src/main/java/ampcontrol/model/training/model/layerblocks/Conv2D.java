@@ -20,9 +20,7 @@ public class Conv2D implements LayerBlockConfig {
     private int nrofKernels = 64;
     private int kernelSize_h = 4;
     private int kernelSize_w = 4;
-    private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
     private ConvolutionMode convolutionMode = ConvolutionMode.Truncate;
-
     private IActivation activation = new ActivationELU();
 
     @Override
@@ -40,7 +38,7 @@ public class Conv2D implements LayerBlockConfig {
                 .layer(info, new ConvolutionLayer.Builder(kernelSize_h, kernelSize_w)
                         .activation(activation)
                         .nOut(nrofKernels)
-                        .cudnnAlgoMode(cudnnAlgoMode)
+                        .cudnnAlgoMode(ConvolutionLayer.AlgoMode.PREFER_FASTEST)
                         .convolutionMode(convolutionMode)
                         .build());
         return new SimpleBlockInfo.Builder(nextInfo)

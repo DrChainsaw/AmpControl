@@ -62,11 +62,11 @@ public class TrainEvaluator extends BaseTrainingListener {
 
     @Override
     public void onEpochEnd(Model model) {
-    if(model instanceof ComputationGraph) {
-        final NeuralNetConfiguration conf = ((ComputationGraph) model).getOutputLayer(0).conf();
-        log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy() + " curr learning rate: " + conf.getLayer().getUpdaterByParam("").getLearningRate(iterStore, epochStore));
-        iterAndEvalListener.accept(iterStore, eval.accuracy());
-    }
+        if (model instanceof ComputationGraph) {
+            final NeuralNetConfiguration conf = ((ComputationGraph) model).getOutputLayer(0).conf();
+            log.info("Training accuracy at iteration " + iterStore + ": " + eval.accuracy() + " curr learning rate: " + conf.getLayer().getUpdaterByParam("").getLearningRate(iterStore, epochStore));
+            iterAndEvalListener.accept(iterStore, eval.accuracy());
+        }
     }
 
     private INDArray getActivation(Map<String, INDArray> activations, GraphVertex[] vertices, int vertexInd) {
