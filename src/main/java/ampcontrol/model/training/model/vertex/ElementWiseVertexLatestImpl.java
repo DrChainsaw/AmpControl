@@ -1,4 +1,5 @@
-package ampcontrol.model.training.model.vertex;/*-
+package ampcontrol.model.training.model.vertex;
+/*-
  *
  *  * Copyright 2016 Skymind,Inc.
  *  *
@@ -22,6 +23,8 @@ import org.deeplearning4j.nn.gradient.Gradient;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.BaseGraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
+import org.deeplearning4j.nn.workspace.ArrayType;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.transforms.Or;
 import org.nd4j.linalg.factory.Nd4j;
@@ -48,7 +51,7 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
     }
 
     public ElementWiseVertexLatestImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices,
-                             VertexIndices[] outputVertices, Op op) {
+                                       VertexIndices[] outputVertices, Op op) {
         super(graph, name, vertexIndex, inputVertices, outputVertices);
         this.op = op;
     }
@@ -69,7 +72,7 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
     }
 
     @Override
-    public INDArray doForward(boolean training) {
+    public INDArray doForward(boolean training, LayerWorkspaceMgr workspaceMgr) {
         if (!canDoForward())
             throw new IllegalStateException("Cannot do forward pass: inputs not set");
 
@@ -79,13 +82,13 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
 
         switch (op) {
             case Add:
-                INDArray sum = inputs[0].dup(inputs[0].ordering());
+                INDArray sum = workspaceMgr.dup(ArrayType.ACTIVATIONS, inputs[0]);
                 for (int i = 1; i < inputs.length; i++) {
                     sum.addi(inputs[i]);
                 }
                 return sum;
             case Average:
-                INDArray average = inputs[0].dup(inputs[0].ordering());
+                INDArray average = workspaceMgr.dup(ArrayType.ACTIVATIONS, inputs[0]);
                 for (int i = 1; i < inputs.length; i++) {
                     average.addi(inputs[i]);
                 }
@@ -95,7 +98,7 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
                     throw new IllegalArgumentException("ElementWise subtraction only supports 2 inputs");
                 return inputs[0].sub(inputs[1]);
             case Product:
-                INDArray product = inputs[0].dup(inputs[0].ordering());
+                INDArray product = workspaceMgr.dup(ArrayType.ACTIVATIONS, inputs[0]);
                 for (int i = 1; i < inputs.length; i++) {
                     product.muli(inputs[i]);
                 }
@@ -106,7 +109,7 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
     }
 
     @Override
-    public Pair<Gradient, INDArray[]> doBackward(boolean tbptt) {
+    public Pair<Gradient, INDArray[]> doBackward(boolean tbptt, LayerWorkspaceMgr workspaceMgr) {
         if (!canDoBackward())
             throw new IllegalStateException("Cannot do backward pass: errors not set");
 

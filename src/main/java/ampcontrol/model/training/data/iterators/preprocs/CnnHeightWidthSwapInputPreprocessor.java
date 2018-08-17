@@ -3,6 +3,7 @@ package ampcontrol.model.training.data.iterators.preprocs;
 import org.deeplearning4j.nn.api.MaskState;
 import org.deeplearning4j.nn.conf.InputPreProcessor;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.primitives.Pair;
 
@@ -16,7 +17,7 @@ import javax.ws.rs.NotSupportedException;
  */
 public class CnnHeightWidthSwapInputPreprocessor implements InputPreProcessor {
     @Override
-    public INDArray preProcess(INDArray input, int miniBatchSize) {
+    public INDArray preProcess(INDArray input, int miniBatchSize, LayerWorkspaceMgr workspaceMgr) {
         //int[] shapePre = input.shape();
         INDArray out = input.swapAxes(2,3);
         //int[] shapePost = out.shape();
@@ -24,7 +25,7 @@ public class CnnHeightWidthSwapInputPreprocessor implements InputPreProcessor {
     }
 
     @Override
-    public INDArray backprop(INDArray output, int miniBatchSize) {
+    public INDArray backprop(INDArray output, int miniBatchSize, LayerWorkspaceMgr workspaceMgr) {
         return output.swapAxes(2,3);
     }
 
@@ -37,7 +38,7 @@ public class CnnHeightWidthSwapInputPreprocessor implements InputPreProcessor {
     public InputType getOutputType(InputType inputType) {
         if(inputType.getType() == InputType.Type.CNN) {
             InputType.InputTypeConvolutional cnnInput = (InputType.InputTypeConvolutional)inputType;
-            return new InputType.InputTypeConvolutional(cnnInput.getWidth(), cnnInput.getHeight(), cnnInput.getDepth());
+            return new InputType.InputTypeConvolutional(cnnInput.getWidth(), cnnInput.getHeight(), cnnInput.getChannels());
         }
         throw new IllegalArgumentException("Only works for CNN types! Was " + inputType);
     }

@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.layerblocks;
 
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.nd4j.linalg.activations.IActivation;
@@ -23,6 +24,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     private int stride_w = 1;
     private int stride_h = 1;
     private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
+    private ConvolutionMode convolutionMode = ConvolutionMode.Truncate;
 
     private IActivation activation = new ActivationELU();
     private boolean strideChanged = false;
@@ -45,6 +47,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
                         .activation(activation)
                         .nOut(nrofKernels)
                         .cudnnAlgoMode(cudnnAlgoMode)
+                        .convolutionMode(convolutionMode)
                         .build());
         log.info("cnn BN Layer: " + nextInfo);
         nextInfo = builder
@@ -59,7 +62,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Sets the number of kernels (==nrof output maps)
      *
-     * @param nrofKernels
+     * @param nrofKernels the number of kernels
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setNrofKernels(int nrofKernels) {
@@ -70,7 +73,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Convenience method which sets both kernel height and width to the given value
      *
-     * @param kernelSize
+     * @param kernelSize the kernelSize
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setKernelSize(int kernelSize) {
@@ -82,7 +85,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Sets kernel height
      *
-     * @param kernelSize_h
+     * @param kernelSize_h the kernel height
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setKernelSize_h(int kernelSize_h) {
@@ -93,7 +96,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Sets kernel width
      *
-     * @param kernelSize_w
+     * @param kernelSize_w the kernel width
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setKernelSize_w(int kernelSize_w) {
@@ -104,7 +107,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Convenience method which sets both height and width stride to the given value
      *
-     * @param stride
+     * @param stride the stride
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setStride(int stride) {
@@ -116,7 +119,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Sets the width stride
      *
-     * @param stride_w
+     * @param stride_w the width stride
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setStride_w(int stride_w) {
@@ -128,7 +131,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Sets the height stride
      *
-     * @param stride_h
+     * @param stride_h the height stride
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setStride_h(int stride_h) {
@@ -140,11 +143,22 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     /**
      * Sets the activation function to use
      *
-     * @param activation
+     * @param activation the activation function to use
      * @return the {@link Conv2DBatchNormAfter}
      */
     public Conv2DBatchNormAfter setActivation(IActivation activation) {
         this.activation = activation;
+        return this;
+    }
+
+    /**
+     * Sets the {@link ConvolutionMode} to use
+     *
+     * @param convolutionMode the mode to use
+     * @return the {@link Conv2DBatchNormAfter}
+     */
+    public Conv2DBatchNormAfter setConvolutionMode(ConvolutionMode convolutionMode) {
+        this.convolutionMode = convolutionMode;
         return this;
     }
 }

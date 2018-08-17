@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.layerblocks;
 
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.nd4j.linalg.activations.IActivation;
 import org.nd4j.linalg.activations.impl.ActivationELU;
@@ -19,8 +20,7 @@ public class Conv2D implements LayerBlockConfig {
     private int nrofKernels = 64;
     private int kernelSize_h = 4;
     private int kernelSize_w = 4;
-    private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.NO_WORKSPACE;
-
+    private ConvolutionMode convolutionMode = ConvolutionMode.Truncate;
     private IActivation activation = new ActivationELU();
 
     @Override
@@ -38,7 +38,8 @@ public class Conv2D implements LayerBlockConfig {
                 .layer(info, new ConvolutionLayer.Builder(kernelSize_h, kernelSize_w)
                         .activation(activation)
                         .nOut(nrofKernels)
-                        .cudnnAlgoMode(cudnnAlgoMode)
+                        .cudnnAlgoMode(ConvolutionLayer.AlgoMode.PREFER_FASTEST)
+                        .convolutionMode(convolutionMode)
                         .build());
         return new SimpleBlockInfo.Builder(nextInfo)
                 .setPrevNrofOutputs(nrofKernels)
@@ -47,7 +48,7 @@ public class Conv2D implements LayerBlockConfig {
 
     /**
      * Sets the number of kernels (==nrof output maps)
-     * @param nrofKernels
+     * @param nrofKernels the number of kernels
      * @return the {@link Conv2D}
      */
     public Conv2D setNrofKernels(int nrofKernels) {
@@ -57,7 +58,7 @@ public class Conv2D implements LayerBlockConfig {
 
     /**
      * Convenience method which sets both kernel height and width to the given value
-     * @param kernelSize
+     * @param kernelSize the kernel size
      * @return the {@link Conv2D}
      */
     public Conv2D setKernelSize(int kernelSize) {
@@ -68,7 +69,7 @@ public class Conv2D implements LayerBlockConfig {
 
     /**
      * Sets kernel height
-     * @param kernelSize_h
+     * @param kernelSize_h the kernel height
      * @return the {@link Conv2D}
      */
     public Conv2D setKernelSize_h(int kernelSize_h) {
@@ -78,7 +79,7 @@ public class Conv2D implements LayerBlockConfig {
 
     /**
      * Sets kernel width
-     * @param kernelSize_w
+     * @param kernelSize_w the kernel width
      * @return the {@link Conv2D}
      */
     public Conv2D setKernelSize_w(int kernelSize_w) {
@@ -88,11 +89,22 @@ public class Conv2D implements LayerBlockConfig {
 
     /**
      * Sets the activation function
-     * @param activation
+     * @param activation the activation function
      * @return the {@link Conv2D}
      */
     public Conv2D setActivation(IActivation activation) {
         this.activation = activation;
+        return this;
+    }
+
+    /**
+     * Sets the {@link ConvolutionMode} to use
+     *
+     * @param convolutionMode the mode to use
+     * @return the {@link Conv2DBatchNormAfter}
+     */
+    public Conv2D setConvolutionMode(ConvolutionMode convolutionMode) {
+        this.convolutionMode = convolutionMode;
         return this;
     }
 }

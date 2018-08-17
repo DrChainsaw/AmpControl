@@ -63,11 +63,9 @@ public class GenericModelHandleTest {
 
     private static MultiLayerNetwork createPosNegNetwork() {
         final MultiLayerNetwork model = new MultiLayerNetwork(new NeuralNetConfiguration.Builder()
-                .learningRate(0.1)
                 .seed(666)
-                .iterations(1)
                 .weightInit(WeightInit.UNIFORM)
-                .updater(new Adam())
+                .updater(new Adam(0.1))
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .list()
                 .layer(0, new OutputLayer.Builder()
@@ -98,11 +96,6 @@ public class GenericModelHandleTest {
         }
 
         @Override
-        public int totalExamples() {
-            return 0;
-        }
-
-        @Override
         public int inputColumns() {
             return 0;
         }
@@ -130,16 +123,6 @@ public class GenericModelHandleTest {
         @Override
         public int batch() {
             return batchSize;
-        }
-
-        @Override
-        public int cursor() {
-            return 0;
-        }
-
-        @Override
-        public int numExamples() {
-            return 0;
         }
 
         @Override

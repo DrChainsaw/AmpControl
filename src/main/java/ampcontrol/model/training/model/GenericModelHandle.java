@@ -65,7 +65,7 @@ public class GenericModelHandle implements ModelHandle {
 
     @Override
     public void saveModel(String fileName) throws IOException {
-        log.info("Saving model: " + name());
+        log.info("Saving model: " + name() + " as " + fileName);
         ModelSerializer.writeModel(model.asModel(), new File(fileName), true);
     }
 
@@ -104,8 +104,8 @@ public class GenericModelHandle implements ModelHandle {
 
         if (evalArr.length > 0) {
             model.eval(evalIter, evalArr);
-            validations.forEach(Validation::notifyComplete);
         }
+        validations.forEach(Validation::notifyComplete);
     }
 
     @Override

@@ -58,7 +58,7 @@ public class PlotSpectrogram {
 	}
 	
 	public static void plot(final INDArray specgram, int timeInd, int freqInd) {
-		final int[] shape = specgram.shape();
+		final long[] shape = specgram.shape();
 		System.out.println("shape: " + Arrays.toString(shape));
 		final Range rangeTime = new Range(0, shape[timeInd]-1);
 		final Range rangeFreq = new Range(0, shape[freqInd]-1);

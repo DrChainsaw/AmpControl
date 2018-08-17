@@ -1,29 +1,24 @@
 package ampcontrol.model.training.listen;
 
 import org.deeplearning4j.nn.api.Model;
-import org.deeplearning4j.optimize.api.TrainingListener;
-import org.nd4j.linalg.api.ndarray.INDArray;
+import org.deeplearning4j.optimize.api.BaseTrainingListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Measures time to complete one epoch of training.
  *
  * @author Christian Skärby
  */
-public class TimeMeasurement implements TrainingListener {
+public class TimeMeasurement extends BaseTrainingListener {
 
     private static final Logger log = LoggerFactory.getLogger(TimeMeasurement.class);
 
     private LocalTime startTime;
     private int nrofExamplesCount = 0;
-    private boolean invoked = false;
-
 
     @Override
     public void onEpochStart(Model model) {
@@ -38,38 +33,7 @@ public class TimeMeasurement implements TrainingListener {
     }
 
     @Override
-    public void onForwardPass(Model model, List<INDArray> activations) {
-        // Ignore
-    }
-
-    @Override
-    public void onForwardPass(Model model, Map<String, INDArray> activations) {
-        // Ignore
-    }
-
-    @Override
-    public void onGradientCalculation(Model model) {
-        // Ignore
-    }
-
-    @Override
-    public void onBackwardPass(Model model) {
-        // Ignore
-    }
-
-    @Override
-    public boolean invoked() {
-        return invoked;
-    }
-
-    @Override
-    public void invoke() {
-        invoked = true;
-    }
-
-    @Override
-    public void iterationDone(Model model, int iteration) {
-        invoke();
+    public void iterationDone(Model model, int iteration, int epoch) {
         nrofExamplesCount += model.batchSize();
     }
 }

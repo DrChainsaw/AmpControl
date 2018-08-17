@@ -28,6 +28,11 @@ public class MockGraphAdapter implements GraphBuilderAdapter {
     }
 
     @Override
+    public String mergeIfMultiple(String mergeName, String[] inputs) {
+        return inputs.length == 1 ? inputs[0] : mergeName;
+    }
+
+    @Override
     public LayerBlockConfig.BlockInfo layer(LayerBlockConfig.BlockInfo info, Layer layer) {
         return info;
     }
@@ -35,7 +40,8 @@ public class MockGraphAdapter implements GraphBuilderAdapter {
     @NotNull
     static ComputationGraph createRealComputationGraph(LayerBlockConfig toTest, int prevNrofOutputs, InputType inputType) {
         final String inputName = "input";
-        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder().graphBuilder()
+        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
                 .addInputs(inputName)
                 .setInputTypes(inputType);
         final LayerBlockConfig.BlockInfo seb = toTest

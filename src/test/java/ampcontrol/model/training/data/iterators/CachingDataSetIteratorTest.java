@@ -66,39 +66,6 @@ public class CachingDataSetIteratorTest {
     }
 
     /**
-     * Test cursor
-     */
-    @Test
-    public void cursor() {
-        final int cacheSize = 3;
-        final DataSetIterator iter = new CachingDataSetIterator(new MockDataSetIterator(), cacheSize);
-        assertEquals("Incorrect cursor!", -1, iter.cursor());
-        iter.next();
-        assertEquals("Incorrect cursor!", 0, iter.cursor());
-        iter.next();
-        assertEquals("Incorrect cursor!", 1, iter.cursor());
-        iter.next();
-        assertEquals("Incorrect cursor!", 2, iter.cursor());
-    }
-
-    /**
-     * Test numExamples
-     */
-    @Test
-    public void numExamples() {
-        final int cacheSize = 666;
-        final int nrofExamplesSource = 333;
-        final DataSetIterator sourceMock = new MockDataSetIterator() {
-            @Override
-            public int numExamples() {
-                return nrofExamplesSource;
-            }
-        };
-        final DataSetIterator iter = new CachingDataSetIterator(sourceMock, cacheSize);
-        assertEquals("Incorrect nrof examples!", cacheSize * nrofExamplesSource, iter.numExamples());
-    }
-
-    /**
      * Test handling of {@link DataSetPreProcessor DataSetPreProcessors}: If cache is not initialized then set the
      * pre-processor of the sourceIter and do not do pre-processing. If initialized but source and cache have the same
      * pre-processor instance then do not perform pre-processing. If source has no pre-processoer then perform

@@ -1,7 +1,7 @@
 package ampcontrol.model.training.listen;
 
 import org.deeplearning4j.nn.api.Model;
-import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.optimize.api.BaseTrainingListener;
 
 import java.util.function.Supplier;
 
@@ -10,10 +10,9 @@ import java.util.function.Supplier;
  *
  * @author Christian Skärby
  */
-public class IterationSupplier implements IterationListener, Supplier<Integer> {
+public class IterationSupplier extends BaseTrainingListener implements Supplier<Integer> {
 
     private int lastIter = 0;
-    private boolean invoked = false;
 
     @Override
     public Integer get() {
@@ -21,18 +20,7 @@ public class IterationSupplier implements IterationListener, Supplier<Integer> {
     }
 
     @Override
-    public boolean invoked() {
-        return invoked;
-    }
-
-    @Override
-    public void invoke() {
-        invoked = true;
-    }
-
-    @Override
-    public void iterationDone(Model model, int i) {
-        invoke();
+    public void iterationDone(Model model, int i, int epoch) {
         lastIter = i;
     }
 }

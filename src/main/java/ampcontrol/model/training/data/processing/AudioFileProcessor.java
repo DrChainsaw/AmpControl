@@ -7,7 +7,6 @@ import org.datavec.audio.Wave;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Random;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -82,18 +81,8 @@ public class AudioFileProcessor implements AudioProcessor {
         final AudioSamplingInfo aInfo = new AudioSamplingInfo(0.3, 0.05);
 
         final ProcessingResult.Factory fac = new Pipe(
-                new Pipe(new RandScale(400, 10, new Random()),
-                        new Spectrogram(256, 16)),
+                new Spectrogram(256, 16), new Log10());
 
-                new Fork(
-                        new Pipe(
-                                new Mfsc(44100),
-                                new ZeroMean()),
-                        new Pipe(
-                                new Log10(),
-                                new ZeroMean()
-                        )
-                ));
         final AudioProcessor proc = new AudioFileProcessor(pathSupplier, file -> aInfo, () -> fac);
 
         for(int i = 0; i < 4; i++) {

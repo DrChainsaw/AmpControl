@@ -3,6 +3,7 @@ package ampcontrol.model.training.model.layerblocks.adapters;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,5 +47,14 @@ public class GraphAdapter implements GraphBuilderAdapter {
     public GraphBuilderAdapter addVertex(String vertexName, GraphVertex vertex, String... vertexInputs) {
         builder.addVertex(vertexName,vertex,vertexInputs);
         return this;
+    }
+
+    @Override
+    public String mergeIfMultiple(String mergeName, String[] inputs) {
+        if(inputs.length == 1) {
+            return inputs[0];
+        }
+        builder.addVertex(mergeName, new MergeVertex(), inputs);
+        return mergeName;
     }
 }

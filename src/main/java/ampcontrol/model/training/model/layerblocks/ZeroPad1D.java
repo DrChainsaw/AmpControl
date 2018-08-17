@@ -1,15 +1,14 @@
-package ampcontrol.model.training.model.layerblocks.graph;
+package ampcontrol.model.training.model.layerblocks;
 
-import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
-import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
-import ampcontrol.model.training.model.vertex.ZeroPadding1DVertex;
+import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
+import org.deeplearning4j.nn.conf.layers.ZeroPadding1DLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 /**
- * Adds a {@link ZeroPadding1DVertex} to the graph.
+ * Adds a {@link ZeroPadding1DLayer}.
  * 
  * @author Christian Skärby
  */
@@ -28,19 +27,11 @@ public class ZeroPad1D implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
-        throw new UnsupportedOperationException("Can only do graphs!");
-    }
-
-    @Override
-    public BlockInfo addLayers(GraphBuilderAdapter graphBuilder, BlockInfo info) {
         log.info("Zero pad 1D " + info);
-        final int layerInd = info.getPrevLayerInd()+1;
-        String thisLayer = info.getName(String.valueOf(layerInd));
-        graphBuilder.addVertex(thisLayer, new ZeroPadding1DVertex(new int[] {paddingLeft, paddingRight}), info.getInputsNames());
-        return new SimpleBlockInfo.Builder(info)
-                .setPrevLayerInd(layerInd)
-                .setInputs(new String[] {thisLayer})
-                .build();
+        return builder.layer(
+                info,
+                new ZeroPadding1DLayer.Builder(paddingLeft, paddingRight)
+                        .build());
     }
 
     /**

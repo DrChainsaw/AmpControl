@@ -41,16 +41,16 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
         private DataAccumulator(int batchSize, List<String> labels) {
             this.batchSize = batchSize;
             this.labels = labels;
-            labelsArr = Nd4j.create(new int[]{batchSize, labels.size()}, 'f');
+            labelsArr = Nd4j.zeros(new int[]{batchSize, labels.size()}, 'f');
         }
 
         @Override
         public synchronized void accept(TrainingData data) {
             List<double[][]> features = data.result().stream().collect(Collectors.toList());
-            for(int featureInd = 0; featureInd < features.size(); featureInd++) {
+            for (int featureInd = 0; featureInd < features.size(); featureInd++) {
                 double[][] feature = features.get(featureInd);
                 if (featureArr == null) {
-                    featureArr = Nd4j.create(new int[]{batchSize, features.size(), feature.length, feature[0].length}, 'f');
+                    featureArr = Nd4j.createUninitialized(new int[]{batchSize, features.size(), feature.length, feature[0].length}, 'f');
                 }
 
                 for (int timeInd = 0; timeInd < feature.length; timeInd++) {
@@ -59,8 +59,8 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
                     }
                 }
             }
-                final int labelInd = labels.indexOf(data.getLabel());
-                labelsArr.putScalar(batchCnt, labelInd, 1.0);
+            final int labelInd = labels.indexOf(data.getLabel());
+            labelsArr.putScalar(batchCnt, labelInd, 1.0);
 
             batchCnt++;
         }
@@ -91,19 +91,14 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
     @Override
     public DataSet next(int num) {
 
-            final DataAccumulator dataAcc = new DataAccumulator(batchSize, labels);
-            dataProvider.generateData().limit(num)
-                    .forEach(dataAcc);
-            DataSet ds = dataAcc.create();
-            if (preProcessor != null) {
-                preProcessor.preProcess(ds);
-            }
-            return ds;
-    }
-
-    @Override
-    public int totalExamples() {
-        return Integer.MAX_VALUE;
+        final DataAccumulator dataAcc = new DataAccumulator(num, labels);
+        dataProvider.generateData().limit(num)
+                .forEach(dataAcc);
+        DataSet ds = dataAcc.create();
+        if (preProcessor != null) {
+            preProcessor.preProcess(ds);
+        }
+        return ds;
     }
 
     @Override
@@ -133,17 +128,6 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
 
     @Override
     public int batch() {
-        return numExamples();
-    }
-
-    @Override
-    public int cursor() {
-        // TODO Auto-generated method stub
-        return 0;
-    }
-
-    @Override
-    public int numExamples() {
         return batchSize;
     }
 

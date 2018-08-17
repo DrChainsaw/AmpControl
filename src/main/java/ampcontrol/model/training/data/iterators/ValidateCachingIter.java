@@ -34,7 +34,7 @@ public class ValidateCachingIter {
         int trainingIterations = 20;
         int trainBatchSize = 32;
         int evalBatchSize = 1;
-        double evalSetPercentage = 25;
+        double evalSetPercentage = 4;
 
         final int timeWindowSize = 100;
 

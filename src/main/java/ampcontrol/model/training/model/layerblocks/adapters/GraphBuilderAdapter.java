@@ -24,7 +24,7 @@ public interface GraphBuilderAdapter extends BuilderAdapter {
     GraphBuilderAdapter addLayer(String layerName, Layer layer, String... layerInputs);
 
     /**
-     * AAdd a {@link GraphVertex} with the specified name and specified inputs.
+     * Add a {@link GraphVertex} with the specified name and specified inputs.
      *
      * @param vertexName
      * @param vertex
@@ -32,5 +32,13 @@ public interface GraphBuilderAdapter extends BuilderAdapter {
      * @return The adapter instance
      */
     GraphBuilderAdapter addVertex(String vertexName, GraphVertex vertex, String... vertexInputs);
+
+    /**
+     * Merges the inputs if more than one.
+     * @param mergeName the desired name of the output from the merge
+     * @param inputs Array of inputs
+     * @return the name of the input to next layer
+     */
+    String mergeIfMultiple(String mergeName, String[] inputs);
 
 }

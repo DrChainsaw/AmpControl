@@ -8,6 +8,10 @@ import org.nd4j.linalg.activations.impl.ActivationSELU;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
+import java.util.Map;
+import java.util.Optional;
+
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -46,9 +50,13 @@ public class SeBlockTest {
 
         final ComputationGraph graph = MockGraphAdapter.createRealComputationGraph(toTest, prevNrofOutputs, inputType);
 
-        graph.output(input);
-        final int[] expectedShape = {batchSize, nrofChannels*height*width};
-        assertArrayEquals("Incorrect activation shape!", expectedShape, graph.getOutputLayer(0).input().shape());
+        graph.setInputs(input);
+        // Only way to get hold of channel scale vertex output it seems...
+        Map<String, INDArray> activations = graph.feedForward(false, true, true);
+        final long[] expectedShape = {batchSize, nrofChannels,  height,  width};
+        final Optional<long[]> actualShape = activations.values().stream().reduce((a, b) -> b).map(arr -> arr.shape());
+        assertTrue("No activations found!", actualShape.isPresent());
+        assertArrayEquals("Incorrect activation shape!", expectedShape, actualShape.get());
     }
 
 }

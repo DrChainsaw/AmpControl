@@ -3,6 +3,8 @@ package ampcontrol.model.training.model.layerblocks.graph;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,12 +20,13 @@ import java.util.stream.Stream;
  */
 public class ForkAgg implements LayerBlockConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(ForkAgg.class);
 
     private final List<LayerBlockConfig> forkPaths = new ArrayList<>();
     private final String sep;
 
     public ForkAgg() {
-        this( "_b_");
+        this( "_f_");
     }
 
     public ForkAgg(String sep) {
@@ -38,7 +41,7 @@ public class ForkAgg implements LayerBlockConfig {
             sepToUse = "";
         }
         return "fb_" + forkPaths.stream()
-                .map(block -> block.name())
+                .map(LayerBlockConfig::name)
                 .collect(Collectors.joining(sepToUse)) +"_bf";
     }
 
@@ -49,20 +52,27 @@ public class ForkAgg implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(GraphBuilderAdapter graphBuilder, BlockInfo info) {
+       log.info("ForkAgg block from " + info);
+
+        int cnt = 0;
+        int outputSize = 0;
         final Stream.Builder<String> nextInputNameBuilder = Stream.builder();
-        int sumInputSize = 0;
-        BlockInfo gpInfo = null;
-        System.out.println("Fork block from " + info);
+
         for(LayerBlockConfig blockConf: forkPaths) {
-            blockConf.addLayers(graphBuilder, info);
-
-            Arrays.stream(gpInfo.getInputsNames()).forEach(layerName -> nextInputNameBuilder.accept(layerName));
+            final int branchNr = cnt;
+            log.info("ForkAgg path nr " + branchNr + ": " + blockConf.name());
+            final BlockInfo branchInInfo = new SimpleBlockInfo.Builder(info)
+                    .setNameMapper(name -> info.getName("fb"+info.getPrevLayerInd()+"_branch_" + branchNr + "_" + name))
+                    .build();
+            final BlockInfo branchOutInfo = blockConf.addLayers(graphBuilder, branchInInfo);
+            Arrays.stream(branchOutInfo.getInputsNames()).forEach(nextInputNameBuilder);
+            outputSize = branchOutInfo.getPrevNrofOutputs();
+            cnt++;
         }
-        // TODO: Mergevertex of StreamBuilder array
 
-        return new SimpleBlockInfo.Builder(gpInfo)
+        return new SimpleBlockInfo.Builder(info)
                 .setInputs(nextInputNameBuilder.build().collect(Collectors.toList()).toArray(new String[] {}))
-                .setPrevNrofOutputs(sumInputSize)
+                .setPrevNrofOutputs(outputSize)
                 .build();
     }
 

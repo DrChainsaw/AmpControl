@@ -4,27 +4,26 @@ import ampcontrol.model.training.model.layerblocks.AggBlock;
 import ampcontrol.model.training.model.layerblocks.BlockStack;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.graph.DenseStack;
+import ampcontrol.model.training.model.layerblocks.graph.ForkAgg;
 import ampcontrol.model.training.model.layerblocks.graph.MultiLevelAgg;
 import ampcontrol.model.training.model.layerblocks.graph.ResBlock;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
+import org.deeplearning4j.nn.conf.CacheMode;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.LearningRatePolicy;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration.Builder;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration.ListBuilder;
 import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.IUpdater;
+import org.nd4j.linalg.schedule.ISchedule;
+import org.nd4j.linalg.schedule.ScheduleType;
+import org.nd4j.linalg.schedule.StepSchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Wraps a {@link NeuralNetConfiguration} or a {@link ComputationGraphConfiguration} in a declarative API using
@@ -119,44 +118,13 @@ public class BlockBuilder implements ModelBuilder {
 
     private AggBlock layerBlockConfig;
 
-    private double startingLearningRate = 0.01;
     private String namePrefix = "";
     private int seed = 666;
-    private WorkspaceMode trainWs = WorkspaceMode.SINGLE;
-    private WorkspaceMode evalWs = WorkspaceMode.SINGLE;
-    private IUpdater updater = new Adam(startingLearningRate, 0.9, 0.999, 1e-8);
-    private LearningRateSchedulePolicy lrPolicy = getLearningRateSchedulePolicy(startingLearningRate);
+    private WorkspaceMode trainWs = WorkspaceMode.ENABLED;
+    private WorkspaceMode evalWs = WorkspaceMode.ENABLED;
 
-    @NotNull
-    private LearningRateSchedulePolicy getLearningRateSchedulePolicy(double startingLearningRate) {
-        return new LearningRateSchedulePolicy() {
-            private Map<Integer, Double> lrSchedule = new HashMap<>();
-
-            {
-                // Anneal learning rate by a factor 10 (roughly) every epoch
-                final int epochSize = 400000 / 16;
-                //lrSchedule.put(0, startingLearningRate);
-                double lr = startingLearningRate;
-                for (int i = 0; i < 10; i += 3) {
-                    lrSchedule.put(i * epochSize, lr);
-                    lr /= 10;
-                }
-
-            }
-
-            @Override
-            public void apply(Builder aBuilder) {
-                aBuilder
-                        //.setLearningRatePolicy(LearningRatePolicy.Schedule)
-                        .learningRateDecayPolicy(LearningRatePolicy.Schedule)
-                        .learningRateSchedule(lrSchedule);
-            }
-        };
-    }
-
-    public interface LearningRateSchedulePolicy {
-        void apply(NeuralNetConfiguration.Builder aBuilder);
-    }
+    private ISchedule learningRateSchedule = new StepSchedule(ScheduleType.ITERATION, 0.05, 0.1, 40000);
+    private IUpdater updater = new Adam(learningRateSchedule);
 
     @Override
     public MultiLayerNetwork build() {
@@ -197,24 +165,22 @@ public class BlockBuilder implements ModelBuilder {
     }
 
     private NeuralNetConfiguration.Builder initBuilder() {
-        final NeuralNetConfiguration.Builder builder = new NeuralNetConfiguration.Builder()
+        return new NeuralNetConfiguration.Builder()
                 .seed(seed)
-                .iterations(1)
                 .weightInit(WeightInit.RELU_UNIFORM)
                 .activation(Activation.IDENTITY) // Will be set later on
                 .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
                 .updater(updater)
                 .trainingWorkspaceMode(trainWs)
-                .inferenceWorkspaceMode(evalWs);
-        lrPolicy.apply(builder);
-        return builder;
+                .inferenceWorkspaceMode(evalWs)
+                .cacheMode(CacheMode.DEVICE);
     }
 
 
     /**
      * Returns the name of the model the builder will create.
      *
-     * @return
+     * @return the name of the model
      */
     @Override
     public String name() {
@@ -230,29 +196,6 @@ public class BlockBuilder implements ModelBuilder {
      */
     public BlockBuilder setNamePrefix(String prefix) {
         namePrefix = prefix;
-        return this;
-    }
-
-    /**
-     * Sets the initial learning rate
-     *
-     * @param startingLearningRate
-     * @return the {@link BlockBuilder}
-     */
-    public BlockBuilder setStartingLearningRate(double startingLearningRate) {
-        this.startingLearningRate = startingLearningRate;
-        lrPolicy = getLearningRateSchedulePolicy(startingLearningRate);
-        return this;
-    }
-
-    /**
-     * Sets the {@link LearningRateSchedulePolicy}
-     *
-     * @param lrPolicy
-     * @return the {@link BlockBuilder}
-     */
-    public BlockBuilder setLrPolicy(LearningRateSchedulePolicy lrPolicy) {
-        this.lrPolicy = lrPolicy;
         return this;
     }
 
@@ -625,6 +568,33 @@ public class BlockBuilder implements ModelBuilder {
             blockConf.setBlockConfig(stack);
             return new StackBuilder<>(parentBuilder, stack);
         }
+
+        /**
+         * Makes the residual block to an {@link ForkAgg} Returns a {@link ForkBuilder} which operates on the residual
+         * {@link ForkAgg} and returns this builders parent builder when ready.
+         *
+         * @return a {@link ForkBuilder}
+         */
+        public ForkBuilder<T> ofFork() {
+            final ForkAgg next = new ForkAgg("_f_");
+            blockConf.setBlockConfig(next);
+            return new ForkBuilder<>(parentBuilder, next);
+        }
+
+        /**
+         * Makes the residual block to an {@link AggBlock} with the first {@link LayerBlockConfig} being a
+         * {@link ForkAgg}. Returns a {@link ForkBuilder} which operates on the {@link ForkAgg} and which in turn
+         * returns the {@link NestBuilder} builder for the {@link AggBlock} when ready. The {@link NestBuilder} returns
+         * the parent builder when ready.
+         *
+         * @return a {@link ForkBuilder}
+         */
+        public ForkBuilder<NestBuilder<T>> aggFork() {
+            final ForkAgg fork = new ForkAgg("_f_");
+            final AggBlock next = new AggBlock(fork);
+            blockConf.setBlockConfig(next);
+            return new ForkBuilder<>(new NestBuilder<>(parentBuilder, next), fork);
+        }
     }
 
     /**
@@ -709,6 +679,96 @@ public class BlockBuilder implements ModelBuilder {
 
         /**
          * Returns the parent builder, effectively ending the multi-level feature aggregation.
+         *
+         * @return the parent builder
+         */
+        public T done() {
+            return parentBuilder;
+        }
+    }
+
+    /**
+     * Intermediate builder which configures a {@link ForkAgg} and returns a parent builder when ready
+     *
+     * @param <T> The type of the parent builder
+     */
+    public static class ForkBuilder<T> {
+
+        private final T parentBuilder;
+        private ForkAgg blockConf;
+
+        private ForkBuilder(T bb, ForkAgg blockConf) {
+            this.parentBuilder = bb;
+            this.blockConf = blockConf;
+        }
+
+        /**
+         * Adds one {@link LayerBlockConfig} to be applied in parallel to the last added {@link LayerBlockConfig}
+         *
+         * @param then the {@link LayerBlockConfig} to be added
+         * @return the Builder
+         */
+        public ForkBuilder<T> add(LayerBlockConfig then) {
+            blockConf.add(then);
+            return this;
+        }
+
+        /**
+         * Adds one new {@link AggBlock} to be applied in parallel to the last added {@link LayerBlockConfig} with the method
+         * argument as the first block. Returns a {@link NestBuilder} which configures the {@link AggBlock} and returns
+         * this builder when ready.
+         *
+         * @param then the {@link LayerBlockConfig} to be added
+         * @return a {@link NestBuilder}
+         */
+        public NestBuilder<ForkBuilder<T>> addAgg(LayerBlockConfig then) {
+            AggBlock next = new AggBlock(then, "_t_");
+            blockConf.add(next);
+            return new NestBuilder<>(this, next);
+        }
+
+        /**
+         * Adds a {@link BlockStack} to be applied in parallel to the last added {@link LayerBlockConfig}. Returns a
+         * {@link StackBuilder} which operates on the added {@link BlockStack} and returns this builder when ready.
+         *
+         * @param nrofStacks Number of times the {@link LayerBlockConfig} of the stack shall be repeated
+         * @return a {@link StackBuilder}
+         */
+        public StackBuilder<ForkBuilder<T>> addStack(int nrofStacks) {
+            BlockStack stack = new BlockStack().setNrofStacks(nrofStacks);
+            blockConf.add(stack);
+            return new StackBuilder<>(this, stack);
+        }
+
+        /**
+         * Adds a {@link ResBlock} to be applied in parallel to the last added {@link LayerBlockConfig}. Returns a
+         * {@link ResBlockBuilder} which operates on the added {@link ResBlock} and returns this builder when ready.
+         *
+         * @return a {@link ResBlockBuilder}
+         */
+        public ResBlockBuilder<ForkBuilder<T>> addRes() {
+            ResBlock resBlock = new ResBlock();
+            blockConf.add(resBlock);
+            return new ResBlockBuilder<>(this, resBlock);
+        }
+
+        /**
+         * Adds one new {@link AggBlock} to be applied after the last added {@link LayerBlockConfig} with a
+         * {@link ResBlock} as the first block. Returns a {@link ResBlockBuilder} which operates on the {@link ResBlock}
+         * and returns a {@link NestBuilder} which operates on the {@link AggBlock} when ready. The {@link NestBuilder}
+         * in turn will return this builder when ready.
+         *
+         * @return a {@link NestBuilder}
+         */
+        public ResBlockBuilder<NestBuilder<ForkBuilder<T>>> andThenAggRes() {
+            ResBlock resBlock = new ResBlock();
+            AggBlock agg = new AggBlock(resBlock);
+            blockConf.add(agg);
+            return new ResBlockBuilder<>(new NestBuilder<>(this, agg), resBlock);
+        }
+
+        /**
+         * Returns the parent builder, effectively ending the fork.
          *
          * @return the parent builder
          */

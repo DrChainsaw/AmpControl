@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.vertex;
 
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -14,6 +15,8 @@ import static org.junit.Assert.assertEquals;
  * @author Christian Skärby
  */
 public class ChannelMultVertexImplTest {
+
+    private static final LayerWorkspaceMgr wsMgr = new LayerWorkspaceMgr.Builder().defaultNoWorkspace().build();
 
     /**
      * Test doForward with a small nrof channels and batches
@@ -51,7 +54,7 @@ public class ChannelMultVertexImplTest {
         final GraphVertex toTest = new ChannelMultVertexImpl(null, "test", 0);
         toTest.setInputs(new INDArray[]{convInput, gates});
         toTest.setEpsilon(epsilon);
-        final INDArray[] result = toTest.doBackward(false).getSecond();
+        final INDArray[] result = toTest.doBackward(false, wsMgr).getSecond();
         assertEquals("Incorrect conv epsilon!", epsilon, result[0]); // Because convInput is ones
         assertEquals("Incorrect gates mean!",
                 epsilon.mean(0,1,2,3).mul(epsilon.length()).div(batchSize * nrofChannels).getDouble(0),
@@ -67,7 +70,7 @@ public class ChannelMultVertexImplTest {
         gates.putScalar(13, 0);
         final GraphVertex toTest = new ChannelMultVertexImpl(null, "test", 0);
         toTest.setInputs(new INDArray[]{convInput, gates});
-        final INDArray result = toTest.doForward(false);
+        final INDArray result = toTest.doForward(false, wsMgr);
         assertEquals("Incorrect mean!", gates.mean(1).getDouble(0), result.mean(1).getDouble(0), 1e-10);
         assertEquals("Channel was not gated!", 0d,
                 result.get(NDArrayIndex.point(0), NDArrayIndex.point(oneZeroedChannel)).mean(1).getDouble(0), 1e-10);

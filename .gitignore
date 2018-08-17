@@ -6,7 +6,7 @@ bin/
 models/
 
 # CUDA compiler
-nvcc.exe
+nvcc*.exe
 
 # Locally stored "Eclipse launch configurations"
 *.launch

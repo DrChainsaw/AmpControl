@@ -1,6 +1,7 @@
 package ampcontrol.model.visualize;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Interface for XY plotting. Supports serialization of plot data.
@@ -45,4 +46,17 @@ public interface Plot<X extends Number, Y extends Number> {
      * @throws IOException
      */
     void storePlotData(String label) throws IOException;
+
+    /**
+     * Convenience method for debugging purposes. Plots the given data vs list indexes
+     * @param data
+     * @param <Y>
+     */
+    static <Y extends Number> void plot(List<Y> data, String plotName) {
+        final RealTimePlot<Integer, Y> plotter = new RealTimePlot<>(plotName, "");
+        plotter.createSeries("data");
+        for(int x = 0; x < data.size(); x ++) {
+            plotter.plotData("data", x, data.get(x));
+        }
+    }
 }

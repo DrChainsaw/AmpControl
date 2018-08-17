@@ -10,6 +10,7 @@ import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.description.ResNetConv2DFactory;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
@@ -38,9 +39,9 @@ public class TrainingDescription {
     private final static Path modelDir = Paths.get("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models");
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10; // 10
-    private final static int trainBatchSize = 20;   // 32 64
-    private final static int evalBatchSize = 20;
-    private final static double evalSetPercentage = 1;
+    private final static int trainBatchSize = 64;   // 32 64
+    private final static int evalBatchSize = 64;
+    private final static double evalSetPercentage = 4;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -70,11 +71,6 @@ public class TrainingDescription {
 
     public static void main(String[] args) {
         DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
-//        CudaEnvironment.getInstance().getConfiguration()
-//                .setMaximumDeviceCacheableLength(1024 * 1024 * 1024L)
-//                .setMaximumDeviceCache(6L * 1024 * 1024 * 1024L)
-//                .setMaximumHostCacheableLength(1024 * 1024 * 1024L)
-//                .setMaximumHostCache(6L * 1024 * 1024 * 1024L);
 
         List<ModelHandle> modelData = new ArrayList<>();
 
@@ -82,29 +78,36 @@ public class TrainingDescription {
         //final int trainingSeed = 666;
         final int timeWindowSizeMs = 50;
 
-
-        final ProcessingResult.Factory audioPostProcessingFactory= new Pipe(
-                new Spectrogram(256, 16),
-                new Fork(
-                        new Pipe(
-                                new Log10(),
-                                new ZeroMean()),
-                        new Pipe(
-                                new Mfsc(clipSamplingRate),
-                                new ZeroMean()
-                        )
-                )
-        );
+        final ProcessingResult.Factory audioPostProcessingFactory = getAudioProcessingFactory();
 
         createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
-
-        //NativeOpsHolder.getInstance().getDeviceNativeOps().setOmpNumThreads(1);
 
         TrainingHarness harness = new TrainingHarness(modelData,
                 modelDir.toAbsolutePath().toString(),
                 title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
                 BufferedTextWriter.defaultFactory);
-        harness.startTraining(4000);
+        harness.startTraining(100000);
+    }
+
+    @NotNull
+    private static ProcessingResult.Factory getAudioProcessingFactory() {
+        return new Pipe(
+                new Spectrogram(256, 16),
+                new Fork(
+                        new Fork(
+                                new Pipe(
+                                        new Log10(),
+                                        new ZeroMean()),
+                                new Pipe(
+                                        new Mfsc(clipSamplingRate),
+                                        new ZeroMean())
+                        ),
+                        new Pipe(
+                                new Ycoord(),
+                                new UnitMaxZeroMean()
+                        )
+                )
+        );
     }
 
     private static void createModels(final ProcessingResult.Factory audioPostProcessingFactory, final int timeWindowSize, List<ModelHandle> modelData, int trainingSeed) {
@@ -122,12 +125,12 @@ public class TrainingDescription {
                 .addExpansion("lead", 100);
 
         final Random volScaleRng = new Random(trainingSeed + 1);
-        final ProcessingResult.Factory trainFactory =  new Pipe(
+        final ProcessingResult.Factory trainFactory = new Pipe(
                 new RandScale(1000, 10, volScaleRng),
                 audioPostProcessingFactory
         );
 
-        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, ()-> trainFactory, trainingSeed);
+        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> trainFactory, trainingSeed);
         final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, 666);
 
         try {
@@ -150,14 +153,14 @@ public class TrainingDescription {
 
         // This knowledge needs to move somewhere else when multiple inputs are implemented
         final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
-        final int[] inputShape = {inputProto.length, inputProto[0].length, (int)silence.getResult().stream().count()};
+        final int[] inputShape = {inputProto.length, inputProto[0].length, (int) silence.getResult().stream().count()};
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
+       // new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        //new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
         // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
         // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);

@@ -4,8 +4,7 @@ import ampcontrol.model.training.model.layerblocks.Conv2DBatchNormAfter;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
-import ampcontrol.model.training.model.vertex.ElementWiseVertexLatest;
-import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,25 +38,22 @@ public class ResBlock implements LayerBlockConfig {
         log.info("Res block starting at " + info);
         BlockInfo nextLayer = blockConfig.addLayers(graphBuilder, info);
 
-        final String merge1 = "rbMv" + nextLayer.getPrevLayerInd();
-        graphBuilder.addVertex(merge1, new MergeVertex(), info.getInputsNames());
-        final String merge2 = "rbMv" + nextLayer.getPrevLayerInd()+1;
-        graphBuilder.addVertex(merge2, new MergeVertex(), nextLayer.getInputsNames());
+        final String add1 = graphBuilder.mergeIfMultiple("rbMv" + nextLayer.getPrevLayerInd(), info.getInputsNames());
+        final String add2 = graphBuilder.mergeIfMultiple("rbMv" + (nextLayer.getPrevLayerInd()+1), nextLayer.getInputsNames());
 
         final String add = "rbAdd" + info.getPrevLayerInd();
         log.info("rb add: " + info + " and " +nextLayer);
         graphBuilder.addVertex(add,
-                new ElementWiseVertexLatest(ElementWiseVertexLatest.Op.Add), merge1, merge2);
+                new ElementWiseVertex(ElementWiseVertex.Op.Add), add1, add2);
 
         return new SimpleBlockInfo.Builder(nextLayer)
                 .setInputs(new String[] {add})
                 .build();
     }
 
-
     /**
      * Sets the {@link LayerBlockConfig} which defines the structure for the residual features.
-     * @param blockConfig
+     * @param blockConfig The block which shall be treated as a residual
      * @return the {@link ResBlock}
      */
     public ResBlock setBlockConfig(LayerBlockConfig blockConfig) {

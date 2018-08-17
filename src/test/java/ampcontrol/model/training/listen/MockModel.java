@@ -3,8 +3,9 @@ package ampcontrol.model.training.listen;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.gradient.Gradient;
+import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.deeplearning4j.optimize.api.ConvexOptimizer;
-import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.optimize.api.TrainingListener;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.primitives.Pair;
 
@@ -19,17 +20,17 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void setListeners(Collection<IterationListener> listeners) {
+    public void setListeners(Collection<TrainingListener> listeners) {
         //Ignore
     }
 
     @Override
-    public void setListeners(IterationListener... listeners) {
+    public void setListeners(TrainingListener... listeners) {
         //Ignore
     }
 
     @Override
-    public void addListeners(IterationListener... listener) {
+    public void addListeners(TrainingListener... listener) {
         //Ignore
     }
 
@@ -54,12 +55,7 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void computeGradientAndScore() {
-        //Ignore
-    }
-
-    @Override
-    public void accumulateScore(double accum) {
+    public void computeGradientAndScore(LayerWorkspaceMgr workspaceMgr) {
         //Ignore
     }
 
@@ -99,17 +95,7 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void applyLearningRateScoreDecay() {
-        //Ignore
-    }
-
-    @Override
-    public void fit(INDArray data) {
-        //Ignore
-    }
-
-    @Override
-    public void iterate(INDArray input) {
+    public void fit(INDArray data, LayerWorkspaceMgr workspaceMgr) {
         //Ignore
     }
 
@@ -144,11 +130,6 @@ public class MockModel implements Model {
     }
 
     @Override
-    public void validateInput() {
-        //Ignore
-    }
-
-    @Override
     public ConvexOptimizer getOptimizer() {
         return null;
     }
@@ -158,10 +139,6 @@ public class MockModel implements Model {
         return null;
     }
 
-    @Override
-    public void initParams() {
-        //Ignore
-    }
 
     @Override
     public Map<String, INDArray> paramTable() {
@@ -185,6 +162,11 @@ public class MockModel implements Model {
 
     @Override
     public void clear() {
+        //Ignore
+    }
+
+    @Override
+    public void applyConstraints(int iteration, int epoch) {
         //Ignore
     }
 }
