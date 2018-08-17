@@ -1,6 +1,6 @@
 package ampcontrol.model.training.model.description;
 
-import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.MinMaxPool;
@@ -22,13 +22,13 @@ import java.util.stream.IntStream;
  * @author Christian Skärby
  */
 public class DenseNetFactory {
-    private final CachingDataSetIterator trainIter;
-    private final CachingDataSetIterator evalIter;
+    private final MiniEpochDataSetIterator trainIter;
+    private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
     private final Path modelDir;
 
-    public DenseNetFactory(CachingDataSetIterator trainIter, CachingDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public DenseNetFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;

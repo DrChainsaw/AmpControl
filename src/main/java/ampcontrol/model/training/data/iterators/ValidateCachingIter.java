@@ -63,12 +63,12 @@ public class ValidateCachingIter {
 
         Thread.sleep(5000);
         final int evalCacheSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval1.getNrofFiles() / evalBatchSize)));
-        final CachingDataSetIterator evalIter = new CachingDataSetIterator(
+        final MiniEpochDataSetIterator evalIter = new CachingDataSetIterator(
                 new Cnn2DDataSetIterator(eval1.createProvider(), evalBatchSize, labels)
                 ,evalCacheSize);
 
         evalIter.next();
-        final CachingDataSetIterator trainIterCache = new CachingDataSetIterator(
+        final MiniEpochDataSetIterator trainIterCache = new CachingDataSetIterator(
                 new Cnn2DDataSetIterator(
                         train1.createProvider(), trainBatchSize, labels),
                 trainingIterations);

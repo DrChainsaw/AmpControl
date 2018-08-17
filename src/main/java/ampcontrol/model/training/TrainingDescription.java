@@ -5,6 +5,8 @@ import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.*;
 import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
 import ampcontrol.model.training.data.iterators.Cnn2DDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
+import ampcontrol.model.training.data.iterators.WorkSpaceWrappingIterator;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.description.ResNetConv2DFactory;
@@ -139,15 +141,19 @@ public class TrainingDescription {
             throw new IllegalArgumentException(e);
         }
 
-        final CachingDataSetIterator trainIter = new CachingDataSetIterator(
-                new Cnn2DDataSetIterator(
-                        train.createProvider(), trainBatchSize, labels),
-                trainingIterations);
+        final MiniEpochDataSetIterator trainIter =
+                new WorkSpaceWrappingIterator(
+                        new CachingDataSetIterator(
+                                new Cnn2DDataSetIterator(
+                                        train.createProvider(), trainBatchSize, labels),
+                                trainingIterations));
 
         final int evalCacheSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
-        final CachingDataSetIterator evalIter = new CachingDataSetIterator(
-                new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
-                evalCacheSize);
+        final MiniEpochDataSetIterator evalIter =
+                new WorkSpaceWrappingIterator(
+                        new CachingDataSetIterator(
+                                new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
+                                evalCacheSize));
 
         log.info("Nrof eval files: " + eval.getNrofFiles());
 
@@ -157,7 +163,7 @@ public class TrainingDescription {
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
-       // new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         //new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);

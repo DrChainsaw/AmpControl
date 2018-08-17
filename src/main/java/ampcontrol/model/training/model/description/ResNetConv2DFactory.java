@@ -1,6 +1,6 @@
 package ampcontrol.model.training.model.description;
 
-import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
@@ -26,13 +26,13 @@ import java.util.stream.Stream;
  * @author Christian Skärby
  */
 public class ResNetConv2DFactory {
-    private final CachingDataSetIterator trainIter;
-    private final CachingDataSetIterator evalIter;
+    private final MiniEpochDataSetIterator trainIter;
+    private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
     private final Path modelDir;
 
-    public ResNetConv2DFactory(CachingDataSetIterator trainIter, CachingDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public ResNetConv2DFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;

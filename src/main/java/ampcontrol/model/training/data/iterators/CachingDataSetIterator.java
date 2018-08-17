@@ -24,7 +24,7 @@ import java.util.stream.IntStream;
  *
  * @author Christian Skärby
  */
-public class CachingDataSetIterator implements DataSetIterator {
+public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     private static final Logger log = LoggerFactory.getLogger(CachingDataSetIterator.class);
 
     /**
@@ -50,14 +50,6 @@ public class CachingDataSetIterator implements DataSetIterator {
             .policySpill(SpillPolicy.REALLOCATE)
             .initialSize(0)
             //.overallocationLimit(20)
-            .build();
-
-    private final WorkspaceConfiguration processWorkspaceConfig = WorkspaceConfiguration.builder()
-            .policyAllocation(AllocationPolicy.STRICT)
-            .policyLearning(LearningPolicy.FIRST_LOOP)
-            .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
-            .policySpill(SpillPolicy.REALLOCATE)
-            .initialSize(0)
             .build();
 
     /**
@@ -89,49 +81,47 @@ public class CachingDataSetIterator implements DataSetIterator {
     @Override
     public DataSet next() {
 
-        if (cache == null) {
-            log.info("create cache of size " + nrofItersToCache);
-            workspaces.stream().filter(Objects::nonNull).forEach(MemoryWorkspace::destroyWorkspace);
-            workspaces.clear();
+        try(MemoryWorkspace outerWs = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
+            if (cache == null) {
+                log.info("create cache of size " + nrofItersToCache);
+                workspaces.stream().filter(Objects::nonNull).forEach(MemoryWorkspace::destroyWorkspace);
+                workspaces.clear();
 
-            cache = IntStream.range(0, nrofItersToCache)
-                    .parallel()
+                cache = IntStream.range(0, nrofItersToCache)
+                        .parallel()
 
-                    .mapToObj(i -> {
-                        if (useWorkspace) {
-                            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(cacheWorkspaceConfig, wsName + i);
-                            workspaces.add(ws);
-                            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
-                                DataSet ds = sourceIter.next();
-                                Nd4j.getExecutioner().commit();
-                                return ds;
+                        .mapToObj(i -> {
+                            if (useWorkspace) {
+                                final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(cacheWorkspaceConfig, wsName + i);
+                                workspaces.add(ws);
+                                try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+                                    DataSet ds = sourceIter.next();
+                                    Nd4j.getExecutioner().commit();
+                                    return ds;
+                                }
                             }
-                        }
-                        return sourceIter.next();
-                    })
-                    .collect(Collectors.toList());
+                            return sourceIter.next();
+                        })
+                        .collect(Collectors.toList());
 
-            resetCursor();
+                restartMiniEpoch();
+            }
         }
         cursor++;
 
-        // Move to workspace for processing
-        final MemoryWorkspace tmpWs = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(processWorkspaceConfig, "process" + wsName);
-        try (MemoryWorkspace ws = tmpWs.notifyScopeEntered()) {
-            DataSet ds = detach(cache.get(cursor));
+        DataSet ds = detach(cache.get(cursor));
 
-            // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
-            if (preProcessor != null) {
-                if (sourceIter.getPreProcessor() == null) {
-                    ds = new DataSet(ds.getFeatures(), ds.getLabels(), ds.getFeaturesMaskArray(), ds.getLabelsMaskArray());
-                    preProcessor.preProcess(ds);
-                } else if (sourceIter.getPreProcessor() != preProcessor) {
-                    throw new IllegalStateException("Different preprocessors for source and cache! Source: "
-                            + sourceIter.getPreProcessor() + " cache: " + preProcessor);
-                }
+        // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
+        if (preProcessor != null) {
+            if (sourceIter.getPreProcessor() == null) {
+                ds = new DataSet(ds.getFeatures(), ds.getLabels(), ds.getFeaturesMaskArray(), ds.getLabelsMaskArray());
+                preProcessor.preProcess(ds);
+            } else if (sourceIter.getPreProcessor() != preProcessor) {
+                throw new IllegalStateException("Different preprocessors for source and cache! Source: "
+                        + sourceIter.getPreProcessor() + " cache: " + preProcessor);
             }
-            return ds;
         }
+        return ds;
     }
 
 
@@ -151,11 +141,6 @@ public class CachingDataSetIterator implements DataSetIterator {
             return array.migrate(true);
         }
         return null;
-    }
-
-    @Override
-    public DataSet next(int num) {
-        throw new UnsupportedOperationException("Not supported!");
     }
 
     @Override
@@ -220,10 +205,8 @@ public class CachingDataSetIterator implements DataSetIterator {
         return sourceIter.getLabels();
     }
 
-    /**
-     * Resets the cursor for the cache so that the same {@link DataSet DataSets} will be provided again
-     */
-    public void resetCursor() {
+    @Override
+    public void restartMiniEpoch() {
         cursor = -1;
     }
 }

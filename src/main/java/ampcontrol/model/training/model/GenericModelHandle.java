@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model;
 
 import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
@@ -28,8 +29,8 @@ public class GenericModelHandle implements ModelHandle {
 
     private static int nanTimeOutTime = 200;
 
-    private final CachingDataSetIterator trainingIter;
-    private final CachingDataSetIterator evalIter;
+    private final MiniEpochDataSetIterator trainingIter;
+    private final MiniEpochDataSetIterator evalIter;
     private final ModelAdapter model;
     private final String name;
     private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
@@ -44,7 +45,7 @@ public class GenericModelHandle implements ModelHandle {
      * @param model         Model to fit/evaluate
      * @param name          Name of the model
      */
-    public GenericModelHandle(CachingDataSetIterator trainingIter, CachingDataSetIterator evalIter, ModelAdapter model, String name) {
+    public GenericModelHandle(MiniEpochDataSetIterator trainingIter, MiniEpochDataSetIterator evalIter, ModelAdapter model, String name) {
         this.trainingIter = trainingIter;
         this.evalIter = evalIter;
         this.model = model;
@@ -83,7 +84,7 @@ public class GenericModelHandle implements ModelHandle {
             return;
         }
 
-        trainingIter.resetCursor();
+        trainingIter.restartMiniEpoch();
 
         model.fit(trainingIter);
     }
@@ -94,7 +95,7 @@ public class GenericModelHandle implements ModelHandle {
             return;
         }
 
-        evalIter.resetCursor();
+        evalIter.restartMiniEpoch();
 
         final IEvaluation[] evalArr = validations.stream()
                 .map(Validation::get)
