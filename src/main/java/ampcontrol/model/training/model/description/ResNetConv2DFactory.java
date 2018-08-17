@@ -53,65 +53,62 @@ public class ResNetConv2DFactory {
 
         final int schedPeriod = 50;
         final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
-                new SawTooth(schedPeriod, 1e-6, 0.1));
+                new SawTooth(schedPeriod, 1e-6, 0.05));
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
         IntStream.of(5).forEach(resDepth ->
                 Stream.of(new IdBlock(), new SeBlock()).forEach(seOrId ->
-                        DoubleStream.of(0).forEach(dropOutProb ->
-                                DoubleStream.of(0.002).forEach(lambda -> {
-                                    ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
-                                            new BlockBuilder()
-                                                    .setNamePrefix(namePrefix)
-                                                    .setUpdater(new Nesterovs(lrSched, momSched))
-                                                    .first(new ConvType(inputShape))
+                        DoubleStream.of(0.003).forEach(lambda -> {
+                            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                                    new BlockBuilder()
+                                            .setNamePrefix(namePrefix)
+                                            .setUpdater(new Nesterovs(lrSched, momSched))
+                                            .first(new ConvType(inputShape))
 
-                                                    .andThen(new Conv2DBatchNormAfter()
-                                                            .setConvolutionMode(ConvolutionMode.Same)
-                                                            .setKernelSize(3)
-                                                            .setNrofKernels(64))
-                                                    .andThen(pool)
-                                                    .andThen(new Conv2DBatchNormAfter()
-                                                            .setConvolutionMode(ConvolutionMode.Same)
-                                                            .setKernelSize(3)
-                                                            .setNrofKernels(128))
-                                                    .andThen(pool)
-                                                    .andThen(seOrId)
-                                                    .andThen(new Conv2DBatchNormAfter()
-                                                            .setConvolutionMode(ConvolutionMode.Same)
-                                                            .setKernelSize(3)
-                                                            .setNrofKernels(128))
-                                                    .andThen(pool)
-                                                    .andThen(seOrId)
-                                                    .andThenStack(resDepth)
-                                                    .res()
-                                                    .aggOf(new Conv2DBatchNormAfter()
-                                                            .setKernelSize(1)
-                                                            .setNrofKernels(64))
-                                                    .andThen(new Conv2DBatchNormAfter()
-                                                            .setConvolutionMode(ConvolutionMode.Same)
-                                                            .setKernelSize(3)
-                                                            .setNrofKernels(128))
-                                                    .andThen(new Conv2DBatchNormAfter()
-                                                            .setKernelSize(1)
-                                                            .setNrofKernels(128 * resblockOutFac))
-                                                    //.andThen(zeroPad3x3)
-                                                    .andFinally(seOrId)
-                                                    //.andFinally(new DropOut().setDropProb(dropOutProb))
-                                                    .andThenStack(2)
-                                                    .aggOf(new Dense())
-                                                    .andFinally(new DropOut().setDropProb(dropOutProb))
-                                                    .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
-                                                            .setAlpha(0.6)
-                                                            .setLambda(lambda)));
-                                    modelData.add(new GenericModelHandle(
-                                            trainIter,
-                                            evalIter,
-                                            new GraphModelAdapter(builder.buildGraph()),
-                                            builder.name()));
-                                })
-                        )
+                                            .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
+                                                    .setKernelSize(3)
+                                                    .setNrofKernels(64))
+                                            .andThen(pool)
+                                            .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
+                                                    .setKernelSize(3)
+                                                    .setNrofKernels(128))
+                                            .andThen(pool)
+                                            .andThen(seOrId)
+                                            .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
+                                                    .setKernelSize(3)
+                                                    .setNrofKernels(128))
+                                            .andThen(pool)
+                                            .andThen(seOrId)
+                                            .andThenStack(resDepth)
+                                            .res()
+                                            .aggOf(new Conv2DBatchNormAfter()
+                                                    .setKernelSize(1)
+                                                    .setNrofKernels(64))
+                                            .andThen(new Conv2DBatchNormAfter()
+                                                    .setConvolutionMode(ConvolutionMode.Same)
+                                                    .setKernelSize(3)
+                                                    .setNrofKernels(128))
+                                            .andThen(new Conv2DBatchNormAfter()
+                                                    .setKernelSize(1)
+                                                    .setNrofKernels(128 * resblockOutFac))
+                                            //.andThen(zeroPad3x3)
+                                            .andFinally(seOrId)
+                                            //.andFinally(new DropOut().setDropProb(dropOutProb))
+                                            .andThenStack(2)
+                                            .of(new Dense())
+                                            .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
+                                                    .setAlpha(0.6)
+                                                    .setLambda(lambda)));
+                            modelData.add(new GenericModelHandle(
+                                    trainIter,
+                                    evalIter,
+                                    new GraphModelAdapter(builder.buildGraph()),
+                                    builder.name()));
+                        })
                 )
         );
     }

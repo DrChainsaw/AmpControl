@@ -104,8 +104,8 @@ public class GenericModelHandle implements ModelHandle {
 
         if (evalArr.length > 0) {
             model.eval(evalIter, evalArr);
-            validations.forEach(Validation::notifyComplete);
         }
+        validations.forEach(Validation::notifyComplete);
     }
 
     @Override

@@ -50,9 +50,10 @@ public class Skipping<T extends IEvaluation> implements Validation<T> {
                 log.info(logPrefix + nrofValidationsToSkip);
             }
             nrofValidationsToSkip--;
-            return Optional.empty();
+            last = Optional.empty();
+        } else {
+            last = sourceValidation.get();
         }
-        last = sourceValidation.get();
         return last;
     }
 
