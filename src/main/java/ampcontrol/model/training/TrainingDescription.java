@@ -8,8 +8,9 @@ import ampcontrol.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.iterators.WorkSpaceWrappingIterator;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
+import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
-import ampcontrol.model.training.model.description.ResNetConv2DFactory;
+import ampcontrol.model.training.model.description.InceptionResNetFactory;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
 import org.jetbrains.annotations.NotNull;
@@ -126,14 +127,16 @@ public class TrainingDescription {
                 .addExpansion("rythm", 100)
                 .addExpansion("lead", 100);
 
-        final Random volScaleRng = new Random(trainingSeed + 1);
+        final ResetableStateFactory trainingStateFactory = new ResetableStateFactory(trainingSeed);
+        final ResetableStateFactory evalStateFactory = new ResetableStateFactory(666);
+
         final ProcessingResult.Factory trainFactory = new Pipe(
-                new RandScale(1000, 10, volScaleRng),
+                new RandScale(1000, 10, trainingStateFactory.createNewRandom()),
                 audioPostProcessingFactory
         );
 
-        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> trainFactory, trainingSeed);
-        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, 666);
+        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> trainFactory, trainingStateFactory);
+        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, evalStateFactory);
 
         try {
             DataSetFileParser.parseFileProperties(baseDir, new DataSetMapper(train, eval, evalSetPercentage));
@@ -146,14 +149,14 @@ public class TrainingDescription {
                         new CachingDataSetIterator(
                                 new Cnn2DDataSetIterator(
                                         train.createProvider(), trainBatchSize, labels),
-                                trainingIterations));
+                                trainingIterations).initCache());
 
         final int evalCacheSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
         final MiniEpochDataSetIterator evalIter =
                 new WorkSpaceWrappingIterator(
                         new CachingDataSetIterator(
                                 new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
-                                evalCacheSize));
+                                evalCacheSize).initCache());
 
         log.info("Nrof eval files: " + eval.getNrofFiles());
 
@@ -164,8 +167,8 @@ public class TrainingDescription {
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
         // new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        //new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        //new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 

@@ -1,5 +1,8 @@
 package ampcontrol.model.training.data.processing;
 
+import ampcontrol.model.training.data.state.StateFactory;
+import org.apache.commons.lang.mutable.MutableInt;
+
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Supplier;
@@ -18,16 +21,16 @@ public class SequentialHoldFileSupplier implements Supplier<Path> {
 	private final List<Path> files;
 	private final int nrToHold;
 
-	private int fileNr = 0;
-	private int holdNr = 0;
+	private final Supplier<MutableInt> fileNr;
+	private final Supplier<MutableInt> holdNr;
 
 	/**
 	 * Constructor
 	 * @param files files to supply
 	 * @param nrToHold how many times to repeat each file
 	 */
-	public SequentialHoldFileSupplier(List<Path> files, int nrToHold) {
-		this(files,nrToHold,0);
+	public SequentialHoldFileSupplier(List<Path> files, int nrToHold, StateFactory stateFactory) {
+		this(files,nrToHold,0, stateFactory);
 	}
 
 	/**
@@ -36,11 +39,13 @@ public class SequentialHoldFileSupplier implements Supplier<Path> {
 	 * @param nrToHold how many times to repeat each file
 	 * @param startInd starting index in files
 	 */
-	public SequentialHoldFileSupplier(List<Path> files, int nrToHold, int startInd) {
+	public SequentialHoldFileSupplier(List<Path> files, int nrToHold, int startInd, StateFactory stateFactory) {
 		this.files = files;
 		this.nrToHold = nrToHold;
 		final int positiveStartInd = startInd < 0 ? -startInd : startInd;
-		fileNr = positiveStartInd % files.size();
+
+		fileNr = stateFactory.createNewStateReference(mutInt -> new MutableInt(mutInt.intValue()), new MutableInt(positiveStartInd % files.size()));
+		holdNr = stateFactory.createNewStateReference(mutInt -> new MutableInt(mutInt.intValue()), new MutableInt(0));
 		if(files.isEmpty()) {
 			throw new IllegalArgumentException("No files given!");
 		}
@@ -51,18 +56,25 @@ public class SequentialHoldFileSupplier implements Supplier<Path> {
 
 	@Override
 	public synchronized Path get() {
-		if(fileNr == files.size()) {
-			fileNr = 0;
-			holdNr = 0;
+		if(fileNr() == files.size()) {
+			fileNr.get().setValue(0);
+			holdNr.get().setValue(0);
 		}
-		Path toRet = files.get(fileNr);
-		holdNr++;
-		if(holdNr == nrToHold) {
-			holdNr = 0;
-			fileNr++;
+		Path toRet = files.get(fileNr());
+		holdNr.get().increment();
+		if(holdNr() == nrToHold) {
+			holdNr.get().setValue(0);
+			fileNr.get().increment();
 		}
 		
 		return toRet;
 	}
 
+	private int fileNr() {
+		return fileNr.get().intValue();
+	}
+
+	private int holdNr() {
+		return holdNr.get().intValue();
+	}
 }

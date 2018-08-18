@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Description of some homebrewed inception resnets with 2D convolutions
@@ -46,71 +47,20 @@ public class InceptionResNetFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
 
-        final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3); final int resblockOutFac = 1;
+        final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3);
+        final int resblockOutFac = 1;
         // final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3); final int resblockOutFac = 2;
 
         final int schedPeriod = 50;
         final ISchedule lrSched = new Mul(new Step(4000, new Exponential(0.2)),
-                new SawTooth(schedPeriod, 1e-6, 0.1));
+                new SawTooth(schedPeriod, 1e-6, 0.05));
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
         final int resNrofChannels = 64;
-        IntStream.of(5).forEach(resDepth ->
-                DoubleStream.of(0).forEach(dropOutProb ->
-                        DoubleStream.of(0.004).forEach(lambda -> {
-                            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
-                                    createStem(pool, lrSched, momSched, resNrofChannels)
-                                            .andThenStack(resDepth)
-                                            .res()
-                                            .aggFork()
-                                            .add(new Conv2DBatchNormAfter()
-                                                    .setKernelSize(1)
-                                                    .setNrofKernels(resNrofChannels)
-                                            .setActivation(new ActivationIdentity()))
-                                            .addAgg(new Conv2DBatchNormAfter()
-                                                    .setKernelSize(1)
-                                                    .setNrofKernels(resNrofChannels))
-                                            .andFinally(new Conv2DBatchNormAfter()
-                                                    .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize(3)
-                                                    .setNrofKernels(resNrofChannels))
-                                            .addAgg(new Conv2DBatchNormAfter()
-                                                    .setKernelSize(1)
-                                                    .setNrofKernels(resNrofChannels))
-                                            .andThen(new Conv2DBatchNormAfter()
-                                                    .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize(3)
-                                                    .setNrofKernels(resNrofChannels))
-                                            .andFinally(new Conv2DBatchNormAfter()
-                                                    .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize(3)
-                                                    .setNrofKernels(resNrofChannels))
-                                            .done()
-                                            .andThen(new Conv2DBatchNormAfter()
-                                                    .setKernelSize(1)
-                                                    .setNrofKernels(2*resNrofChannels))
-                                            .andFinally(new SeBlock())
-                                            //.andFinally(new DropOut().setDropProb(dropOutProb))
-                                            .andThenStack(2)
-                                            .aggOf(new Dense())
-                                            .andFinally(new DropOut().setDropProb(dropOutProb))
-                                            .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
-                                                    .setAlpha(0.6)
-                                                    .setLambda(lambda)));
-                            modelData.add(new GenericModelHandle(
-                                    trainIter,
-                                    evalIter,
-                                    new GraphModelAdapter(builder.buildGraph()),
-                                    builder.name()));
-                        })
-                )
-        );
-
-        // Same thing as above but with factorized convolutions (does not seem to improve performance)
-        IntStream.of(5).forEach(resDepth ->
-                DoubleStream.of(0).forEach(dropOutProb ->
-                        DoubleStream.of(0.004).forEach(lambda -> {
+        IntStream.of(2, 5, 10).forEach(resDepth ->
+                Stream.of(new IdBlock()).forEach(seOrIdBlock ->
+                        DoubleStream.of(0.002).forEach(lambda -> {
                             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                                     createStem(pool, lrSched, momSched, resNrofChannels)
                                             .andThenStack(resDepth)
@@ -123,57 +73,29 @@ public class InceptionResNetFactory {
                                             .addAgg(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(resNrofChannels))
-
-
-
-                                            .andThen(new Conv2D()
-                                                    .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize_h(3)
-                                                    .setKernelSize_w(1)
-                                                    .setActivation(new ActivationIdentity())
-                                                    .setNrofKernels(resNrofChannels))
                                             .andFinally(new Conv2DBatchNormAfter()
                                                     .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize_h(1)
-                                                    .setKernelSize_w(3)
+                                                    .setKernelSize(3)
                                                     .setNrofKernels(resNrofChannels))
-
-
                                             .addAgg(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(resNrofChannels))
-                                            .andThen(new Conv2D()
-                                                    .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize_h(3)
-                                                    .setKernelSize_w(1)
-                                                    .setActivation(new ActivationIdentity())
-                                                    .setNrofKernels(resNrofChannels))
                                             .andThen(new Conv2DBatchNormAfter()
                                                     .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize_h(1)
-                                                    .setKernelSize_w(3)
-                                                    .setNrofKernels(resNrofChannels))
-                                            .andThen(new Conv2D()
-                                                    .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize_h(3)
-                                                    .setKernelSize_w(1)
-                                                    .setActivation(new ActivationIdentity())
+                                                    .setKernelSize(3)
                                                     .setNrofKernels(resNrofChannels))
                                             .andFinally(new Conv2DBatchNormAfter()
                                                     .setConvolutionMode(ConvolutionMode.Same)
-                                                    .setKernelSize_h(1)
-                                                    .setKernelSize_w(3)
+                                                    .setKernelSize(3)
                                                     .setNrofKernels(resNrofChannels))
-
                                             .done()
                                             .andThen(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
-                                                    .setNrofKernels(2*resNrofChannels * resblockOutFac))
-                                            .andFinally(new SeBlock())
+                                                    .setNrofKernels(2 * resNrofChannels))
+                                            .andFinally(seOrIdBlock)
                                             //.andFinally(new DropOut().setDropProb(dropOutProb))
                                             .andThenStack(2)
-                                            .aggOf(new Dense())
-                                            .andFinally(new DropOut().setDropProb(dropOutProb))
+                                            .of(new Dense())
                                             .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                                                     .setAlpha(0.6)
                                                     .setLambda(lambda)));
@@ -185,6 +107,84 @@ public class InceptionResNetFactory {
                         })
                 )
         );
+
+//        // Same thing as above but with factorized convolutions (does not seem to improve performance)
+//        IntStream.of(5).forEach(resDepth ->
+//                DoubleStream.of(0).forEach(dropOutProb ->
+//                        DoubleStream.of(0.004).forEach(lambda -> {
+//                            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+//                                    createStem(pool, lrSched, momSched, resNrofChannels)
+//                                            .andThenStack(resDepth)
+//                                            .res()
+//                                            .aggFork()
+//                                            .add(new Conv2DBatchNormAfter()
+//                                                    .setKernelSize(1)
+//                                                    .setNrofKernels(resNrofChannels)
+//                                                    .setActivation(new ActivationIdentity()))
+//                                            .addAgg(new Conv2DBatchNormAfter()
+//                                                    .setKernelSize(1)
+//                                                    .setNrofKernels(resNrofChannels))
+//
+//
+//                                            .andThen(new Conv2D()
+//                                                    .setConvolutionMode(ConvolutionMode.Same)
+//                                                    .setKernelSize_h(3)
+//                                                    .setKernelSize_w(1)
+//                                                    .setActivation(new ActivationIdentity())
+//                                                    .setNrofKernels(resNrofChannels))
+//                                            .andFinally(new Conv2DBatchNormAfter()
+//                                                    .setConvolutionMode(ConvolutionMode.Same)
+//                                                    .setKernelSize_h(1)
+//                                                    .setKernelSize_w(3)
+//                                                    .setNrofKernels(resNrofChannels))
+//
+//
+//                                            .addAgg(new Conv2DBatchNormAfter()
+//                                                    .setKernelSize(1)
+//                                                    .setNrofKernels(resNrofChannels))
+//                                            .andThen(new Conv2D()
+//                                                    .setConvolutionMode(ConvolutionMode.Same)
+//                                                    .setKernelSize_h(3)
+//                                                    .setKernelSize_w(1)
+//                                                    .setActivation(new ActivationIdentity())
+//                                                    .setNrofKernels(resNrofChannels))
+//                                            .andThen(new Conv2DBatchNormAfter()
+//                                                    .setConvolutionMode(ConvolutionMode.Same)
+//                                                    .setKernelSize_h(1)
+//                                                    .setKernelSize_w(3)
+//                                                    .setNrofKernels(resNrofChannels))
+//                                            .andThen(new Conv2D()
+//                                                    .setConvolutionMode(ConvolutionMode.Same)
+//                                                    .setKernelSize_h(3)
+//                                                    .setKernelSize_w(1)
+//                                                    .setActivation(new ActivationIdentity())
+//                                                    .setNrofKernels(resNrofChannels))
+//                                            .andFinally(new Conv2DBatchNormAfter()
+//                                                    .setConvolutionMode(ConvolutionMode.Same)
+//                                                    .setKernelSize_h(1)
+//                                                    .setKernelSize_w(3)
+//                                                    .setNrofKernels(resNrofChannels))
+//
+//                                            .done()
+//                                            .andThen(new Conv2DBatchNormAfter()
+//                                                    .setKernelSize(1)
+//                                                    .setNrofKernels(2 * resNrofChannels * resblockOutFac))
+//                                            .andFinally(new SeBlock())
+//                                            //.andFinally(new DropOut().setDropProb(dropOutProb))
+//                                            .andThenStack(2)
+//                                            .aggOf(new Dense())
+//                                            .andFinally(new DropOut().setDropProb(dropOutProb))
+//                                            .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
+//                                                    .setAlpha(0.6)
+//                                                    .setLambda(lambda)));
+//                            modelData.add(new GenericModelHandle(
+//                                    trainIter,
+//                                    evalIter,
+//                                    new GraphModelAdapter(builder.buildGraph()),
+//                                    builder.name()));
+//                        })
+//                )
+//        );
     }
 
     private BlockBuilder.RootBuilder createStem(LayerBlockConfig pool, ISchedule lrSched, ISchedule momSched, int resNrofChannels) {
@@ -208,7 +208,6 @@ public class InceptionResNetFactory {
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setKernelSize(3)
                         .setNrofKernels(2 * resNrofChannels))
-                .andThen(pool)
-                .andThen(new SeBlock());
+                .andThen(pool);
     }
 }

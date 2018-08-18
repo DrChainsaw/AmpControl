@@ -81,8 +81,27 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     @Override
     public DataSet next() {
 
-        try(MemoryWorkspace outerWs = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
-            if (cache == null) {
+        checkCache();
+
+        cursor++;
+        DataSet ds = detach(cache.get(cursor));
+
+        // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
+        if (preProcessor != null) {
+            if (sourceIter.getPreProcessor() == null) {
+                ds = new DataSet(ds.getFeatures(), ds.getLabels(), ds.getFeaturesMaskArray(), ds.getLabelsMaskArray());
+                preProcessor.preProcess(ds);
+            } else if (sourceIter.getPreProcessor() != preProcessor) {
+                throw new IllegalStateException("Different preprocessors for source and cache! Source: "
+                        + sourceIter.getPreProcessor() + " cache: " + preProcessor);
+            }
+        }
+        return ds;
+    }
+
+    private synchronized void checkCache() {
+        if (cache == null) {
+            try (MemoryWorkspace outerWs = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
                 log.info("create cache of size " + nrofItersToCache);
                 workspaces.stream().filter(Objects::nonNull).forEach(MemoryWorkspace::destroyWorkspace);
                 workspaces.clear();
@@ -107,21 +126,15 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
                 restartMiniEpoch();
             }
         }
-        cursor++;
+    }
 
-        DataSet ds = detach(cache.get(cursor));
-
-        // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
-        if (preProcessor != null) {
-            if (sourceIter.getPreProcessor() == null) {
-                ds = new DataSet(ds.getFeatures(), ds.getLabels(), ds.getFeaturesMaskArray(), ds.getLabelsMaskArray());
-                preProcessor.preProcess(ds);
-            } else if (sourceIter.getPreProcessor() != preProcessor) {
-                throw new IllegalStateException("Different preprocessors for source and cache! Source: "
-                        + sourceIter.getPreProcessor() + " cache: " + preProcessor);
-            }
-        }
-        return ds;
+    /**
+     * Initializes the cache in a separate thread.
+     * @return The instance to allow for this method to be called a construction time.
+     */
+    public CachingDataSetIterator initCache() {
+        new Thread(this::checkCache).start();
+        return this;
     }
 
 

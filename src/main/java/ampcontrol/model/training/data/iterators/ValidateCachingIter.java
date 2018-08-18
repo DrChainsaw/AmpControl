@@ -7,6 +7,7 @@ import ampcontrol.audio.processing.UnitMaxZeroMean;
 import ampcontrol.model.training.TrainingDescription;
 import ampcontrol.model.training.data.*;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
+import ampcontrol.model.training.data.state.SimpleStateFactory;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.DataSet;
 
@@ -48,11 +49,11 @@ public class ValidateCachingIter {
         labelToBuilder.put("silence", () -> silence);
         labelToBuilder = Collections.unmodifiableMap(labelToBuilder);
         final int seed = 666;
-        final DataProviderBuilder train1 = new TrainingDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
-        final DataProviderBuilder train2 = new TrainingDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
+        final DataProviderBuilder train1 = new TrainingDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, new SimpleStateFactory(seed));
+        final DataProviderBuilder train2 = new TrainingDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, new SimpleStateFactory(seed));
 
-        final DataProviderBuilder eval1 = new EvalDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
-        final DataProviderBuilder eval2 = new EvalDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, seed);
+        final DataProviderBuilder eval1 = new EvalDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, new SimpleStateFactory(seed));
+        final DataProviderBuilder eval2 = new EvalDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, new SimpleStateFactory(seed));
 
         try {
             DataSetFileParser.parseFileProperties(baseDir, new TrainingDescription.DataSetMapper(train1, eval1, evalSetPercentage));
