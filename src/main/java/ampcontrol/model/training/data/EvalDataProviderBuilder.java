@@ -69,7 +69,7 @@ public class EvalDataProviderBuilder implements DataProviderBuilder {
 
 	private AudioProcessorBuilder createAudioFileProcessorBuilder() {
 		return new AudioFileProcessorBuilder()
-		.setSamplingInfoMapper(new WindowedConsecutiveSamplingInfo(clipLengthMs, windowSizeMs))
+		.setSamplingInfoMapper(new WindowedConsecutiveSamplingInfo(clipLengthMs, windowSizeMs, stateFactory))
 		.setFileSupplierFactory(fileList -> new SequentialHoldFileSupplier(fileList, clipLengthMs / windowSizeMs, stateFactory))
 		.setPostProcSupplier(audioPostProcSupplier);
 	}

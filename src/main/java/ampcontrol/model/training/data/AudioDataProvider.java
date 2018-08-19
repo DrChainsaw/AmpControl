@@ -3,6 +3,7 @@ package ampcontrol.model.training.data;
 import ampcontrol.model.training.data.processing.AudioFileProcessorBuilder;
 import ampcontrol.model.training.data.processing.AudioProcessor;
 import ampcontrol.model.training.data.processing.WindowedConsecutiveSamplingInfo;
+import ampcontrol.model.training.data.state.SimpleStateFactory;
 import ampcontrol.model.visualize.PlotSpectrogram;
 
 import java.nio.file.Path;
@@ -71,7 +72,7 @@ public class AudioDataProvider implements DataProvider {
 				).collect(Collectors.toList());
 			
 		Map<String, AudioProcessorBuilder> labels = new LinkedHashMap<>();
-		labels.put("rythm", new AudioFileProcessorBuilder().setSamplingInfoMapper(new WindowedConsecutiveSamplingInfo(1000, 100)));
+		labels.put("rythm", new AudioFileProcessorBuilder().setSamplingInfoMapper(new WindowedConsecutiveSamplingInfo(1000, 100, new SimpleStateFactory(666))));
 		labels.put("lead", new AudioFileProcessorBuilder());
 		AudioDataProvider splitter = new AudioDataProvider(files, labels, () -> "lead");
 		
