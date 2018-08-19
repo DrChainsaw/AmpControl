@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -246,10 +248,13 @@ class TrainingHarness {
         Nd4j.getMemoryManager().setAutoGcWindow(5000);
         for (int trainingStep = 0; trainingStep < maxNrofTrainingSteps; trainingStep++) {
             log.info("****************************** Training step " + trainingStep + " started! ***************************************");
+            final LocalTime beforeTrain = LocalTime.now();
             for (ModelHandle mh : modelsToTrain) {
                 log.info("Training model: " + mh.name());
                 mh.fit();
             }
+            final long totalTrainingTime = Duration.between(beforeTrain, LocalTime.now()).toMillis();
+            log.info("Total training time: " + totalTrainingTime);
 
             for (ModelHandle mh : modelsToTrain) {
                 mh.eval();

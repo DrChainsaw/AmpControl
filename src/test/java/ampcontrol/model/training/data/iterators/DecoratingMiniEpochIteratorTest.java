@@ -114,11 +114,16 @@ public abstract class DecoratingMiniEpochIteratorTest {
         final boolean[] wasCalled = {false};
         decorate(new MockMiniEpochDataSetIterator() {
             @Override
+            public boolean hasNext() {
+                return false;
+            }
+
+            @Override
             public void reset() {
                 wasCalled[0] = true;
             }
         }).reset();
-        assertTrue("Method was not called!", wasCalled[0]);
+        assertTrue("Method not was called!", wasCalled[0]);
     }
 
     /**

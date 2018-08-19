@@ -24,4 +24,5 @@ public interface MiniEpochDataSetIterator extends DataSetIterator {
     default DataSet next(int num) {
         throw new UnsupportedOperationException("Not supported!");
     }
+
 }

@@ -101,7 +101,7 @@ public class Conv2D implements LayerBlockConfig {
      * Sets the {@link ConvolutionMode} to use
      *
      * @param convolutionMode the mode to use
-     * @return the {@link Conv2DBatchNormAfter}
+     * @return the {@link Conv2D}
      */
     public Conv2D setConvolutionMode(ConvolutionMode convolutionMode) {
         this.convolutionMode = convolutionMode;

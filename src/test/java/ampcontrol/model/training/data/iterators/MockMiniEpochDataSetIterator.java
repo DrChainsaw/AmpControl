@@ -31,12 +31,12 @@ public class MockMiniEpochDataSetIterator implements MiniEpochDataSetIterator {
 
     @Override
     public boolean resetSupported() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean asyncSupported() {
-        return false;
+        return true;
     }
 
     @Override
@@ -66,7 +66,7 @@ public class MockMiniEpochDataSetIterator implements MiniEpochDataSetIterator {
 
     @Override
     public boolean hasNext() {
-        return false;
+        return true;
     }
 
     @Override

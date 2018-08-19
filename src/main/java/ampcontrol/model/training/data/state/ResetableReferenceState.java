@@ -1,7 +1,5 @@
 package ampcontrol.model.training.data.state;
 
-import ampcontrol.model.training.data.iterators.AsynchEnablingDataSetIterator.ResetableState;
-
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 

@@ -57,7 +57,7 @@ public class ResNetConv2DFactory {
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
-        IntStream.of(5).forEach(resDepth ->
+        IntStream.of(7).forEach(resDepth ->
                 Stream.of(new IdBlock(), new SeBlock()).forEach(seOrId ->
                         DoubleStream.of(0.003).forEach(lambda -> {
                             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),

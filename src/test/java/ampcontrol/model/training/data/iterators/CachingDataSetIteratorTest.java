@@ -119,12 +119,7 @@ public class CachingDataSetIteratorTest extends DecoratingMiniEpochIteratorTest 
 
     @Override
     public void resetSupported() {
-        // Not supposed to propagate
-    }
-
-    @Override
-    public void reset() {
-        // Not supposed to propagate
+        assertTrue("Reset shall be supported!", decorate(new MockMiniEpochDataSetIterator()).resetSupported());
     }
 
     @Override

@@ -3,7 +3,6 @@ package ampcontrol.model.training.model.description;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
-import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
 import ampcontrol.model.training.schedule.Mul;
 import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
@@ -47,22 +46,18 @@ public class InceptionResNetFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
 
-        final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3);
-        final int resblockOutFac = 1;
-        // final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3); final int resblockOutFac = 2;
-
-        final int schedPeriod = 50;
+        final int schedPeriod = 100;
         final ISchedule lrSched = new Mul(new Step(4000, new Exponential(0.2)),
                 new SawTooth(schedPeriod, 1e-6, 0.05));
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
         final int resNrofChannels = 64;
-        IntStream.of(2, 5, 10).forEach(resDepth ->
+        IntStream.of(0, 5).forEach(resDepth ->
                 Stream.of(new IdBlock()).forEach(seOrIdBlock ->
                         DoubleStream.of(0.002).forEach(lambda -> {
                             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
-                                    createStem(pool, lrSched, momSched, resNrofChannels)
+                                    createStem(lrSched, momSched, resNrofChannels)
                                             .andThenStack(resDepth)
                                             .res()
                                             .aggFork()
@@ -92,6 +87,7 @@ public class InceptionResNetFactory {
                                             .andThen(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(2 * resNrofChannels))
+                                         //   .andThen(new Scale(0.1))
                                             .andFinally(seOrIdBlock)
                                             //.andFinally(new DropOut().setDropProb(dropOutProb))
                                             .andThenStack(2)
@@ -187,27 +183,62 @@ public class InceptionResNetFactory {
 //        );
     }
 
-    private BlockBuilder.RootBuilder createStem(LayerBlockConfig pool, ISchedule lrSched, ISchedule momSched, int resNrofChannels) {
+    private BlockBuilder.RootBuilder createStem(ISchedule lrSched, ISchedule momSched, int resNrofChannels) {
+        final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(2);
+        final int resblockOutFac = 1;
+        // final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3); final int resblockOutFac = 2;
+
         return new BlockBuilder()
                 .setNamePrefix(namePrefix)
-                // .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.EPOCH, 0.001, 10, 2)))
                 .setUpdater(new Nesterovs(lrSched, momSched))
                 .first(new ConvType(inputShape))
+                .andThen(new Conv2D() // Buffer since pools seem to break if connected directly to input
+                        .setKernelSize(1)
+                        .setActivation(new ActivationIdentity())
+                        .setNrofKernels(3))
+
+                .andThenFork()
+                .add(new Conv2DBatchNormAfter()
+                        .setStride(2)
+                        .setKernelSize(3)
+                        .setNrofKernels(32))
+                .add(pool)
+                .done()
+                .andThenFork()
+
+                .addAgg(new Conv2DBatchNormAfter()
+                        .setKernelSize(1)
+                        .setNrofKernels(32))
+                .andFinally(new Conv2DBatchNormAfter()
+                        .setKernelSize(3)
+                        .setNrofKernels(2 * resblockOutFac))
+
+                .addAgg(new Conv2DBatchNormAfter()
+                        .setKernelSize(1)
+                        .setNrofKernels(32))
                 .andThen(new Conv2DBatchNormAfter()
                         .setConvolutionMode(ConvolutionMode.Same)
+                        .setKernelSize_h(1)
+                        .setKernelSize_w(7)
+                        .setNrofKernels(32))
+                .andThen(new Conv2DBatchNormAfter()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setKernelSize_h(7)
+                        .setKernelSize_w(1)
+                        .setNrofKernels(32))
+                .andFinally(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(64))
+                        .setNrofKernels(resNrofChannels-1))
+                .done()
+
+                .andThenFork()
+                .add(new Conv2DBatchNormAfter()
+                        .setStride(2)
+                        .setKernelSize(3)
+                        .setNrofKernels(resNrofChannels-1))
+                .add(pool)
+                .done()
                 .andThen(pool)
-                .andThen(new Conv2DBatchNormAfter()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setKernelSize(3)
-                        .setNrofKernels(128))
-                .andThen(pool)
-                .andThen(new SeBlock())
-                .andThen(new Conv2DBatchNormAfter()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setKernelSize(3)
-                        .setNrofKernels(2 * resNrofChannels))
-                .andThen(pool);
+;
     }
 }

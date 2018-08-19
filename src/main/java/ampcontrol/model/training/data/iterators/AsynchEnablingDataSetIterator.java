@@ -1,7 +1,9 @@
 package ampcontrol.model.training.data.iterators;
 
+import ampcontrol.model.training.data.state.ResetableState;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 import java.util.List;
 
@@ -14,80 +16,94 @@ import java.util.List;
  */
 public class AsynchEnablingDataSetIterator implements MiniEpochDataSetIterator {
 
+    private final DataSetIterator sourceIter;
+    private final ResetableState state;
+    private final int miniEpochSize;
+    private int miniEpochCount = 0;
+
     /**
-     * Controls the state of the processing pipe line which produces the data.
+     * Constructor
+     *
+     * @param sourceIter Iterator for which asynch operation is to be enabled.
+     * @param state      State which needs to be stored/restored between mini-epochs
      */
-    public interface ResetableState {
-
-        /**
-         * Stores the current state
-         */
-        void storeCurrentState();
-
-        /**
-         * Resets the state to the last saved state
-         */
-        void restorePreviousState();
-
+    public AsynchEnablingDataSetIterator(
+            DataSetIterator sourceIter,
+            ResetableState state,
+            int miniEpochSize) {
+        this.sourceIter = sourceIter;
+        this.state = state;
+        this.miniEpochSize = miniEpochSize;
     }
 
     @Override
     public void restartMiniEpoch() {
-
+        miniEpochCount = 0;
     }
 
     @Override
     public int inputColumns() {
-        return 0;
+        return sourceIter.inputColumns();
     }
 
     @Override
     public int totalOutcomes() {
-        return 0;
+        return sourceIter.totalOutcomes();
     }
 
     @Override
     public boolean resetSupported() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean asyncSupported() {
-        return false;
+        return true;
     }
 
     @Override
     public void reset() {
-
+        miniEpochCount = 0;
+        state.storeCurrentState();
+        if (sourceIter.resetSupported() && !sourceIter.hasNext()) {
+            sourceIter.reset();
+        }
     }
 
     @Override
     public int batch() {
-        return 0;
+        return sourceIter.batch();
     }
 
     @Override
     public void setPreProcessor(DataSetPreProcessor preProcessor) {
-
+        sourceIter.setPreProcessor(preProcessor);
     }
 
     @Override
     public DataSetPreProcessor getPreProcessor() {
-        return null;
+        return sourceIter.getPreProcessor();
     }
 
     @Override
     public List<String> getLabels() {
-        return null;
+        return sourceIter.getLabels();
     }
 
     @Override
     public boolean hasNext() {
-        return false;
+        return miniEpochCount < miniEpochSize;
     }
 
     @Override
     public DataSet next() {
-        return null;
+        if (!hasNext()) {
+            throw new IllegalStateException("Not allowed!");
+        }
+        if(miniEpochCount == 0) {
+            state.restorePreviousState();
+        }
+        miniEpochCount++;
+        return sourceIter.next();
     }
 }

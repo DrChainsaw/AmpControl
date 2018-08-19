@@ -179,7 +179,7 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     @Override
     public void reset() {
         cache = null;
-        if (sourceIter.resetSupported()) {
+        if (sourceIter.resetSupported() && !sourceIter.hasNext()) {
             sourceIter.reset();
         }
     }

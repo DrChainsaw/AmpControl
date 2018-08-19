@@ -1,7 +1,5 @@
 package ampcontrol.model.training.data.state;
 
-import ampcontrol.model.training.data.iterators.AsynchEnablingDataSetIterator.ResetableState;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Random;

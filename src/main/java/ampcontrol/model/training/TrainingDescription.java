@@ -3,10 +3,9 @@ package ampcontrol.model.training;
 import ampcontrol.audio.processing.*;
 import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.*;
-import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
+import ampcontrol.model.training.data.iterators.AsynchEnablingDataSetIterator;
 import ampcontrol.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
-import ampcontrol.model.training.data.iterators.WorkSpaceWrappingIterator;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
@@ -44,7 +43,7 @@ public class TrainingDescription {
     private final static int trainingIterations = 10; // 10
     private final static int trainBatchSize = 64;   // 32 64
     private final static int evalBatchSize = 64;
-    private final static double evalSetPercentage = 4;
+    private final static double evalSetPercentage = 10;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -145,18 +144,18 @@ public class TrainingDescription {
         }
 
         final MiniEpochDataSetIterator trainIter =
-                new WorkSpaceWrappingIterator(
-                        new CachingDataSetIterator(
-                                new Cnn2DDataSetIterator(
-                                        train.createProvider(), trainBatchSize, labels),
-                                trainingIterations).initCache());
+                new AsynchEnablingDataSetIterator(
+                        new Cnn2DDataSetIterator(
+                                train.createProvider(), trainBatchSize, labels),
+                        trainingStateFactory,
+                        trainingIterations);
 
-        final int evalCacheSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
+        final int evalSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
         final MiniEpochDataSetIterator evalIter =
-                new WorkSpaceWrappingIterator(
-                        new CachingDataSetIterator(
-                                new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
-                                evalCacheSize).initCache());
+                new AsynchEnablingDataSetIterator(
+                        new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
+                        evalStateFactory,
+                        evalSize);
 
         log.info("Nrof eval files: " + eval.getNrofFiles());
 
@@ -166,7 +165,7 @@ public class TrainingDescription {
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
-        // new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+         //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         //new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);

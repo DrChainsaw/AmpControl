@@ -33,4 +33,6 @@ public class WorkSpaceWrappingIteratorTest extends DecoratingMiniEpochIteratorTe
 
         assertTrue("Data shall be attched to workspace!", testIter.next().getFeatures().isAttached());
     }
+
+
 }
