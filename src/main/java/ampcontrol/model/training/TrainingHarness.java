@@ -38,8 +38,8 @@ class TrainingHarness {
     private static final Logger log = LoggerFactory.getLogger(TrainingHarness.class);
 
     private static final boolean doStatsLogging = false;
-    private static final int evalEveryNrofSteps = 40;
-    private static final int nrofStepsBeforeFirstEval = 40;
+    private static final int evalEveryNrofSteps = 100;
+    private static final int nrofStepsBeforeFirstEval = 200;
     private static final String bestSuffix = "_best";
     private static final String scoreSuffix = ".score";
     private static final double saveThreshold = 0.9;
@@ -132,7 +132,7 @@ class TrainingHarness {
 
         private Consumer<Evaluation> createLastCheckPoint(final Supplier<Double> bestEvalSupplier) {
             final Consumer<Evaluation> saveCheckPoint = createCheckPoint(fileBaseName);
-
+            
             final Predicate<Evaluation> gate = eval -> eval.accuracy() >= bestEvalSupplier.get() * saveThreshold;
 
             return new NewThread<>( // Background work
@@ -209,7 +209,7 @@ class TrainingHarness {
             }
             mh.getModel().addListeners(new TimeMeasurement());
             mh.getModel().addListeners(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
-           // mh.getModel().addListeners(new SeBlockInspection());
+            // mh.getModel().addListeners(new SeBlockInspection());
         }
     }
 

@@ -57,42 +57,42 @@ public class ResNetConv2DFactory {
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
-        IntStream.of(7).forEach(resDepth ->
+        IntStream.of(5, 10).forEach(resDepth ->
                 Stream.of(new IdBlock(), new SeBlock()).forEach(seOrId ->
-                        DoubleStream.of(0.003).forEach(lambda -> {
+                        DoubleStream.of(0.002).forEach(lambda -> {
                             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                                     new BlockBuilder()
                                             .setNamePrefix(namePrefix)
                                             .setUpdater(new Nesterovs(lrSched, momSched))
                                             .first(new ConvType(inputShape))
 
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(64))
                                             .andThen(pool)
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
                                             .andThen(pool)
-                                            .andThen(seOrId)
-                                            .andThen(new Conv2DBatchNormAfter()
+                                           // .andThen(seOrId)
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
                                             .andThen(pool)
-                                            .andThen(seOrId)
+                                           // .andThen(seOrId)
                                             .andThenStack(resDepth)
-                                            .res()
-                                            .aggOf(new Conv2DBatchNormAfter()
+                                            .aggRes()
+                                            .aggOf(new Conv2DBatchNormBetween()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(64))
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andFinally(new Conv2DBatchNormBetween()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(128 * resblockOutFac))
                                             //.andThen(zeroPad3x3)

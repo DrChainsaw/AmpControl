@@ -20,6 +20,8 @@ public interface MiniEpochDataSetIterator extends DataSetIterator {
      */
     void restartMiniEpoch();
 
+    int miniEpochSize();
+
     @Override
     default DataSet next(int num) {
         throw new UnsupportedOperationException("Not supported!");

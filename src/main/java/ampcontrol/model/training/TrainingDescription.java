@@ -3,13 +3,12 @@ package ampcontrol.model.training;
 import ampcontrol.audio.processing.*;
 import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.*;
-import ampcontrol.model.training.data.iterators.AsynchEnablingDataSetIterator;
-import ampcontrol.model.training.data.iterators.Cnn2DDataSetIterator;
-import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
+import ampcontrol.model.training.data.iterators.*;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.description.InceptionResNetFactory;
+import ampcontrol.model.training.model.description.ResNetConv2DFactory;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
 import org.jetbrains.annotations.NotNull;
@@ -144,11 +143,13 @@ public class TrainingDescription {
         }
 
         final MiniEpochDataSetIterator trainIter =
-                new AsynchEnablingDataSetIterator(
+              new WorkSpaceWrappingIterator(
+               new CachingDataSetIterator(
+                // new AsynchEnablingDataSetIterator(
                         new Cnn2DDataSetIterator(
                                 train.createProvider(), trainBatchSize, labels),
-                        trainingStateFactory,
-                        trainingIterations);
+                       // trainingStateFactory,
+                        trainingIterations).initCache());
 
         final int evalSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
         final MiniEpochDataSetIterator evalIter =
@@ -166,7 +167,7 @@ public class TrainingDescription {
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
          //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        //new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);

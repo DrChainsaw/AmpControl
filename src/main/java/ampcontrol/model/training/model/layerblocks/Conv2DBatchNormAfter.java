@@ -23,7 +23,6 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
     private int kernelSize_w = 4;
     private int stride_w = 1;
     private int stride_h = 1;
-    private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
     private ConvolutionMode convolutionMode = ConvolutionMode.Truncate;
 
     private IActivation activation = new ActivationELU();
@@ -46,7 +45,7 @@ public class Conv2DBatchNormAfter implements LayerBlockConfig {
                         .stride(stride_h, stride_w)
                         .activation(activation)
                         .nOut(nrofKernels)
-                        .cudnnAlgoMode(cudnnAlgoMode)
+                        .cudnnAlgoMode(ConvolutionLayer.AlgoMode.PREFER_FASTEST)
                         .convolutionMode(convolutionMode)
                         .build());
         log.info("cnn BN Layer: " + nextInfo);

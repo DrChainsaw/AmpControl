@@ -33,12 +33,21 @@ public class TrainingHarnessTest {
         final Plot.Factory<Integer, Double> plotFac = title -> new MockPlot();
 
         final TrainingHarness harness = new TrainingHarness(new ArrayList<>(models), "dummy", plotFac, path -> str -> {/* ignore */});
-        final int nrofTrainingSteps = 200;
+        final int nrofTrainingSteps = 300;
         harness.startTraining(nrofTrainingSteps);
+
+        // Attempt to prevent weird failures in CI by giving other threads time to finish
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            // Should not matter
+        }
 
         models.forEach(model -> model.assertNrofFitCalls(nrofTrainingSteps));
         models.forEach(model -> model.assertNrofEvalCalls(nrofTrainingSteps));
         models.forEach(model -> model.assertNrofSaveFileNames(2));
+
+
     }
 
     private static class ProbeModelHandle implements ModelHandle {

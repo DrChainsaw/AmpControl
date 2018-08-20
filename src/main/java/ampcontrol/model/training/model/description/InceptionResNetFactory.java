@@ -3,6 +3,8 @@ package ampcontrol.model.training.model.description;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
+import ampcontrol.model.training.model.layerblocks.graph.Scale;
+import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
 import ampcontrol.model.training.schedule.Mul;
 import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
@@ -52,14 +54,14 @@ public class InceptionResNetFactory {
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
-        final int resNrofChannels = 64;
-        IntStream.of(0, 5).forEach(resDepth ->
-                Stream.of(new IdBlock()).forEach(seOrIdBlock ->
+        final int resNrofChannels = 96 / 2;
+        IntStream.of(5 ,10).forEach(resDepth ->
+                Stream.of(new IdBlock(), new SeBlock()).forEach(seOrIdBlock ->
                         DoubleStream.of(0.002).forEach(lambda -> {
                             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
-                                    createStem(lrSched, momSched, resNrofChannels)
+                                    createSmallStem(lrSched, momSched, resNrofChannels)
                                             .andThenStack(resDepth)
-                                            .res()
+                                            .aggRes()
                                             .aggFork()
                                             .add(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
@@ -87,7 +89,7 @@ public class InceptionResNetFactory {
                                             .andThen(new Conv2DBatchNormAfter()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(2 * resNrofChannels))
-                                         //   .andThen(new Scale(0.1))
+                                            .andFinally(new Scale(0.1))
                                             .andFinally(seOrIdBlock)
                                             //.andFinally(new DropOut().setDropProb(dropOutProb))
                                             .andThenStack(2)
@@ -185,17 +187,15 @@ public class InceptionResNetFactory {
 
     private BlockBuilder.RootBuilder createStem(ISchedule lrSched, ISchedule momSched, int resNrofChannels) {
         final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(2);
-        final int resblockOutFac = 1;
-        // final LayerBlockConfig pool = new MinMaxPool().setSize(3).setStride(3); final int resblockOutFac = 2;
 
         return new BlockBuilder()
                 .setNamePrefix(namePrefix)
                 .setUpdater(new Nesterovs(lrSched, momSched))
                 .first(new ConvType(inputShape))
-                .andThen(new Conv2D() // Buffer since pools seem to break if connected directly to input
-                        .setKernelSize(1)
-                        .setActivation(new ActivationIdentity())
-                        .setNrofKernels(3))
+              //  .andThen(new Conv2D() // Buffer since pools seem to break if connected directly to input
+              //          .setKernelSize(1)
+              //          .setActivation(new ActivationIdentity())
+              //          .setNrofKernels(3))
 
                 .andThenFork()
                 .add(new Conv2DBatchNormAfter()
@@ -211,7 +211,7 @@ public class InceptionResNetFactory {
                         .setNrofKernels(32))
                 .andFinally(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(2 * resblockOutFac))
+                        .setNrofKernels(resNrofChannels / 3 * 2))
 
                 .addAgg(new Conv2DBatchNormAfter()
                         .setKernelSize(1)
@@ -228,17 +228,38 @@ public class InceptionResNetFactory {
                         .setNrofKernels(32))
                 .andFinally(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(resNrofChannels-1))
+                        .setNrofKernels(resNrofChannels / 3 * 2))
                 .done()
 
                 .andThenFork()
                 .add(new Conv2DBatchNormAfter()
                         .setStride(2)
                         .setKernelSize(3)
-                        .setNrofKernels(resNrofChannels-1))
+                        .setNrofKernels(resNrofChannels / 3 * 2))
                 .add(pool)
                 .done()
                 .andThen(pool)
 ;
+    }
+
+    private BlockBuilder.RootBuilder createSmallStem(ISchedule lrSched, ISchedule momSched, int resNrofChannels) {
+        final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3);
+
+        return new BlockBuilder()
+                .setNamePrefix(namePrefix)
+                .setUpdater(new Nesterovs(lrSched, momSched))
+                .first(new ConvType(inputShape))
+                .andThen(new Conv2DBatchNormAfter()
+                        .setKernelSize(3)
+                        .setNrofKernels(64))
+                .andThen(pool)
+               .andThen(new Conv2DBatchNormAfter()
+               .setKernelSize(3)
+               .setNrofKernels(128))
+                .andThen(pool)
+                .andThen(new Conv2DBatchNormAfter()
+                        .setKernelSize(3)
+                .setNrofKernels(2*resNrofChannels))
+                ;
     }
 }

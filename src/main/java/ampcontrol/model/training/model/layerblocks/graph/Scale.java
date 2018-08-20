@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  */
 public class Scale implements LayerBlockConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(Norm.class);
+    private static final Logger log = LoggerFactory.getLogger(Scale.class);
 
     private final double scaleFactor;
 

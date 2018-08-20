@@ -15,6 +15,11 @@ public class MockMiniEpochDataSetIterator implements MiniEpochDataSetIterator {
     }
 
     @Override
+    public int miniEpochSize() {
+        return 1;
+    }
+
+    @Override
     public DataSet next(int num) {
         return null;
     }

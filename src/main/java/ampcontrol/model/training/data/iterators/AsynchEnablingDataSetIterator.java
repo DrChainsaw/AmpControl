@@ -42,6 +42,11 @@ public class AsynchEnablingDataSetIterator implements MiniEpochDataSetIterator {
     }
 
     @Override
+    public int miniEpochSize() {
+        return miniEpochSize;
+    }
+
+    @Override
     public int inputColumns() {
         return sourceIter.inputColumns();
     }

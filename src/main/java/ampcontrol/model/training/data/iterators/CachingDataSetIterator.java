@@ -222,4 +222,9 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     public void restartMiniEpoch() {
         cursor = -1;
     }
+
+    @Override
+    public int miniEpochSize() {
+        return nrofItersToCache;
+    }
 }
