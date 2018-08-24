@@ -15,7 +15,7 @@ import static org.junit.Assert.*;
 public class CachingDataSetIteratorTest extends DecoratingMiniEpochIteratorTest {
 
     @Override
-    protected MiniEpochDataSetIterator decorate(MiniEpochDataSetIterator anIterator) {
+    protected MiniEpochDataSetIterator decorateMiniEpochIter(MiniEpochDataSetIterator anIterator) {
         return new CachingDataSetIterator(anIterator);
     }
 

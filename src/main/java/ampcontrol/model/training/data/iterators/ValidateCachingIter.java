@@ -88,15 +88,8 @@ public class ValidateCachingIter {
 
                 featuresCache.add(cache.getFeatures());
                 featuresNoCache.add(noCache.getFeatures());
-                //noCache.getFeatures().addi(0.1);
-                //checkEquality(cache.getFeatures(), noCache.getFeatures());
-                //          checkEquality(cache.getLabels(), noCache.getLabels());
-
             }
             checkEquality(featuresCache, featuresNoCache);
-            //if (!featuresCache.equals(featuresNoCache)) {
-            //    throw new RuntimeException("Mismatch!");
-            //}
             System.out.println("Example " + i + " ok!");
             trainIterCache.reset();
 
@@ -104,11 +97,6 @@ public class ValidateCachingIter {
 
     }
 
-    private static void checkEquality(INDArray arr1, INDArray arr2) {
-        if (!arr1.equalsWithEps(arr2, 1e-12)) {
-            throw new IllegalStateException("Mistmatch! \n" + arr1.sum(0) + "\nOther: \n" + arr2.sum(0));
-        }
-    }
 
     private static void checkEquality(List<INDArray> arrs1, List<INDArray> arrs2) {
         for (INDArray arr1 : arrs1) {

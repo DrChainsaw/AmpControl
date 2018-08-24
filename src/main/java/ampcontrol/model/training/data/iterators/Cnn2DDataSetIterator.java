@@ -7,6 +7,8 @@ import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -46,18 +48,21 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
 
         @Override
         public synchronized void accept(TrainingData data) {
-            List<double[][]> features = data.result().stream().collect(Collectors.toList());
+            List<double[][]> features = data.result().stream()
+                    .collect(Collectors.toList());
             for (int featureInd = 0; featureInd < features.size(); featureInd++) {
                 double[][] feature = features.get(featureInd);
                 if (featureArr == null) {
                     featureArr = Nd4j.createUninitialized(new int[]{batchSize, features.size(), feature.length, feature[0].length}, 'f');
                 }
 
-                for (int timeInd = 0; timeInd < feature.length; timeInd++) {
-                    for (int freqInd = 0; freqInd < feature[timeInd].length; freqInd++) {
-                        featureArr.putScalar(batchCnt, featureInd, timeInd, freqInd, feature[timeInd][freqInd]);
-                    }
-                }
+                featureArr.put(
+                        new INDArrayIndex[]{
+                                NDArrayIndex.point(batchCnt),
+                                NDArrayIndex.point(featureInd),
+                                NDArrayIndex.all(),
+                                NDArrayIndex.all()},
+                        Nd4j.create(feature, 'f'));
             }
             final int labelInd = labels.indexOf(data.getLabel());
             labelsArr.putScalar(batchCnt, labelInd, 1.0);
@@ -70,7 +75,6 @@ public class Cnn2DDataSetIterator implements DataSetIterator {
         }
 
     }
-
 
     public Cnn2DDataSetIterator(DataProvider dataProvider, int batchSize, List<String> labels) {
         this.dataProvider = dataProvider;

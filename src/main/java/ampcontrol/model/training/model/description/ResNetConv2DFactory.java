@@ -3,6 +3,7 @@ package ampcontrol.model.training.model.description;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
+import ampcontrol.model.training.model.layerblocks.graph.Scale;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
 import ampcontrol.model.training.schedule.MinLim;
 import ampcontrol.model.training.schedule.Mul;
@@ -53,7 +54,7 @@ public class ResNetConv2DFactory {
 
         final int schedPeriod = 50;
         final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
-                new SawTooth(schedPeriod, 1e-6, 0.05));
+                new SawTooth(schedPeriod, 1e-6, 0.1));
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
@@ -92,10 +93,10 @@ public class ResNetConv2DFactory {
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
-                                            .andFinally(new Conv2DBatchNormBetween()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(128 * resblockOutFac))
-                                            //.andThen(zeroPad3x3)
+                                            .andFinally(new Scale(0.1))
                                             .andFinally(seOrId)
                                             //.andFinally(new DropOut().setDropProb(dropOutProb))
                                             .andThenStack(2)

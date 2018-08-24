@@ -15,7 +15,7 @@ import static org.junit.Assert.assertTrue;
 public class WorkSpaceWrappingIteratorTest extends DecoratingMiniEpochIteratorTest {
 
     @Override
-    protected MiniEpochDataSetIterator decorate(MiniEpochDataSetIterator anIterator) {
+    protected MiniEpochDataSetIterator decorateMiniEpochIter(MiniEpochDataSetIterator anIterator) {
         return new WorkSpaceWrappingIterator(anIterator);
     }
 

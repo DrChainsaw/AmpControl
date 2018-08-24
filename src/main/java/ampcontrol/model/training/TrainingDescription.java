@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 /**
@@ -39,8 +40,8 @@ public class TrainingDescription {
     private final static Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
     private final static Path modelDir = Paths.get("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models");
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
-    private final static int trainingIterations = 10; // 10
-    private final static int trainBatchSize = 64;   // 32 64
+    private final static int trainingIterations = 10;
+    private final static int trainBatchSize = 64;
     private final static int evalBatchSize = 64;
     private final static double evalSetPercentage = 10;
 
@@ -143,30 +144,34 @@ public class TrainingDescription {
         }
 
         final MiniEpochDataSetIterator trainIter =
-              new WorkSpaceWrappingIterator(
-               new CachingDataSetIterator(
-                // new AsynchEnablingDataSetIterator(
-                        new Cnn2DDataSetIterator(
-                                train.createProvider(), trainBatchSize, labels),
-                       // trainingStateFactory,
-                        trainingIterations).initCache());
+                new WorkSpaceWrappingIterator(
+                        new CachingDataSetIterator(
+                                new Cnn2DDataSetIterator(
+                                        train.createProvider(), trainBatchSize, labels),
+                                trainingIterations).initCache(new ReentrantLock()));
 
+        final int evalBufferSize = 6;
         final int evalSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
+        final int evalSizeTrunc = (evalSize / evalBufferSize) * evalBufferSize;
         final MiniEpochDataSetIterator evalIter =
                 new AsynchEnablingDataSetIterator(
-                        new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
+                        new DoubleBufferingDataSetIterator(
+                                new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
+                                evalBufferSize).initCache(),
                         evalStateFactory,
-                        evalSize);
+                        evalSizeTrunc);
 
-        log.info("Nrof eval files: " + eval.getNrofFiles());
+        log.info("Nrof eval files: " + eval.getNrofFiles() + " nrof eval examples: " + evalSize + " trunc: " + evalSizeTrunc);
 
         // This knowledge needs to move somewhere else when multiple inputs are implemented
         final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
+
         final int[] inputShape = {inputProto.length, inputProto[0].length, (int) silence.getResult().stream().count()};
+        log.info("Input shape: " + Arrays.toString(inputShape));
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
-         //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);

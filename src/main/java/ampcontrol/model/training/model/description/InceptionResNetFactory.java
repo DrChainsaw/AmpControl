@@ -50,7 +50,7 @@ public class InceptionResNetFactory {
 
         final int schedPeriod = 100;
         final ISchedule lrSched = new Mul(new Step(4000, new Exponential(0.2)),
-                new SawTooth(schedPeriod, 1e-6, 0.05));
+                new SawTooth(schedPeriod, 1e-6, 0.1));
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
@@ -192,10 +192,10 @@ public class InceptionResNetFactory {
                 .setNamePrefix(namePrefix)
                 .setUpdater(new Nesterovs(lrSched, momSched))
                 .first(new ConvType(inputShape))
-              //  .andThen(new Conv2D() // Buffer since pools seem to break if connected directly to input
-              //          .setKernelSize(1)
-              //          .setActivation(new ActivationIdentity())
-              //          .setNrofKernels(3))
+                .andThen(new Conv2D() // Buffer since pools seem to break if connected directly to input
+                        .setKernelSize(1)
+                        .setActivation(new ActivationIdentity())
+                        .setNrofKernels(3))
 
                 .andThenFork()
                 .add(new Conv2DBatchNormAfter()

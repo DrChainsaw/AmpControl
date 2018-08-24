@@ -39,6 +39,9 @@ public class AsynchEnablingDataSetIterator implements MiniEpochDataSetIterator {
     @Override
     public void restartMiniEpoch() {
         miniEpochCount = 0;
+        if(sourceIter.resetSupported()) {
+            sourceIter.reset();
+        }
     }
 
     @Override
@@ -70,7 +73,7 @@ public class AsynchEnablingDataSetIterator implements MiniEpochDataSetIterator {
     public void reset() {
         miniEpochCount = 0;
         state.storeCurrentState();
-        if (sourceIter.resetSupported() && !sourceIter.hasNext()) {
+        if (sourceIter.resetSupported()) {
             sourceIter.reset();
         }
     }

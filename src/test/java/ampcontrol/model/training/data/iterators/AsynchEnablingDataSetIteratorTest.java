@@ -20,7 +20,7 @@ public class AsynchEnablingDataSetIteratorTest extends DecoratingMiniEpochIterat
 
 
     @Override
-    protected MiniEpochDataSetIterator decorate(MiniEpochDataSetIterator anIterator) {
+    protected MiniEpochDataSetIterator decorateMiniEpochIter(MiniEpochDataSetIterator anIterator) {
         return new AsynchEnablingDataSetIterator(anIterator, new ResetableStateFactory(123), 1);
     }
 

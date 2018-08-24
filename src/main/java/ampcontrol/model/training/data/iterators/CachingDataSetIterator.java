@@ -1,22 +1,14 @@
 package ampcontrol.model.training.data.iterators;
 
 
-import org.nd4j.linalg.api.memory.MemoryWorkspace;
-import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
-import org.nd4j.linalg.api.memory.enums.*;
-import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
-import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.concurrent.locks.Lock;
 
 /**
  * {@link DataSetIterator} which caches output from another {@link DataSetIterator}. Main use case is validation set but
@@ -34,23 +26,9 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
 
     private final DataSetIterator sourceIter;
     private final int nrofItersToCache;
-    private final boolean useWorkspace;
-    private List<DataSet> cache;
-    private List<MemoryWorkspace> workspaces = new ArrayList<>();
-    private int cursor = -1;
-
+    private final DataSetCache cache;
     private DataSetPreProcessor preProcessor;
-    private final String wsName = "CachingDataSetWs" + this.toString().split("@")[1];
 
-    private final WorkspaceConfiguration cacheWorkspaceConfig = WorkspaceConfiguration.builder()
-            .policyAllocation(AllocationPolicy.STRICT)
-            .policyLearning(LearningPolicy.FIRST_LOOP)
-            .policyMirroring(MirroringPolicy.HOST_ONLY)
-            .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
-            .policySpill(SpillPolicy.REALLOCATE)
-            .initialSize(0)
-            //.overallocationLimit(20)
-            .build();
 
     /**
      * Constructor
@@ -70,21 +48,19 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     public CachingDataSetIterator(DataSetIterator sourceIter, int nrofItersToCache) {
         this.sourceIter = sourceIter;
         this.nrofItersToCache = nrofItersToCache;
-        useWorkspace = !Nd4j.getBackend().getClass().getSimpleName().equals("CpuBackend");
+        this.cache = new DataSetCache();
     }
 
     @Override
     public boolean hasNext() {
-        return cursor + 1 < nrofItersToCache;
+        return !cache.isLoaded() || cache.hasNext();
     }
 
     @Override
     public DataSet next() {
 
-        checkCache();
-
-        cursor++;
-        DataSet ds = detach(cache.get(cursor));
+        cache.check(sourceIter, nrofItersToCache);
+        DataSet ds = cache.next();
 
         // Handle pre-processing of data. There can only be one type of PreProcessor between this class and the sourceIter
         if (preProcessor != null) {
@@ -99,61 +75,23 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
         return ds;
     }
 
-    private synchronized void checkCache() {
-        if (cache == null) {
-            try (MemoryWorkspace outerWs = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
-                log.info("create cache of size " + nrofItersToCache);
-                workspaces.stream().filter(Objects::nonNull).forEach(MemoryWorkspace::destroyWorkspace);
-                workspaces.clear();
-
-                cache = IntStream.range(0, nrofItersToCache)
-                        .parallel()
-
-                        .mapToObj(i -> {
-                            if (useWorkspace) {
-                                final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(cacheWorkspaceConfig, wsName + i);
-                                workspaces.add(ws);
-                                try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
-                                    DataSet ds = sourceIter.next();
-                                    Nd4j.getExecutioner().commit();
-                                    return ds;
-                                }
-                            }
-                            return sourceIter.next();
-                        })
-                        .collect(Collectors.toList());
-
-                restartMiniEpoch();
-            }
-        }
-    }
-
     /**
      * Initializes the cache in a separate thread.
-     * @return The instance to allow for this method to be called a construction time.
+     *
+     * @return The instance to allow for this method to e.g. be chained construction.
      */
-    public CachingDataSetIterator initCache() {
-        new Thread(this::checkCache).start();
+    public CachingDataSetIterator initCache(final Lock lock) {
+        new Thread(() -> tryInitCache(lock)).start();
         return this;
     }
 
-
-    private DataSet detach(DataSet ds) {
-        if (ds == null) {
-            return ds; // Happens in testing. CBA to change it
+    private void tryInitCache(Lock lock) {
+        lock.lock();
+        try {
+            cache.check(sourceIter, nrofItersToCache);
+        } finally {
+            lock.unlock();
         }
-        final INDArray features = detachOrMigrateIfNotNull(ds.getFeatures());
-        final INDArray labels = detachOrMigrateIfNotNull(ds.getLabels());
-        final INDArray featuresMask = detachOrMigrateIfNotNull(ds.getFeaturesMaskArray());
-        final INDArray labelsMask = detachOrMigrateIfNotNull(ds.getLabelsMaskArray());
-        return new DataSet(features, labels, featuresMask, labelsMask);
-    }
-
-    private INDArray detachOrMigrateIfNotNull(INDArray array) {
-        if (array != null) {
-            return array.migrate(true);
-        }
-        return null;
     }
 
     @Override
@@ -178,8 +116,8 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
 
     @Override
     public void reset() {
-        cache = null;
-        if (sourceIter.resetSupported() && !sourceIter.hasNext()) {
+        cache.clear();
+        if (sourceIter.resetSupported()) {
             sourceIter.reset();
         }
     }
@@ -187,6 +125,11 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     @Override
     public int batch() {
         return sourceIter.batch();
+    }
+
+    @Override
+    public DataSetPreProcessor getPreProcessor() {
+        return sourceIter.getPreProcessor();
     }
 
     /**
@@ -203,14 +146,9 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     @Override
     public void setPreProcessor(DataSetPreProcessor preProcessor) {
         this.preProcessor = preProcessor;
-        if (cache == null) {
+        if (!cache.isLoaded()) {
             sourceIter.setPreProcessor(preProcessor);
         }
-    }
-
-    @Override
-    public DataSetPreProcessor getPreProcessor() {
-        return sourceIter.getPreProcessor();
     }
 
     @Override
@@ -220,11 +158,12 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
 
     @Override
     public void restartMiniEpoch() {
-        cursor = -1;
+        cache.resetCursor();
     }
 
     @Override
     public int miniEpochSize() {
         return nrofItersToCache;
     }
+
 }
