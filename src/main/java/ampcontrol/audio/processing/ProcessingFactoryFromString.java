@@ -21,39 +21,28 @@ public class ProcessingFactoryFromString {
     }
 
     public ProcessingResult.Factory get(String nameStr) {
-        // System.out.println("Post proc factory got " + nameStr);
 
         String preForkStr = nameStr;
-        //  System.out.println("get nameStr: " + nameStr);
         if (nameStr.matches(matchStr(".*" + Fork.matchStrStatic()))) {
             ProcessingResult.Factory forkSupplier;
             String[] forkStrs = Fork.splitFirst(nameStr);
-            //   System.out.println("len: " + forkStrs.length);
             preForkStr = forkStrs[0];
             if (forkStrs.length == 2) {
                 final String forkStr = forkStrs[1];
-                //   System.out.println("Got next fork: " + forkStr);
                 final String[] endSplit = Fork.splitEnd(forkStr);
-                //   System.out.println("endSplit: " + Arrays.toString(endSplit));
                 final String pathStr = endSplit[0];
-                //   System.out.println("Got next krof: " + pathStr);
                 final String[] paths = Fork.splitMid(pathStr);
-                //  System.out.println("get paths: " + paths[0] + " " + paths[1]);
-                // System.out.println("ask for: " + prefix() + paths[0]);
-                //  System.out.println("ask for: " + prefix() + paths[1]);
                 final ProcessingResult.Factory finalFirst = get(prefix() + paths[0]);
                 final ProcessingResult.Factory finalSecond = get(prefix() + paths[1]);
                 forkSupplier = new Fork(finalFirst, finalSecond);
 
                 if (endSplit.length == 2 && endSplit[1].contains(Pipe.nameStatic())) {
-                    //    System.out.println("Append pipes " + endSplit[1]);
                     forkSupplier = getPipedSupplier(endSplit[1], forkSupplier, null);
                 }
 
                 if (preForkStr.replace(prefix(), "").isEmpty()) {
                     return forkSupplier;
                 }
-                //  System.out.println("Prepend pipes " + preForkStr + " fork: " + forkSupplier.get().name());
                 return getPipedSupplier(preForkStr, null, forkSupplier);
             }
         }
@@ -101,6 +90,10 @@ public class ProcessingFactoryFromString {
 
         if (preForkStr.matches(matchStr(Log10.nameStatic()))) {
             return new Log10();
+        }
+
+        if (preForkStr.matches(matchStr(Buffer.nameStatic()))) {
+            return new Buffer();
         }
 
         return new UnitMaxZeroMean();

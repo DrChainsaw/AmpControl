@@ -2,7 +2,10 @@ package ampcontrol.model.training.data.iterators;
 
 import ampcontrol.audio.processing.ProcessingResult;
 import ampcontrol.audio.processing.Spectrogram;
-import ampcontrol.model.training.data.*;
+import ampcontrol.model.training.data.AudioDataProvider;
+import ampcontrol.model.training.data.DataProviderBuilder;
+import ampcontrol.model.training.data.DataSetFileParser;
+import ampcontrol.model.training.data.EvalDataProviderBuilder;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import org.jetbrains.annotations.NotNull;
@@ -31,12 +34,12 @@ public class ValidateAsynchIter {
 
     private static final Logger log = LoggerFactory.getLogger(ValidateAsynchIter.class);
 
-    public static void main(String[] args) throws InterruptedException {
+    private static final int clipLengthMs = 1000;
+    private static final int clipSamplingRate = 44100;
+    private static final Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
+    private static final List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
 
-        int clipLengthMs = 1000;
-        int clipSamplingRate = 44100;
-        Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
-        List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
+    public static void main(String[] args) throws InterruptedException {
 
         final int timeWindowSize = 100;
 
@@ -50,34 +53,39 @@ public class ValidateAsynchIter {
         final ResetableStateFactory stateFactory = new ResetableStateFactory(666);
 
         final DataProviderBuilder dataProviderBuilder = new EvalDataProviderBuilder(labelToBuilder, ArrayList::new, clipLengthMs, timeWindowSize, audioPostProcSupplier, stateFactory);
+        mapFiles(dataProviderBuilder);
+
+        final MiniEpochDataSetIterator iter = getMiniEpochDataSetIterator(stateFactory, dataProviderBuilder);
+
+        final List<DataSet> previousMiniEpoch = getDataSets(iter, 0);
+        final LocalTime start = LocalTime.now();
+        for (int i = 0; i < 5; i++) {
+            iter.reset();
+            validate(iter, previousMiniEpoch);
+            log.info("Successful test nr " + i);
+        }
+        final LocalTime end = LocalTime.now();
+        log.info("Time: " + Duration.between(start, end).toMillis());
+    }
+
+    private static void mapFiles(DataProviderBuilder dataProviderBuilder) {
         try {
             DataSetFileParser.parseFileProperties(baseDir, d -> dataProviderBuilder);
         } catch (IOException e) {
             throw new IllegalArgumentException(e);
         }
+    }
 
-        final DataProvider dataProvider = dataProviderBuilder.createProvider();
+    @NotNull
+    private static MiniEpochDataSetIterator getMiniEpochDataSetIterator(ResetableStateFactory stateFactory, DataProviderBuilder dataProviderBuilder) {
         final int bufferSize = 5;
         final int batchSize = 64;
-        final DataSetIterator sourceIter = new Cnn2DDataSetIterator(dataProvider, batchSize, labels);
-        final MiniEpochDataSetIterator iter =
-                new AsynchEnablingDataSetIterator(
-                        // sourceIter,
-                        new DoubleBufferingDataSetIterator(sourceIter, bufferSize).initCache(),
-                        stateFactory,
-                        bufferSize * 3);
-        final long sleepTime = 0;
-        final List<DataSet> previousMiniEpoch = getDataSets(iter, sleepTime);
-        final LocalTime start = LocalTime.now();
-        for (int i = 0; i < 5; i++) {
-            iter.reset();
-
-            validate(iter, previousMiniEpoch);
-            log.info("Successful test nr " + i);
-            //log.info("iter " + i + " done");
-        }
-        final LocalTime end = LocalTime.now();
-        log.info("Time: " + Duration.between(start, end).toMillis());
+        final DataSetIterator sourceIter = new Cnn2DDataSetIterator(dataProviderBuilder.createProvider(), batchSize, labels);
+        return new AsynchEnablingDataSetIterator(
+                // sourceIter,
+                new DoubleBufferingDataSetIterator(sourceIter, bufferSize).initCache(),
+                stateFactory,
+                bufferSize * 3);
     }
 
     private static void validate(MiniEpochDataSetIterator iter, List<DataSet> previousMiniEpoch) throws InterruptedException {

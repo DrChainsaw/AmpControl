@@ -40,4 +40,12 @@ public abstract class DecoratingMiniEpochIteratorTest extends DecoratingDataSetI
         }).restartMiniEpoch();
         assertTrue("Method was not called!", wasCalled[0]);
     }
+
+    /**
+     * Test that operation is not supported
+     */
+    @Test(expected = UnsupportedOperationException.class)
+    public void nextNum() {
+        decorateMiniEpochIter(new MockMiniEpochDataSetIterator()).next(1);
+    }
 }

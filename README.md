@@ -56,7 +56,7 @@ I don't really expect anyone but me to use this project and as of now it does no
 
 ### Prerequisites
 
-Maven, Git, Data set or models. Current configuration uses the CUDA 8.0 backend for the models and this requires CUDA 8.0 along with an NVIDIA GPU which supports CUDA 8.0. See https://deeplearning4j.org/gpu   
+Maven, Git, Data set or models. Current configuration uses the CUDA 9.2 backend for the models and this requires CUDA 9.2 along with an NVIDIA GPU which supports CUDA 8.0. See https://deeplearning4j.org/gpu
 
 ### Installing
 

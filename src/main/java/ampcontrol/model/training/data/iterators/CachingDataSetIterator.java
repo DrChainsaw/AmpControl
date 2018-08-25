@@ -78,6 +78,7 @@ public class CachingDataSetIterator implements MiniEpochDataSetIterator {
     /**
      * Initializes the cache in a separate thread.
      *
+     * @param lock Will wait for lock to be available before updating cache
      * @return The instance to allow for this method to e.g. be chained construction.
      */
     public CachingDataSetIterator initCache(final Lock lock) {

@@ -59,6 +59,11 @@ public class DoubleBufferingDataSetIterator implements DataSetIterator {
         }
     }
 
+    /**
+     * Constructor
+     * @param sourceIter Source iterator for which output shall be buffered
+     * @param bufferSize Size of buffer
+     */
     public DoubleBufferingDataSetIterator(DataSetIterator sourceIter, int bufferSize) {
         final Lock lock = new ReentrantLock();
         final BufferNode first = new BufferNode(sourceIter, bufferSize, lock);

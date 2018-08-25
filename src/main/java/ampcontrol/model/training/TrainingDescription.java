@@ -3,7 +3,9 @@ package ampcontrol.model.training;
 import ampcontrol.audio.processing.*;
 import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.*;
-import ampcontrol.model.training.data.iterators.*;
+import ampcontrol.model.training.data.iterators.Cnn2DDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
+import ampcontrol.model.training.data.iterators.factory.AutoFromSize;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
@@ -22,7 +24,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 /**
@@ -136,38 +137,35 @@ public class TrainingDescription {
 
         final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> trainFactory, trainingStateFactory);
         final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, evalStateFactory);
-
-        try {
-            DataSetFileParser.parseFileProperties(baseDir, new DataSetMapper(train, eval, evalSetPercentage));
-        } catch (IOException e) {
-            throw new IllegalArgumentException(e);
-        }
-
-        final MiniEpochDataSetIterator trainIter =
-                new WorkSpaceWrappingIterator(
-                        new CachingDataSetIterator(
-                                new Cnn2DDataSetIterator(
-                                        train.createProvider(), trainBatchSize, labels),
-                                trainingIterations).initCache(new ReentrantLock()));
-
-        final int evalBufferSize = 6;
-        final int evalSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
-        final int evalSizeTrunc = (evalSize / evalBufferSize) * evalBufferSize;
-        final MiniEpochDataSetIterator evalIter =
-                new AsynchEnablingDataSetIterator(
-                        new DoubleBufferingDataSetIterator(
-                                new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
-                                evalBufferSize).initCache(),
-                        evalStateFactory,
-                        evalSizeTrunc);
-
-        log.info("Nrof eval files: " + eval.getNrofFiles() + " nrof eval examples: " + evalSize + " trunc: " + evalSizeTrunc);
+        mapFilesToDataSets(train, eval);
 
         // This knowledge needs to move somewhere else when multiple inputs are implemented
         final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
 
         final int[] inputShape = {inputProto.length, inputProto[0].length, (int) silence.getResult().stream().count()};
         log.info("Input shape: " + Arrays.toString(inputShape));
+
+        // TODO: Figure out why amount of memory that can actually be used differs so much from what seems to be available
+        final AutoFromSize<DataProvider> dataSetIteratorFactory = new AutoFromSize<>(5L*1024L*1024L*1024L);
+        final MiniEpochDataSetIterator trainIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
+                .sourceInput(train.createProvider())
+                .sourceFactory(dp -> new Cnn2DDataSetIterator(dp, trainBatchSize, labels))
+                .batchSize(trainBatchSize)
+                .dataSetShape(inputShape)
+                .dataSetSize(trainingIterations)
+                .resetableState(trainingStateFactory)
+                .build());
+
+        final int evalSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
+        log.info("Nrof eval files: " + eval.getNrofFiles() + " nrof eval examples: " + evalSize);
+        final MiniEpochDataSetIterator evalIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
+                .sourceInput(eval.createProvider())
+                .sourceFactory(dp -> new Cnn2DDataSetIterator(dp, evalBatchSize, labels))
+                .batchSize(evalBatchSize)
+                .dataSetShape(inputShape)
+                .dataSetSize(evalSize)
+                .resetableState(evalStateFactory)
+        .build());
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
@@ -176,14 +174,19 @@ public class TrainingDescription {
         new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
         // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
         // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+    }
+
+    private static void mapFilesToDataSets(DataProviderBuilder train, DataProviderBuilder eval) {
+        try {
+            DataSetFileParser.parseFileProperties(baseDir, new DataSetMapper(train, eval, evalSetPercentage));
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
 }
