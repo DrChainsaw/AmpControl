@@ -20,15 +20,18 @@ public class Fork implements ProcessingResult.Factory {
 
     private final Factory path1;
     private final Factory path2;
+    private final Buffer buffer;
 
     public Fork(Factory path1, ProcessingResult.Factory path2) {
         this.path1 = path1;
         this.path2 = path2;
+        buffer = new Buffer();
     }
 
     @Override
     public ProcessingResult create(ProcessingResult input) {
-        return new Result(path1.create(input), path2.create(input));
+        final ProcessingResult bufferedInput = buffer.create(input);
+        return new Result(path1.create(bufferedInput), path2.create(bufferedInput));
     }
 
     private final static class Result implements ProcessingResult {
