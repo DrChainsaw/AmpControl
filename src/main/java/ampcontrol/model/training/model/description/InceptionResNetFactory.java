@@ -185,63 +185,6 @@ public class InceptionResNetFactory {
 //        );
     }
 
-    private BlockBuilder.RootBuilder createStem(ISchedule lrSched, ISchedule momSched, int resNrofChannels) {
-        final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(2);
-
-        return new BlockBuilder()
-                .setNamePrefix(namePrefix)
-                .setUpdater(new Nesterovs(lrSched, momSched))
-                .first(new ConvType(inputShape))
-                .andThen(new Conv2D() // Buffer since pools seem to break if connected directly to input
-                        .setKernelSize(1)
-                        .setActivation(new ActivationIdentity())
-                        .setNrofKernels(3))
-
-                .andThenFork()
-                .add(new Conv2DBatchNormAfter()
-                        .setStride(2)
-                        .setKernelSize(3)
-                        .setNrofKernels(32))
-                .add(pool)
-                .done()
-                .andThenFork()
-
-                .addAgg(new Conv2DBatchNormAfter()
-                        .setKernelSize(1)
-                        .setNrofKernels(32))
-                .andFinally(new Conv2DBatchNormAfter()
-                        .setKernelSize(3)
-                        .setNrofKernels(resNrofChannels / 3 * 2))
-
-                .addAgg(new Conv2DBatchNormAfter()
-                        .setKernelSize(1)
-                        .setNrofKernels(32))
-                .andThen(new Conv2DBatchNormAfter()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setKernelSize_h(1)
-                        .setKernelSize_w(7)
-                        .setNrofKernels(32))
-                .andThen(new Conv2DBatchNormAfter()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setKernelSize_h(7)
-                        .setKernelSize_w(1)
-                        .setNrofKernels(32))
-                .andFinally(new Conv2DBatchNormAfter()
-                        .setKernelSize(3)
-                        .setNrofKernels(resNrofChannels / 3 * 2))
-                .done()
-
-                .andThenFork()
-                .add(new Conv2DBatchNormAfter()
-                        .setStride(2)
-                        .setKernelSize(3)
-                        .setNrofKernels(resNrofChannels / 3 * 2))
-                .add(pool)
-                .done()
-                .andThen(pool)
-;
-    }
-
     private BlockBuilder.RootBuilder createSmallStem(ISchedule lrSched, ISchedule momSched, int resNrofChannels) {
         final LayerBlockConfig pool = new Pool2D().setSize(3).setStride(3);
 

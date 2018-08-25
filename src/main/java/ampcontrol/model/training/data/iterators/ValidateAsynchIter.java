@@ -53,54 +53,57 @@ public class ValidateAsynchIter {
         try {
             DataSetFileParser.parseFileProperties(baseDir, d -> dataProviderBuilder);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
 
         final DataProvider dataProvider = dataProviderBuilder.createProvider();
         final int bufferSize = 5;
         final int batchSize = 64;
         final DataSetIterator sourceIter = new Cnn2DDataSetIterator(dataProvider, batchSize, labels);
-        //final MiniEpochDataSetIterator iter = new CachingDataSetIterator(sourceIter, 100);
         final MiniEpochDataSetIterator iter =
                 new AsynchEnablingDataSetIterator(
-              // sourceIter,
-                new DoubleBufferingDataSetIterator(sourceIter, bufferSize).initCache(),
-                stateFactory,
-                bufferSize*3);
+                        // sourceIter,
+                        new DoubleBufferingDataSetIterator(sourceIter, bufferSize).initCache(),
+                        stateFactory,
+                        bufferSize * 3);
         final long sleepTime = 0;
-       final List<DataSet> previousMiniEpoch = getDataSets(iter, sleepTime);
+        final List<DataSet> previousMiniEpoch = getDataSets(iter, sleepTime);
         final LocalTime start = LocalTime.now();
         for (int i = 0; i < 5; i++) {
             iter.reset();
 
-            final List<DataSet> miniEpoch = getDataSets(
-                    iter, sleepTime);
-
-            iter.restartMiniEpoch();
-            final List<DataSet> miniEpochAgain = getDataSets(iter, sleepTime);
-
-            logDataSet(miniEpoch, "0: ");
-            logDataSet(miniEpochAgain, "1: ");
-
-            final INDArray m1 = getCompareArray(miniEpoch);
-            final INDArray m2 = getCompareArray(miniEpochAgain);
-
-            if(!m1.equalsWithEps(m2, m1.add(m2).sum().getDouble(0) / 1e5)) {
-                log.info("diff: " + m1.sub(m2));
-                throw new IllegalStateException("Data was not recreated identically!!");
-            }
-            final INDArray prev = getCompareArray(previousMiniEpoch);
-            if(prev.equalsWithEps(m1,prev.add(m1).sum().getDouble(0) / 1e5)) {
-                log.info("diff: " + prev.sub(m1));
-                throw new IllegalStateException("Produced data was same!!");
-            }
-            previousMiniEpoch.clear();
-            previousMiniEpoch.addAll(miniEpoch);
+            validate(iter, previousMiniEpoch);
             log.info("Successful test nr " + i);
             //log.info("iter " + i + " done");
         }
         final LocalTime end = LocalTime.now();
         log.info("Time: " + Duration.between(start, end).toMillis());
+    }
+
+    private static void validate(MiniEpochDataSetIterator iter, List<DataSet> previousMiniEpoch) throws InterruptedException {
+        final List<DataSet> miniEpoch = getDataSets(
+                iter, 0);
+
+        iter.restartMiniEpoch();
+        final List<DataSet> miniEpochAgain = getDataSets(iter, 0);
+
+        logDataSet(miniEpoch, "0: ");
+        logDataSet(miniEpochAgain, "1: ");
+
+        final INDArray m1 = getCompareArray(miniEpoch);
+        final INDArray m2 = getCompareArray(miniEpochAgain);
+
+        if (!m1.equalsWithEps(m2, m1.add(m2).sum().getDouble(0) / 1e5)) {
+            log.info("diff: " + m1.sub(m2));
+            throw new IllegalStateException("Data was not recreated identically!!");
+        }
+        final INDArray prev = getCompareArray(previousMiniEpoch);
+        if (prev.equalsWithEps(m1, prev.add(m1).sum().getDouble(0) / 1e5)) {
+            log.info("diff: " + prev.sub(m1));
+            throw new IllegalStateException("Produced data was same!!");
+        }
+        previousMiniEpoch.clear();
+        previousMiniEpoch.addAll(miniEpoch);
     }
 
     private static void logDataSet(List<DataSet> miniEpoch, String s) {
@@ -116,7 +119,7 @@ public class ValidateAsynchIter {
         while (dataSetIterator.hasNext()) {
 
             firstMiniEpoch.add(dataSetIterator.next());
-            if(sleepTime > 0) { // Simple model for inference to be able to measure the value of background loading
+            if (sleepTime > 0) { // Simple model for inference to be able to measure the value of background loading
                 Thread.sleep(sleepTime);
             }
         }

@@ -8,10 +8,9 @@ import java.util.List;
 public class MockMiniEpochDataSetIterator implements MiniEpochDataSetIterator {
 
 
-
     @Override
     public void restartMiniEpoch() {
-
+        // Do nothing
     }
 
     @Override
@@ -46,7 +45,7 @@ public class MockMiniEpochDataSetIterator implements MiniEpochDataSetIterator {
 
     @Override
     public void reset() {
-
+        // Do nothing
     }
 
     @Override
@@ -56,7 +55,7 @@ public class MockMiniEpochDataSetIterator implements MiniEpochDataSetIterator {
 
     @Override
     public void setPreProcessor(DataSetPreProcessor preProcessor) {
-
+        // Do nothing
     }
 
     @Override

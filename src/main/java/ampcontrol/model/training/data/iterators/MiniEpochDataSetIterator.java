@@ -20,6 +20,10 @@ public interface MiniEpochDataSetIterator extends DataSetIterator {
      */
     void restartMiniEpoch();
 
+    /**
+     * Returns the size (number of {@link DataSet DataSets}) of one mini epoch.
+     * @return the size of one mini epoch
+     */
     int miniEpochSize();
 
     @Override

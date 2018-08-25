@@ -23,6 +23,8 @@ public class DoubleBufferingDataSetIterator implements DataSetIterator {
         private final Lock lock;
         private BufferNode next;
 
+        private boolean isReset = true;
+
         private BufferNode(DataSetIterator iter, int bufferSize, Lock lock) {
             this.iter = new CachingDataSetIterator(iter, bufferSize);
             this.lock = lock;
@@ -36,6 +38,7 @@ public class DoubleBufferingDataSetIterator implements DataSetIterator {
         private void reset() {
             lock.lock();
             try {
+                isReset = true;
                 iter.reset();
             } finally {
                 lock.unlock();
@@ -43,11 +46,12 @@ public class DoubleBufferingDataSetIterator implements DataSetIterator {
         }
 
         private DataSet nextDataSet() {
-            if(!iter.hasNext()) {
+            if(isReset) {
                 lock.lock();
                 try {
                     return iter.next();
                 } finally {
+                    isReset = false;
                     lock.unlock();
                 }
             }
