@@ -4,6 +4,7 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 /**
  * Interface for creating {@link DataSetIterator}s from input.
+ * TODO: Design needs rework. Generic input is not good for substituion!
  *
  * @param <T> Type of {@link DataSetIterator} created
  * @param <V> Type of input needed

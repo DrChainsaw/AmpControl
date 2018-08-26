@@ -3,6 +3,7 @@ package ampcontrol.model.training.data.iterators.factory;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.state.ResetableState;
 import lombok.Builder;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,10 @@ import java.util.stream.IntStream;
 public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetIterator, AutoFromSize.Input<V>> {
 
     private static final Logger log = LoggerFactory.getLogger(AutoFromSize.class);
+    private static final double margin = 1.2; // How much margin to use when calculating memory size of data sets
+
+    private long memoryAllowance;
+    private final long dataTypeSize;
 
     @Builder
     public static class Input<V> {
@@ -30,19 +35,26 @@ public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetI
         private final ResetableState resetableState;
     }
 
-
-    private long memoryAllowance;
-    private final long dataTypeSize;
-    private static final double margin = 1.2; // How much margin to use when calculating memory size of data sets
-
+    /**
+     * Constructor. Will try to figure out memory restrictions and costs by itself
+     */
     public AutoFromSize() {
         this(figureOutMemLimit(), figureOutDataTypeSize());
     }
 
+    /**
+     * Constructor. Will try to figure out memory costs by itself
+     * @param memoryAllowance How much memory data sets are allowed to use
+     */
     public AutoFromSize(long memoryAllowance) {
         this(memoryAllowance, figureOutDataTypeSize());
     }
 
+    /**
+     * Constructor
+     * @param memoryAllowance How much memory data sets are allowed to use
+     * @param dataTypeSize Cost for a single variable (e.g. one element in a feature vector/matrix)
+     */
     public AutoFromSize(long memoryAllowance, long dataTypeSize) {
         this.memoryAllowance = memoryAllowance;
         this.dataTypeSize = dataTypeSize;
@@ -65,20 +77,40 @@ public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetI
 
         final long sizeOfOneBatch = (IntStream.of(input.dataSetShape).reduce(1, (i1,i2) -> i1*i2)) * input.batchSize * dataTypeSize;
         final long sizeOfWholeDataSet = sizeOfOneBatch * input.dataSetSize;
-        DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
-        long toReduce = sizeOfWholeDataSet;
-        if (margin * sizeOfWholeDataSet > memoryAllowance) {
-            log.info("Create Asynch iter for set of size {} with memory allowance {}", sizeOfWholeDataSet, memoryAllowance);
-            final int bufferSize = Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
-            final int miniEpochSizeTrunc = (input.dataSetSize / bufferSize) * bufferSize;
-            log.info("Data set size changed from {} to {} in order to align buffer", input.dataSetSize, miniEpochSizeTrunc);
-            factory = new Asynch<>(miniEpochSizeTrunc, input.resetableState, new DoubleBuffered<>(bufferSize, input.sourceFactory));
-            toReduce = bufferSize * 2 * sizeOfOneBatch;
-        } else {
-            log.info("Create Caching iter for set of size {} with memory allowance {}", sizeOfWholeDataSet, memoryAllowance);
-            factory = new WorkSpaceWrapping<>(new Cached<>(input.dataSetSize, input.sourceFactory));
-        }
-        memoryAllowance -= toReduce;
+        DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory = createFactory(input, sizeOfOneBatch, sizeOfWholeDataSet);
+
         return factory.create(input.sourceInput);
+    }
+
+    @NotNull
+    private DataSetIteratorFactory<MiniEpochDataSetIterator, V> createFactory(Input<V> input, long sizeOfOneBatch, long sizeOfWholeDataSet) {
+        DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
+        if (margin * sizeOfWholeDataSet > memoryAllowance) {
+            factory = createAsynchFactory(input, sizeOfOneBatch, sizeOfWholeDataSet);
+        } else {
+            factory = createCachingFactory(input, sizeOfWholeDataSet);
+        }
+        return factory;
+    }
+
+    @NotNull
+    private DataSetIteratorFactory<MiniEpochDataSetIterator, V> createAsynchFactory(Input<V> input, long sizeOfOneBatch, long sizeOfWholeDataSet) {
+        DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
+        log.info("Create Asynch iter for set of size {} with memory allowance {}", sizeOfWholeDataSet, memoryAllowance);
+        final int bufferSize = Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
+        final int miniEpochSizeTrunc = (input.dataSetSize / bufferSize) * bufferSize;
+        log.info("Data set size changed from {} to {} in order to align buffer", input.dataSetSize, miniEpochSizeTrunc);
+        factory = new Asynch<>(miniEpochSizeTrunc, input.resetableState, new DoubleBuffered<>(bufferSize, input.sourceFactory));
+        memoryAllowance -= bufferSize * 2 * sizeOfOneBatch;
+        return factory;
+    }
+
+    @NotNull
+    private DataSetIteratorFactory<MiniEpochDataSetIterator, V> createCachingFactory(Input<V> input, long sizeOfWholeDataSet) {
+        DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
+        log.info("Create Caching iter for set of size {} with memory allowance {}", sizeOfWholeDataSet, memoryAllowance);
+        factory = new WorkSpaceWrapping<>(new Cached<>(input.dataSetSize, input.sourceFactory));
+        memoryAllowance -= sizeOfWholeDataSet;
+        return factory;
     }
 }

@@ -19,7 +19,7 @@ import static org.junit.Assert.fail;
  */
 public class EngineTest {
 
-    private final static long sleepTimeMs = 5;
+    private final static long sleepTimeMs = 10;
     private final static int maxNrofRetries = 100;
 
     private final static String exitCmdPar = "-exitCmd";

@@ -38,7 +38,7 @@ public class TrainingHarnessTest {
 
         // Attempt to prevent weird failures in CI by giving other threads time to finish
         try {
-            Thread.sleep(50);
+            Thread.sleep(100);
         } catch (InterruptedException e) {
             // Should not matter
         }
