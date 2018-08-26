@@ -3,9 +3,9 @@ package ampcontrol.model.training;
 import ampcontrol.audio.processing.*;
 import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.*;
-import ampcontrol.model.training.data.iterators.Cnn2DDataSetIterator;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.iterators.factory.AutoFromSize;
+import ampcontrol.model.training.data.iterators.factory.Cnn2D;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
@@ -149,7 +149,7 @@ public class TrainingDescription {
         final AutoFromSize<DataProvider> dataSetIteratorFactory = new AutoFromSize<>(5L*1024L*1024L*1024L);
         final MiniEpochDataSetIterator trainIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
                 .sourceInput(train.createProvider())
-                .sourceFactory(dp -> new Cnn2DDataSetIterator(dp, trainBatchSize, labels))
+                .sourceFactory(new Cnn2D(trainBatchSize, labels))
                 .batchSize(trainBatchSize)
                 .dataSetShape(inputShape)
                 .dataSetSize(trainingIterations)
@@ -160,7 +160,7 @@ public class TrainingDescription {
         log.info("Nrof eval files: " + eval.getNrofFiles() + " nrof eval examples: " + evalSize);
         final MiniEpochDataSetIterator evalIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
                 .sourceInput(eval.createProvider())
-                .sourceFactory(dp -> new Cnn2DDataSetIterator(dp, evalBatchSize, labels))
+                .sourceFactory(new Cnn2D(evalBatchSize, labels))
                 .batchSize(evalBatchSize)
                 .dataSetShape(inputShape)
                 .dataSetSize(evalSize)
