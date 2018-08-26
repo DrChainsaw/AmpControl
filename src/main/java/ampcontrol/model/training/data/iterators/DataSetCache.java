@@ -55,30 +55,31 @@ class DataSetCache {
     }
 
     synchronized void check(DataSetIterator sourceIter, int nrofItersToCache) {
-        if (cache == null) {
-            try (MemoryWorkspace outerWs = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
-                workspaces.stream().filter(Objects::nonNull).forEach(MemoryWorkspace::destroyWorkspace);
-                workspaces.clear();
-
-                cache = IntStream.range(0, nrofItersToCache)
-                        .parallel()
-
-                        .mapToObj(i -> {
-                            if (useWorkspace) {
-                                final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(cacheWorkspaceConfig, wsName + i);
-                                workspaces.add(ws);
-                                try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
-                                    DataSet ds = sourceIter.next();
-                                    Nd4j.getExecutioner().commit();
-                                    return ds;
-                                }
-                            }
-                            return sourceIter.next();
-                        })
-                        .collect(Collectors.toList());
-            }
-            resetCursor();
+        if (cache != null) {
+            return;
         }
+        try (MemoryWorkspace outerWs = Nd4j.getWorkspaceManager().scopeOutOfWorkspaces()) {
+            workspaces.stream().filter(Objects::nonNull).forEach(MemoryWorkspace::destroyWorkspace);
+            workspaces.clear();
+
+            cache = IntStream.range(0, nrofItersToCache)
+                    .parallel()
+
+                    .mapToObj(i -> {
+                        if (useWorkspace) {
+                            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(cacheWorkspaceConfig, wsName + i);
+                            workspaces.add(ws);
+                            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+                                DataSet ds = sourceIter.next();
+                                Nd4j.getExecutioner().commit();
+                                return ds;
+                            }
+                        }
+                        return sourceIter.next();
+                    })
+                    .collect(Collectors.toList());
+        }
+        resetCursor();
     }
 
     void clear() {
@@ -90,7 +91,7 @@ class DataSetCache {
     }
 
     boolean hasNext() {
-        return isLoaded() && cache.size()-1 > cursor;
+        return isLoaded() && cache.size() - 1 > cursor;
     }
 
     boolean isLoaded() {
@@ -98,7 +99,7 @@ class DataSetCache {
     }
 
     DataSet next() {
-        if(!hasNext()) {
+        if (!hasNext()) {
             throw new UnsupportedOperationException("Asked for next when no next exits!");
         }
         cursor++;
