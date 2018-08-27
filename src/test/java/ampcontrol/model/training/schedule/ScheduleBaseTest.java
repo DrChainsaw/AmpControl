@@ -7,8 +7,7 @@ import org.nd4j.shade.jackson.databind.ObjectMapper;
 import java.io.IOException;
 
 import static junit.framework.TestCase.fail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.*;
 
 /**
  * Tests functionality common to all {@link ISchedule}s, such as clone and serialization/deserialization
@@ -31,6 +30,9 @@ public abstract class ScheduleBaseTest {
         assertEquals("Incorrect value!", sched.valueAt(123,456), clone.valueAt(123,456), 1e-10);
     }
 
+    /**
+     * Test JSON serialization
+     */
     @Test
     public void testJson() {
         final ISchedule sched = createBaseTestInstance();
@@ -42,5 +44,25 @@ public abstract class ScheduleBaseTest {
         } catch (IOException e) {
             fail(e.getMessage());
         }
+    }
+
+    /**
+     * Test equals
+     */
+    @Test
+    public void testEquals() {
+        final ISchedule sched = createBaseTestInstance();
+        assertNotEquals("Shall not be equal to a generic object!", sched, new Object());
+        assertEquals("Shall be equal to identical instance!", sched, createBaseTestInstance());
+    }
+
+    /**
+     * Test hash code
+     */
+    @Test
+    public void testHashCode() {
+        final ISchedule sched = createBaseTestInstance();
+        assertNotEquals("Shall not be equal to a generic object!", sched.hashCode(), new Object().hashCode());
+        assertEquals("Shall be equal to identical instance!", sched.hashCode(), createBaseTestInstance().hashCode());
     }
 }

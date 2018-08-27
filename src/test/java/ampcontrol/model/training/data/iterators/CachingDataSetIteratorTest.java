@@ -12,25 +12,30 @@ import static org.junit.Assert.*;
  *
  * @author Christian Skärby
  */
-public class CachingDataSetIteratorTest {
+public class CachingDataSetIteratorTest extends DecoratingMiniEpochIteratorTest {
+
+    @Override
+    protected MiniEpochDataSetIterator decorateMiniEpochIter(MiniEpochDataSetIterator anIterator) {
+        return new CachingDataSetIterator(anIterator);
+    }
 
     /**
      * Test that hasNext returns true only when cursor is reset
      */
     @Test
     public void hasNext() {
-        final CachingDataSetIterator iter = new CachingDataSetIterator(new MockDataSetIterator());
+        final MiniEpochDataSetIterator iter = new CachingDataSetIterator(new MockDataSetIterator());
         assertTrue("Expected hasNext!", iter.hasNext());
         iter.next();
         assertFalse("Expected not hasNext!", iter.hasNext());
-        iter.resetCursor();
+        iter.restartMiniEpoch();
         assertTrue("Expected hasNext!", iter.hasNext());
         iter.next();
         assertFalse("Expected not hasNext!", iter.hasNext());
     }
 
     /**
-     * Test that next, resetCursor and reset works as expected: next creates the cache if not initialized, resetCursor
+     * Test that next, restartMiniEpoch and reset works as expected: next creates the cache if not initialized, restartMiniEpoch
      * produces the same sequence of data sets when calling again while reset creates a new sequence of data sets.
      */
     @Test
@@ -47,11 +52,11 @@ public class CachingDataSetIteratorTest {
                 return toggle ? ds0 : ds1;
             }
         };
-        final CachingDataSetIterator iter = new CachingDataSetIterator(sourceMock, cacheSize);
+        final MiniEpochDataSetIterator iter = new CachingDataSetIterator(sourceMock, cacheSize);
         assertEquals("Incorrect Data set!", ds0, iter.next());
         assertEquals("Incorrect Data set!", ds1, iter.next());
         assertEquals("Incorrect Data set!", ds0, iter.next());
-        iter.resetCursor();
+        iter.restartMiniEpoch();
         assertEquals("Incorrect Data set!", ds0, iter.next());
         assertEquals("Incorrect Data set!", ds1, iter.next());
         assertEquals("Incorrect Data set!", ds0, iter.next());
@@ -59,7 +64,7 @@ public class CachingDataSetIteratorTest {
         assertEquals("Incorrect Data set!", ds1, iter.next());
         assertEquals("Incorrect Data set!", ds0, iter.next());
         assertEquals("Incorrect Data set!", ds1, iter.next());
-        iter.resetCursor();
+        iter.restartMiniEpoch();
         assertEquals("Incorrect Data set!", ds1, iter.next());
         assertEquals("Incorrect Data set!", ds0, iter.next());
         assertEquals("Incorrect Data set!", ds1, iter.next());
@@ -104,14 +109,23 @@ public class CachingDataSetIteratorTest {
     @Test(expected = RuntimeException.class)
     public void setPreProcessorDifferent() {
         final DataSetIterator sourceMock = new MockDataSetIterator();
-        final CachingDataSetIterator iter = new CachingDataSetIterator(sourceMock);
+        final MiniEpochDataSetIterator iter = new CachingDataSetIterator(sourceMock);
         sourceMock.setPreProcessor(new ProbingPreProcessor());
         iter.next(); // So that cache is created
-        iter.resetCursor(); // Does not reset cache
+        iter.restartMiniEpoch(); // Does not reset cache
         iter.setPreProcessor(new ProbingPreProcessor()); // Now preprocessor instances are different in source and cache
         iter.next(); // Exception!
     }
 
+    @Override
+    public void resetSupported() {
+        assertTrue("Reset shall be supported!", decorate(new MockMiniEpochDataSetIterator()).resetSupported());
+    }
+
+    @Override
+    public void restartMiniEpoch() {
+        // Not supposed to propagate
+    }
 
     private static final class ProbingPreProcessor implements DataSetPreProcessor {
 

@@ -5,6 +5,7 @@ import ampcontrol.audio.processing.ProcessingResult;
 import ampcontrol.audio.processing.Spectrogram;
 import ampcontrol.audio.processing.UnitMaxZeroMean;
 import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
+import ampcontrol.model.training.data.state.SimpleStateFactory;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ public class AudioFileProcessorBuilder implements AudioProcessorBuilder {
 	
 	private final List<Path> fileList = new ArrayList<>();
 	private Supplier<ProcessingResult.Factory> audioPostProcSupplier = () -> new Pipe(new Spectrogram(512, 32), new UnitMaxZeroMean());
-	private Function<Path, AudioSamplingInfo> samplingInfoMapper = new WindowedConsecutiveSamplingInfo(1000, 100);
+	private Function<Path, AudioSamplingInfo> samplingInfoMapper = new WindowedConsecutiveSamplingInfo(1000, 100, new SimpleStateFactory(0));
 	private Function<List<Path>, Supplier<Path>> fileSupplierFactory = fileList -> new RandomFileSupplier(new Random(666), fileList);
 	
 	@Override

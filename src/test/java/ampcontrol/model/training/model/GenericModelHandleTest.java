@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model;
 
 import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.model.validation.EvalValidation;
 import ampcontrol.model.training.model.validation.Validation;
@@ -43,8 +44,8 @@ public class GenericModelHandleTest {
     @Test
     public void fitPositiveOrNegative() {
         final DataSetIterator addIter = new PosNegDataSetIter();
-        final CachingDataSetIterator trainIter = new CachingDataSetIterator(addIter, 2);
-        final CachingDataSetIterator evalIter = new CachingDataSetIterator(addIter, 10);
+        final MiniEpochDataSetIterator trainIter = new CachingDataSetIterator(addIter, 2);
+        final MiniEpochDataSetIterator evalIter = new CachingDataSetIterator(addIter, 10);
         final ModelHandle toTest = new GenericModelHandle(trainIter, evalIter, new MultiLayerModelAdapter(createPosNegNetwork()),
                 "addModel");
         for (int i = 0; i < 30; i++) {

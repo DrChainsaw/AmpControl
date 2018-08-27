@@ -1,5 +1,8 @@
 package ampcontrol.model.training.data;
 
+import ampcontrol.model.training.data.state.StateFactory;
+import org.apache.commons.lang.mutable.MutableInt;
+
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -12,16 +15,24 @@ import java.util.function.Supplier;
 public class CyclingLabelSupplier<T> implements Supplier<T> {
 
     private final List<T> labels;
-    private int ind = -1;
+    private final Supplier<MutableInt> ind;
 
-    public CyclingLabelSupplier(List<T> labels) {
+    /**
+     * Constructor
+     * @param labels List of labels to supply
+     * @param stateFactory Factory for state
+     */
+    public CyclingLabelSupplier(List<T> labels, StateFactory stateFactory) {
         this.labels = labels;
+        ind = stateFactory.createNewStateReference(mutInt -> new MutableInt(mutInt.intValue()), new MutableInt(-1));
     }
 
     @Override
     public synchronized T get() {
-        ind++;
-        ind %= labels.size();
-        return labels.get(ind);
+        int currInd = ind.get().intValue();
+        currInd++;
+        currInd %= labels.size();
+        ind.get().setValue(currInd);
+        return labels.get(currInd);
     }
 }

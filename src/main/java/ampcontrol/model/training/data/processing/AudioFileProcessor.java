@@ -1,6 +1,7 @@
 package ampcontrol.model.training.data.processing;
 
 import ampcontrol.audio.processing.*;
+import ampcontrol.model.training.data.state.SimpleStateFactory;
 import ampcontrol.model.visualize.PlotSpectrogram;
 import org.datavec.audio.Wave;
 
@@ -76,7 +77,7 @@ public class AudioFileProcessor implements AudioProcessor {
                 Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\noise\\Ackord left_149_nohash_2.wav"),
                 Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\lead\\sawsmashedface_56_nohash_13.wav"),
                 Paths.get("E:\\Software projects\\python\\lead_rythm\\data\\rythm\\temp left_45_nohash_9.wav")
-        ), 1);
+        ), 1, new SimpleStateFactory(0));
         // System.out.println(Arrays.toString(new Wave(wavfile.toAbsolutePath().toString()).getSampleAmplitudes()));
         final AudioSamplingInfo aInfo = new AudioSamplingInfo(0.3, 0.05);
 

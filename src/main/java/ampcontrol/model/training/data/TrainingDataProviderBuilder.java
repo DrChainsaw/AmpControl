@@ -5,6 +5,7 @@ import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.processing.AudioFileProcessorBuilder;
 import ampcontrol.model.training.data.processing.SequentialHoldFileSupplier;
 import ampcontrol.model.training.data.processing.WindowedRandomSamplingInfo;
+import ampcontrol.model.training.data.state.StateFactory;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -25,7 +26,7 @@ public class TrainingDataProviderBuilder implements DataProviderBuilder {
     private final int clipLengthMs;
     private final int windowSizeMs;
     private final Supplier<ProcessingResult.Factory> audioPostProcSupplier;
-    private int seed;
+    private final StateFactory stateFactory;
 
     public TrainingDataProviderBuilder(
             Map<String, AudioProcessorBuilder> labelToBuilder,
@@ -33,13 +34,13 @@ public class TrainingDataProviderBuilder implements DataProviderBuilder {
             int clipLengthMs,
             int windowSizeMs,
             Supplier<ProcessingResult.Factory> audioPostProcSupplier,
-            int seed) {
+            StateFactory stateFactory) {
         this.labelToBuilder = new LinkedHashMap<>(labelToBuilder);
         this.labelExpander = labelExpander;
         this.clipLengthMs = clipLengthMs;
         this.windowSizeMs = windowSizeMs;
         this.audioPostProcSupplier = audioPostProcSupplier;
-        this.seed = seed;
+        this.stateFactory = stateFactory;
     }
 
     @Override
@@ -47,9 +48,7 @@ public class TrainingDataProviderBuilder implements DataProviderBuilder {
         return new AudioDataProvider(
                 files,
                 labelToBuilder,
-                new RandomLabelSupplier<>(labelExpander.apply(labelToBuilder.keySet()), new Random(seed++)));
-                //new CyclingLabelSupplier<>(labelExpander.apply(labelToBuilder.keySet())));
-        //new RandomLabelSupplier<String>(new ArrayList<>(labelToBuilder.keySet()), new Random(seed++)));
+                new RandomLabelSupplier<>(labelExpander.apply(labelToBuilder.keySet()), stateFactory.createNewRandom()));
     }
 
     @Override
@@ -71,8 +70,9 @@ public class TrainingDataProviderBuilder implements DataProviderBuilder {
 
     private AudioProcessorBuilder createAudioFileProcessorBuilder() {
         return new AudioFileProcessorBuilder()
-                .setSamplingInfoMapper(new WindowedRandomSamplingInfo(clipLengthMs, windowSizeMs, new Random(seed++)))
-                .setFileSupplierFactory(new ListShuffler<Path>(new Random(seed++)).andThen(fileList ->  new SequentialHoldFileSupplier(fileList, 1, seed)))
+                .setSamplingInfoMapper(new WindowedRandomSamplingInfo(clipLengthMs, windowSizeMs, stateFactory.createNewRandom()))
+                .setFileSupplierFactory(new ListShuffler<Path>(stateFactory.createNewRandom())
+                        .andThen(fileList ->  new SequentialHoldFileSupplier(fileList, 1, 0, stateFactory)))
                 .setPostProcSupplier(audioPostProcSupplier);
     }
 }

@@ -349,6 +349,21 @@ public class BlockBuilder implements ModelBuilder {
         }
 
         /**
+         * Adds a {@link ForkAgg} to be applied after the last added {@link LayerBlockBuilder}. Returns a
+         * {@link ForkBuilder} which operates on the added {@link ForkAgg} and returns this builders parent builder when
+         * ready.
+         *
+         * @return a {@link ForkBuilder}
+         */
+        public ForkBuilder<V> andThenFork() {
+            final ForkAgg fork = new ForkAgg("_f_");
+            AggBlock next = new AggBlock(fork);
+            blockConf.andThen(next);
+            blockConf = next;
+            return new ForkBuilder<>((V) this, fork);
+        }
+
+        /**
          * Adds a last {@link LayerBlockConfig} and returns the parent builder
          *
          * @param last the {@link LayerBlockConfig} to be added

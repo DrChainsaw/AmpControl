@@ -1,8 +1,9 @@
 package ampcontrol.model.training.model.description;
 
-import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
+import ampcontrol.model.training.model.layerblocks.graph.Scale;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
 import ampcontrol.model.training.schedule.MinLim;
 import ampcontrol.model.training.schedule.Mul;
@@ -26,13 +27,13 @@ import java.util.stream.Stream;
  * @author Christian Skärby
  */
 public class ResNetConv2DFactory {
-    private final CachingDataSetIterator trainIter;
-    private final CachingDataSetIterator evalIter;
+    private final MiniEpochDataSetIterator trainIter;
+    private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
     private final Path modelDir;
 
-    public ResNetConv2DFactory(CachingDataSetIterator trainIter, CachingDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public ResNetConv2DFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;
@@ -53,49 +54,49 @@ public class ResNetConv2DFactory {
 
         final int schedPeriod = 50;
         final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
-                new SawTooth(schedPeriod, 1e-6, 0.05));
+                new SawTooth(schedPeriod, 1e-6, 0.1));
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
-        IntStream.of(5).forEach(resDepth ->
+        IntStream.of(5, 10).forEach(resDepth ->
                 Stream.of(new IdBlock(), new SeBlock()).forEach(seOrId ->
-                        DoubleStream.of(0.003).forEach(lambda -> {
+                        DoubleStream.of(0.002).forEach(lambda -> {
                             ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                                     new BlockBuilder()
                                             .setNamePrefix(namePrefix)
                                             .setUpdater(new Nesterovs(lrSched, momSched))
                                             .first(new ConvType(inputShape))
 
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(64))
                                             .andThen(pool)
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
                                             .andThen(pool)
-                                            .andThen(seOrId)
-                                            .andThen(new Conv2DBatchNormAfter()
+                                           // .andThen(seOrId)
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
                                             .andThen(pool)
-                                            .andThen(seOrId)
+                                           // .andThen(seOrId)
                                             .andThenStack(resDepth)
-                                            .res()
-                                            .aggOf(new Conv2DBatchNormAfter()
+                                            .aggRes()
+                                            .aggOf(new Conv2DBatchNormBetween()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(64))
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setConvolutionMode(ConvolutionMode.Same)
                                                     .setKernelSize(3)
                                                     .setNrofKernels(128))
-                                            .andThen(new Conv2DBatchNormAfter()
+                                            .andThen(new Conv2DBatchNormBetween()
                                                     .setKernelSize(1)
                                                     .setNrofKernels(128 * resblockOutFac))
-                                            //.andThen(zeroPad3x3)
+                                            .andFinally(new Scale(0.1))
                                             .andFinally(seOrId)
                                             //.andFinally(new DropOut().setDropProb(dropOutProb))
                                             .andThenStack(2)

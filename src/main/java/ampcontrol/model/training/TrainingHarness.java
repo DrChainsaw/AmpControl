@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -36,8 +38,8 @@ class TrainingHarness {
     private static final Logger log = LoggerFactory.getLogger(TrainingHarness.class);
 
     private static final boolean doStatsLogging = false;
-    private static final int evalEveryNrofSteps = 40;
-    private static final int nrofStepsBeforeFirstEval = 40;
+    private static final int evalEveryNrofSteps = 100;
+    private static final int nrofStepsBeforeFirstEval = 200;
     private static final String bestSuffix = "_best";
     private static final String scoreSuffix = ".score";
     private static final double saveThreshold = 0.9;
@@ -130,7 +132,7 @@ class TrainingHarness {
 
         private Consumer<Evaluation> createLastCheckPoint(final Supplier<Double> bestEvalSupplier) {
             final Consumer<Evaluation> saveCheckPoint = createCheckPoint(fileBaseName);
-
+            
             final Predicate<Evaluation> gate = eval -> eval.accuracy() >= bestEvalSupplier.get() * saveThreshold;
 
             return new NewThread<>( // Background work
@@ -207,7 +209,7 @@ class TrainingHarness {
             }
             mh.getModel().addListeners(new TimeMeasurement());
             mh.getModel().addListeners(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
-           // mh.getModel().addListeners(new SeBlockInspection());
+            // mh.getModel().addListeners(new SeBlockInspection());
         }
     }
 
@@ -246,10 +248,13 @@ class TrainingHarness {
         Nd4j.getMemoryManager().setAutoGcWindow(5000);
         for (int trainingStep = 0; trainingStep < maxNrofTrainingSteps; trainingStep++) {
             log.info("****************************** Training step " + trainingStep + " started! ***************************************");
+            final LocalTime beforeTrain = LocalTime.now();
             for (ModelHandle mh : modelsToTrain) {
                 log.info("Training model: " + mh.name());
                 mh.fit();
             }
+            final long totalTrainingTime = Duration.between(beforeTrain, LocalTime.now()).toMillis();
+            log.info("Total training time: " + totalTrainingTime);
 
             for (ModelHandle mh : modelsToTrain) {
                 mh.eval();

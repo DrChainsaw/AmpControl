@@ -79,6 +79,9 @@ public class AggBlock implements LayerBlockConfig {
      * @return the {@link AggBlock}
      */
     public AggBlock andThen(LayerBlockConfig then) {
+        if(this.then != null) {
+            throw new IllegalStateException("Block overwrite attempted!");
+        }
         this.then = then;
         return this;
     }

@@ -71,6 +71,7 @@ public class ForkAgg implements LayerBlockConfig {
         }
 
         return new SimpleBlockInfo.Builder(info)
+                .setPrevLayerInd(info.getPrevLayerInd()+1)
                 .setInputs(nextInputNameBuilder.build().collect(Collectors.toList()).toArray(new String[] {}))
                 .setPrevNrofOutputs(outputSize)
                 .build();

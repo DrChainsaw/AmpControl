@@ -5,6 +5,7 @@ import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.processing.AudioFileProcessorBuilder;
 import ampcontrol.model.training.data.processing.SequentialHoldFileSupplier;
 import ampcontrol.model.training.data.processing.WindowedConsecutiveSamplingInfo;
+import ampcontrol.model.training.data.state.StateFactory;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -25,7 +26,7 @@ public class EvalDataProviderBuilder implements DataProviderBuilder {
 	private final int clipLengthMs;
 	private final int windowSizeMs;
 	private final Supplier<ProcessingResult.Factory> audioPostProcSupplier;
-	private int seed;	
+	private StateFactory stateFactory;
 
 	public EvalDataProviderBuilder(
 			Map<String, AudioProcessorBuilder> labelToBuilder,
@@ -33,13 +34,13 @@ public class EvalDataProviderBuilder implements DataProviderBuilder {
 			int clipLengthMs,
 			int windowSizeMs,
 			Supplier<ProcessingResult.Factory> audioPostProcSupplier,
-			int seed) {
+			StateFactory stateFactory) {
 		this.labelToBuilder = new LinkedHashMap<>(labelToBuilder);
 		this.labelExpander = labelExpander;
 		this.clipLengthMs = clipLengthMs;
 		this.windowSizeMs = windowSizeMs;
 		this.audioPostProcSupplier = audioPostProcSupplier;
-		this.seed = seed;
+		this.stateFactory = stateFactory;
 	}
 
 	@Override
@@ -47,7 +48,7 @@ public class EvalDataProviderBuilder implements DataProviderBuilder {
 		return new AudioDataProvider(
 				files,
 				labelToBuilder,
-				new RandomLabelSupplier<>(labelExpander.apply(labelToBuilder.keySet()), new Random(seed++)));
+				new RandomLabelSupplier<>(labelExpander.apply(labelToBuilder.keySet()), stateFactory.createNewRandom()));
 	}
 
 	@Override
@@ -68,8 +69,8 @@ public class EvalDataProviderBuilder implements DataProviderBuilder {
 
 	private AudioProcessorBuilder createAudioFileProcessorBuilder() {
 		return new AudioFileProcessorBuilder()
-		.setSamplingInfoMapper(new WindowedConsecutiveSamplingInfo(clipLengthMs, windowSizeMs))
-		.setFileSupplierFactory(fileList -> new SequentialHoldFileSupplier(fileList, clipLengthMs / windowSizeMs))
+		.setSamplingInfoMapper(new WindowedConsecutiveSamplingInfo(clipLengthMs, windowSizeMs, stateFactory))
+		.setFileSupplierFactory(fileList -> new SequentialHoldFileSupplier(fileList, clipLengthMs / windowSizeMs, stateFactory))
 		.setPostProcSupplier(audioPostProcSupplier);
 	}
 }

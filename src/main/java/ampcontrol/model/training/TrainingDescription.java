@@ -3,10 +3,13 @@ package ampcontrol.model.training;
 import ampcontrol.audio.processing.*;
 import ampcontrol.model.training.data.AudioDataProvider.AudioProcessorBuilder;
 import ampcontrol.model.training.data.*;
-import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
-import ampcontrol.model.training.data.iterators.Cnn2DDataSetIterator;
+import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
+import ampcontrol.model.training.data.iterators.factory.AutoFromSize;
+import ampcontrol.model.training.data.iterators.factory.Cnn2D;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
+import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.description.InceptionResNetFactory;
 import ampcontrol.model.training.model.description.ResNetConv2DFactory;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
@@ -38,10 +41,10 @@ public class TrainingDescription {
     private final static Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
     private final static Path modelDir = Paths.get("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models");
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
-    private final static int trainingIterations = 10; // 10
-    private final static int trainBatchSize = 64;   // 32 64
+    private final static int trainingIterations = 10;
+    private final static int trainBatchSize = 64;
     private final static int evalBatchSize = 64;
-    private final static double evalSetPercentage = 4;
+    private final static double evalSetPercentage = 10;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -124,52 +127,66 @@ public class TrainingDescription {
                 .addExpansion("rythm", 100)
                 .addExpansion("lead", 100);
 
-        final Random volScaleRng = new Random(trainingSeed + 1);
+        final ResetableStateFactory trainingStateFactory = new ResetableStateFactory(trainingSeed);
+        final ResetableStateFactory evalStateFactory = new ResetableStateFactory(666);
+
         final ProcessingResult.Factory trainFactory = new Pipe(
-                new RandScale(1000, 10, volScaleRng),
+                new RandScale(1000, 10, trainingStateFactory.createNewRandom()),
                 audioPostProcessingFactory
         );
 
-        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> trainFactory, trainingSeed);
-        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, 666);
+        final DataProviderBuilder train = new TrainingDataProviderBuilder(labelToBuilder, labelExpander, clipLengthMs, timeWindowSize, () -> trainFactory, trainingStateFactory);
+        final DataProviderBuilder eval = new EvalDataProviderBuilder(labelToBuilder, labelExpanderEval, clipLengthMs, timeWindowSize, () -> audioPostProcessingFactory, evalStateFactory);
+        mapFilesToDataSets(train, eval);
 
+        // This knowledge needs to move somewhere else when multiple inputs are implemented
+        final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
+
+        final int[] inputShape = {inputProto.length, inputProto[0].length, (int) silence.getResult().stream().count()};
+        log.info("Input shape: " + Arrays.toString(inputShape));
+
+        // TODO: Figure out why amount of memory that can actually be used differs so much from what seems to be available
+        final AutoFromSize<DataProvider> dataSetIteratorFactory = new AutoFromSize<>(5L*1024L*1024L*1024L);
+        final MiniEpochDataSetIterator trainIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
+                .sourceInput(train.createProvider())
+                .sourceFactory(new Cnn2D(trainBatchSize, labels))
+                .batchSize(trainBatchSize)
+                .dataSetShape(inputShape)
+                .dataSetSize(trainingIterations)
+                .resetableState(trainingStateFactory)
+                .build());
+
+        final int evalSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
+        log.info("Nrof eval files: " + eval.getNrofFiles() + " nrof eval examples: " + evalSize);
+        final MiniEpochDataSetIterator evalIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
+                .sourceInput(eval.createProvider())
+                .sourceFactory(new Cnn2D(evalBatchSize, labels))
+                .batchSize(evalBatchSize)
+                .dataSetShape(inputShape)
+                .dataSetSize(evalSize)
+                .resetableState(evalStateFactory)
+        .build());
+
+        String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
+
+        //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+    }
+
+    private static void mapFilesToDataSets(DataProviderBuilder train, DataProviderBuilder eval) {
         try {
             DataSetFileParser.parseFileProperties(baseDir, new DataSetMapper(train, eval, evalSetPercentage));
         } catch (IOException e) {
             throw new IllegalArgumentException(e);
         }
-
-        final CachingDataSetIterator trainIter = new CachingDataSetIterator(
-                new Cnn2DDataSetIterator(
-                        train.createProvider(), trainBatchSize, labels),
-                trainingIterations);
-
-        final int evalCacheSize = (int) (0.75 * (clipLengthMs / timeWindowSize * (eval.getNrofFiles() / evalBatchSize)));
-        final CachingDataSetIterator evalIter = new CachingDataSetIterator(
-                new Cnn2DDataSetIterator(eval.createProvider(), evalBatchSize, labels),
-                evalCacheSize);
-
-        log.info("Nrof eval files: " + eval.getNrofFiles());
-
-        // This knowledge needs to move somewhere else when multiple inputs are implemented
-        final double[][] inputProto = silence.getResult().stream().findFirst().orElseThrow(() -> new IllegalStateException("No input!"));
-        final int[] inputShape = {inputProto.length, inputProto[0].length, (int) silence.getResult().stream().count()};
-
-        String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
-
-       // new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        //new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
-        // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
-        // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-
-        // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
     }
 
 }

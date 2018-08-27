@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.layerblocks;
 
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.nd4j.linalg.activations.IActivation;
@@ -22,7 +23,7 @@ public class Conv2DBatchNormBetween implements LayerBlockConfig {
     private int kernelSize_w = 4;
     private int stride_w = 1;
     private int stride_h = 1;
-    private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.PREFER_FASTEST;
+    private ConvolutionMode convolutionMode = ConvolutionMode.Truncate;
 
     private IActivation activation = new ActivationELU();
     private boolean strideChanged = false;
@@ -43,7 +44,8 @@ public class Conv2DBatchNormBetween implements LayerBlockConfig {
                 .layer(info, new ConvolutionLayer.Builder(kernelSize_h, kernelSize_w)
                         .nOut(nrofKernels)
                         .stride(stride_h, stride_w)
-                        .cudnnAlgoMode(cudnnAlgoMode)
+                        .cudnnAlgoMode(ConvolutionLayer.AlgoMode.PREFER_FASTEST)
+                        .convolutionMode(convolutionMode)
                         .build());
 
         log.info("cnn BN Layer: " +nextInfo);
@@ -147,6 +149,17 @@ public class Conv2DBatchNormBetween implements LayerBlockConfig {
      */
     public Conv2DBatchNormBetween setActivation(IActivation activation) {
         this.activation = activation;
+        return this;
+    }
+
+    /**
+     * Sets the {@link ConvolutionMode} to use
+     *
+     * @param convolutionMode the mode to use
+     * @return the {@link Conv2DBatchNormBetween}
+     */
+    public Conv2DBatchNormBetween setConvolutionMode(ConvolutionMode convolutionMode) {
+        this.convolutionMode = convolutionMode;
         return this;
     }
 }

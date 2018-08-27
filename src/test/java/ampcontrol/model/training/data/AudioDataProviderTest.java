@@ -25,7 +25,7 @@ import static org.junit.Assert.assertEquals;
 public class AudioDataProviderTest {
 
     /**
-     * Test that the involved objects are correctly initizalied that the expected result is produced.
+     * Test that the involved objects are correctly initialized and that the expected result is produced.
      */
     @Test
     public void generateData() {
