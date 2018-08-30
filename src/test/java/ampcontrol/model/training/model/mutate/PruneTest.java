@@ -78,12 +78,4 @@ public class PruneTest {
 
         assertEquals("Incorrect output!", expected, target);
     }
-
-    @Test
-    public void testShapeCorruption() {
-        final INDArray arr = Nd4j.create(new double[][]{{1, 2}, {3, 4}});
-        final long shape0 = arr.shape()[0];
-        arr.shape()[0] -= 1;
-        assertEquals("Incorrect shape!", shape0, arr.shape()[0]);
-    }
 }
