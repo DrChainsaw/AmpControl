@@ -6,7 +6,7 @@ import lombok.Singular;
 import java.util.Comparator;
 import java.util.List;
 
-@Builder
+@Builder(builderClassName = "Builder")
 public class ReshapeSubTaskList implements ReshapeSubTask {
     @Singular
     private final List<ReshapeSubTask> instructions;

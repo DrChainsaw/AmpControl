@@ -31,7 +31,7 @@ public class ReshapeTaskTest {
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .targetShape(shapeTarget)
                 .sourceShape(shapeSource)
-                .pruneInstruction(SingleReshapeSubTask.builder()
+                .reshapeSubTask(SingleReshapeSubTask.builder()
                         .source(source)
                         .target(target)
                         .build())
@@ -77,7 +77,7 @@ public class ReshapeTaskTest {
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .targetShape(target.shape())
                 .sourceShape(source.shape())
-                .pruneInstruction(SingleReshapeSubTask.builder()
+                .reshapeSubTask(SingleReshapeSubTask.builder()
                         .source(source)
                         .target(target)
                         .build())
@@ -115,7 +115,7 @@ public class ReshapeTaskTest {
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
-                .pruneInstruction(
+                .reshapeSubTask(
                         ReshapeSubTaskList.builder()
                                 .instruction(SingleReshapeSubTask.builder()
                                         .compFactory(dummy -> Comparator.comparingInt(i -> Ints.indexOf(orderToKeep, i)))
@@ -165,7 +165,7 @@ public class ReshapeTaskTest {
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
-                .pruneInstruction(SingleReshapeSubTask.builder()
+                .reshapeSubTask(SingleReshapeSubTask.builder()
                         .source(source)
                         .target(target)
                         .build())
@@ -201,7 +201,7 @@ public class ReshapeTaskTest {
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
-                .pruneInstruction(
+                .reshapeSubTask(
                         ReshapeSubTaskList.builder()
                                 .instruction(SingleReshapeSubTask.builder()
                                         .source(source)
@@ -248,7 +248,7 @@ public class ReshapeTaskTest {
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
-                .pruneInstruction(SingleReshapeSubTask.builder()
+                .reshapeSubTask(SingleReshapeSubTask.builder()
                         .compFactory(dummy -> Comparator.comparingInt(i -> Ints.indexOf(orderToKeep, i)))
                         .source(source)
                         .target(target)

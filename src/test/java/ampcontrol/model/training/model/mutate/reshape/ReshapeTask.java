@@ -11,7 +11,7 @@ import java.util.stream.IntStream;
 public class ReshapeTask {
     private final long[] targetShape;
     private final long[] sourceShape;
-    private final ReshapeSubTask pruneInstruction;
+    private final ReshapeSubTask reshapeSubTask;
 
     public void reshape() {
         for (int i = 0; i < targetShape.length; i++) {
@@ -21,7 +21,7 @@ public class ReshapeTask {
                         .filter(dim -> tensorDim != dim)
                         .toArray();
 
-                final Comparator<Integer> comparator = pruneInstruction.getComparator(tensorDimensions);
+                final Comparator<Integer> comparator = reshapeSubTask.getComparator(tensorDimensions);
                 final int[] wantedElements = IntStream.range(0, (int) sourceShape[tensorDim])
                         .boxed()
                         .sorted(comparator)
@@ -30,10 +30,10 @@ public class ReshapeTask {
                         .sorted()
                         .toArray();
 
-                pruneInstruction.addWantedElements(tensorDim, wantedElements);
+                reshapeSubTask.addWantedElements(tensorDim, wantedElements);
             }
         }
 
-        pruneInstruction.assign();
+        reshapeSubTask.assign();
     }
 }
