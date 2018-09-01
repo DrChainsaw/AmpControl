@@ -97,7 +97,7 @@ public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetI
     private DataSetIteratorFactory<MiniEpochDataSetIterator, V> createAsynchFactory(Input<V> input, long sizeOfOneBatch, long sizeOfWholeDataSet) {
         DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
         log.info("Create Asynch iter for set of size {} with memory allowance {}", sizeOfWholeDataSet, memoryAllowance);
-        final int bufferSize = Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
+        final int bufferSize = Math.max(4, Runtime.getRuntime().availableProcessors() / 3);
         final int miniEpochSizeTrunc = (input.dataSetSize / bufferSize) * bufferSize;
         log.info("Data set size changed from {} to {} in order to align buffer", input.dataSetSize, miniEpochSizeTrunc);
         factory = new Asynch<>(miniEpochSizeTrunc, input.resetableState, new DoubleBuffered<>(bufferSize, input.sourceFactory));

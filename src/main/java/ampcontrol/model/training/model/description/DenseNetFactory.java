@@ -3,16 +3,21 @@ package ampcontrol.model.training.model.description;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.layerblocks.*;
-import ampcontrol.model.training.model.layerblocks.graph.MinMaxPool;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
+import ampcontrol.model.training.schedule.MinLim;
+import ampcontrol.model.training.schedule.Mul;
+import ampcontrol.model.training.schedule.epoch.Exponential;
+import ampcontrol.model.training.schedule.epoch.Offset;
+import ampcontrol.model.training.schedule.epoch.SawTooth;
+import ampcontrol.model.training.schedule.epoch.Step;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.nd4j.linalg.learning.config.Nesterovs;
-import org.nd4j.linalg.schedule.ScheduleType;
-import org.nd4j.linalg.schedule.StepSchedule;
+import org.nd4j.linalg.schedule.ISchedule;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Description of a bunch of architectures which belong to a family of dense nets.
@@ -43,46 +48,51 @@ public class DenseNetFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
 
-        final LayerBlockConfig zeroPad3x3 = new ZeroPad().setPad(1);
-        IntStream.of(4, 8, 16).forEach(denseStackSize -> {
-            DoubleStream.of(0).forEach(dropOutProb -> {
-                // ~0.96 acc, but quite heavy
+        final int schedPeriod = 100;
+        final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
+                new SawTooth(schedPeriod, 1e-6, 0.05));
+        final ISchedule momSched = new Offset(schedPeriod / 2,
+                new SawTooth(schedPeriod, 0.85, 0.95));
+        
+        IntStream.of(2, 8).forEach(denseStackSize -> {
+            Stream.of(new IdBlock(), new SeBlock()).forEach(seOrId -> {
                 ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
                         new BlockBuilder()
                                 .setNamePrefix(namePrefix)
-                                .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.001, 0.1, 40000)))
+                                .setUpdater(new Nesterovs(lrSched, momSched))
                                 .first(new ConvType(inputShape))
-                                .andThen(zeroPad3x3)
-                                .andThen(new Conv2DBatchNormAfter()
+                                .andThen(new Conv2DBatchNormBetween()
                                         .setKernelSize(3)
                                         .setNrofKernels(64))
-                                .andThen(new MinMaxPool().setSize(3).setStride(3))
-                                .andThen(zeroPad3x3)
-                                .andThen(new Conv2DBatchNormAfter()
+                                .andThen(new Pool2D().setSize(3).setStride(3))
+                                .andThen(new Conv2DBatchNormBetween()
                                         .setKernelSize(3)
+                                        .setConvolutionMode(ConvolutionMode.Same)
                                         .setNrofKernels(128))
-                                .andThen(new MinMaxPool().setSize(3).setStride(3))
-                                .andThen(new SeBlock())
-                                .andThen(zeroPad3x3)
-                                .andThen(new Conv2DBatchNormAfter()
+                                .andThen(new Pool2D().setSize(3).setStride(3))
+                                .andThen(seOrId)
+                                .andThen(new Conv2DBatchNormBetween()
                                         .setKernelSize(3)
+                                        .setConvolutionMode(ConvolutionMode.Same)
                                         .setNrofKernels(128))
-                                .andThen(new MinMaxPool().setSize(3).setStride(3))
-                                .andThen(new SeBlock())
-                                .andThenStack(10)
+                                .andThen(new Pool2D().setSize(3).setStride(3))
+                                .andThen(seOrId)
+                                .andThenStack(4)
                                 .aggDenseStack(denseStackSize)
-                                .aggOf(zeroPad3x3)
-                                .andFinally(new Conv2DBatchNormAfter()
+                                .aggOf(new Conv2DBatchNormBefore()
                                         .setKernelSize(3)
+                                        .setConvolutionMode(ConvolutionMode.Same)
                                         .setNrofKernels(32))
-                                .andThen(new Conv2DBatchNormAfter()
+                                .andFinally(new Conv2DBatchNormBefore()
+                                        .setNrofKernels(32 * 2)
+                                        .setKernelSize(1))
+                                .andThen(new Conv2DBatchNormBefore()
                                         .setNrofKernels(32 * 4)
                                         .setKernelSize(1))
                                 //   .andThen(new DropOut().setDropProb(dropOutProb))
-                                .andFinally(new SeBlock())
+                                .andFinally(seOrId)
                                 .andThenStack(2)
                                 .of(new Dense())//.setActivation(new ActivationSELU()))
-                                .andThen(new DropOut().setDropProb(dropOutProb))
                                 .andFinally(new Output(trainIter.totalOutcomes())));
                 modelData.add(new GenericModelHandle(
                         trainIter,
@@ -90,6 +100,6 @@ public class DenseNetFactory {
                         new GraphModelAdapter(builder.buildGraph()),
                         builder.name()));
             });
-        });
+            });
     }
 }

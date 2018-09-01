@@ -1,11 +1,12 @@
 package ampcontrol.model.training.model.layerblocks;
 
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.nd4j.linalg.activations.IActivation;
 import org.nd4j.linalg.activations.impl.ActivationELU;
-import org.nd4j.linalg.activations.impl.ActivationLReLU;
+import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,7 @@ public class Conv2DBatchNormBefore implements LayerBlockConfig {
     private int kernelSize_w = 4;
     private int stride_w = 1;
     private int stride_h = 1;
-    private ConvolutionLayer.AlgoMode cudnnAlgoMode = ConvolutionLayer.AlgoMode.NO_WORKSPACE;
+    private ConvolutionMode convolutionMode = ConvolutionMode.Truncate;
 
     private IActivation activation = new ActivationELU();
     private boolean strideChanged = false;
@@ -50,9 +51,10 @@ public class Conv2DBatchNormBefore implements LayerBlockConfig {
         nextInfo = builder
                 .layer(nextInfo, new ConvolutionLayer.Builder(kernelSize_h, kernelSize_w)
                         .nOut(nrofKernels)
-                        .activation(new ActivationLReLU(1)) // ActivationIdentity leads to a crash
+                        .activation(new ActivationIdentity())
                         .stride(stride_h, stride_w)
-                        .cudnnAlgoMode(cudnnAlgoMode)
+                        .cudnnAlgoMode(ConvolutionLayer.AlgoMode.PREFER_FASTEST)
+                        .convolutionMode(convolutionMode)
                         .build());
         return new SimpleBlockInfo.Builder(nextInfo)
                 .setPrevNrofOutputs(nrofKernels)
@@ -148,6 +150,17 @@ public class Conv2DBatchNormBefore implements LayerBlockConfig {
      */
     public Conv2DBatchNormBefore setActivation(IActivation activation) {
         this.activation = activation;
+        return this;
+    }
+
+    /**
+     * Sets the {@link ConvolutionMode} to use
+     *
+     * @param convolutionMode the mode to use
+     * @return the {@link Conv2DBatchNormBefore}
+     */
+    public Conv2DBatchNormBefore setConvolutionMode(ConvolutionMode convolutionMode) {
+        this.convolutionMode = convolutionMode;
         return this;
     }
 }
