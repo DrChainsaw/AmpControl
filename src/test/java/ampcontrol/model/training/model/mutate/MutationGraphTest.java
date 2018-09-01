@@ -47,10 +47,10 @@ public class MutationGraphTest {
                 .addInputs(inputName)
                 .setOutputs(outputName)
                 .setInputTypes(InputType.convolutional(33, 33, 3))
-                .addLayer(mutationName, new Convolution2D.Builder(1, 1)
+                .addLayer(mutationName, new Convolution2D.Builder(3, 3)
                         .nOut(10)
                         .build(), inputName)
-                .addLayer(afterName, new Convolution2D.Builder(1, 1)
+                .addLayer(afterName, new Convolution2D.Builder(4, 4)
                         .nOut(7)
                         .build(), mutationName)
                 .addLayer(outputName, new OutputLayer.Builder()
@@ -98,19 +98,18 @@ public class MutationGraphTest {
         assertDims(1, orderToKeep, sourceOutput, targetOutput);
     }
 
-    long[] assertDims(
+    private static void assertDims(
             int dim,
             int[] orderToKeep,
             INDArray source,
             INDArray target) {
         final long[] shapeTarget = target.shape();
-        final int[] dims = IntStream.range(0, shapeTarget.length).filter(i -> i!=dim).toArray();
+        final int[] dims = IntStream.range(0, shapeTarget.length).filter(i -> i != dim).toArray();
         for (int elemInd = 0; elemInd < shapeTarget[dim]; elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
                     source.tensorAlongDimension(orderToKeep[elemInd], dims),
                     target.tensorAlongDimension(elemInd, dims));
         }
-        return shapeTarget;
     }
 
     private static void setToLinspace(INDArray array, boolean reverse) {
