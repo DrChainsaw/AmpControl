@@ -1,6 +1,6 @@
 package ampcontrol.model.training.model.mutate;
 
-import com.google.common.primitives.Ints;
+import ampcontrol.model.training.model.mutate.reshape.ReshapeTaskTest;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
 import org.deeplearning4j.nn.conf.inputs.InputType;
@@ -13,9 +13,8 @@ import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static junit.framework.TestCase.assertEquals;
@@ -40,7 +39,8 @@ public class MutationGraphTest {
     @Test
     public void changeNoutCnnToCnn() {
         final String mutationName = "toMutate";
-        final String afterName = "afterMut";
+        final String nextMutationName = "toMutateToo";
+        final String afterName = "afterMutate";
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .weightInit(new ConstantDistribution(666))
                 .graphBuilder()
@@ -50,9 +50,12 @@ public class MutationGraphTest {
                 .addLayer(mutationName, new Convolution2D.Builder(3, 3)
                         .nOut(10)
                         .build(), inputName)
-                .addLayer(afterName, new Convolution2D.Builder(4, 4)
-                        .nOut(7)
+                .addLayer(nextMutationName, new Convolution2D.Builder(1, 1)
+                        .nOut(5)
                         .build(), mutationName)
+                .addLayer(afterName, new Convolution2D.Builder(2, 2)
+                        .nOut(7)
+                        .build(), nextMutationName)
                 .addLayer(outputName, new OutputLayer.Builder()
                         .nOut(2)
                         .build(), afterName)
@@ -60,26 +63,38 @@ public class MutationGraphTest {
         graph.init();
 
         setToLinspace(graph.getLayer(mutationName).getParam(W), true);
-        setToLinspace(graph.getLayer(afterName).getParam(W), false);
+        setToLinspace(graph.getLayer(nextMutationName).getParam(W), false);
+        setToLinspace(graph.getLayer(afterName).getParam(W), true);
         setToLinspace(graph.getLayer(mutationName).getParam(B), false);
+        setToLinspace(graph.getLayer(nextMutationName).getParam(B), true);
 
-        final int[] orderToKeep = {1, 3, 5, 6, 7, 9, 2, 4, 8, 0};
+        final int[] orderToKeepFirst = {1, 3, 5, 6, 7, 9, 2, 4, 8, 0};
+        final int[] orderToKeepSecond = {0, 3, 4, 2, 1};
+        final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
+        comparatorMap.put(mutationName, ReshapeTaskTest.fixedOrderComp(orderToKeepFirst));
+        comparatorMap.put(nextMutationName, ReshapeTaskTest.fixedOrderComp(orderToKeepSecond));
+
         final MutationGraph mutationGraph = new MutationGraph(graph,
-                name -> name.equals(mutationName) ?
-                        Optional.of(dummy -> (Comparator.comparingInt(i -> Ints.indexOf(orderToKeep, i)))) :
-                        Optional.empty());
+                name -> Optional.ofNullable(comparatorMap.get(name)));
 
-        final ComputationGraph newGraph = new TransferLearning
+        // Workaround for dl4j issue #6343. Create the graphs step by step to avoid overwriting nIn to nextMutationName
+         final ComputationGraph newGraph = new TransferLearning.GraphBuilder(new TransferLearning
                 .GraphBuilder(graph)
                 .nOutReplace(mutationName, 5, new ConstantDistribution(333))
-                .build();
+                .build())
+          .nOutReplace(nextMutationName, 3, new ConstantDistribution(111))
+         .build();
 
         assertEquals("newGraph not initialized as expected!",
                 333d,
                 newGraph.getLayer(mutationName).paramTable().get(W).meanNumber().doubleValue(), 1e-10);
 
         assertEquals("newGraph not initialized as expected!",
-                333d,
+                111d,
+                newGraph.getLayer(nextMutationName).paramTable().get(W).meanNumber().doubleValue(), 1e-10);
+
+        assertEquals("newGraph not initialized as expected!",
+                111d,
                 newGraph.getLayer(afterName).paramTable().get(W).meanNumber().doubleValue(), 1e-10);
 
 
@@ -87,15 +102,23 @@ public class MutationGraphTest {
 
         final INDArray source = graph.getLayer(mutationName).getParam(W);
         final INDArray target = mutatedGraph.getLayer(mutationName).getParam(W);
-        assertDims(0, orderToKeep, source, target);
+        assertDims(0, orderToKeepFirst, source, target);
 
         final INDArray sourceBias = graph.getLayer(mutationName).getParam(B);
         final INDArray targetBias = mutatedGraph.getLayer(mutationName).getParam(B);
-        assertDims(1, orderToKeep, sourceBias, targetBias);
+        assertDims(1, orderToKeepFirst, sourceBias, targetBias);
+
+        final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(W);
+        final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(W);
+        assertDoubleDims(orderToKeepSecond, orderToKeepFirst, sourceNext, targetNext);
+
+        final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(B);
+        final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(B);
+        assertDims(1, orderToKeepSecond, sourceNextBias, targetNextBias);
 
         final INDArray sourceOutput = graph.getLayer(afterName).getParam(W);
         final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(W);
-        assertDims(1, orderToKeep, sourceOutput, targetOutput);
+        assertDims(1, orderToKeepSecond, sourceOutput, targetOutput);
     }
 
     private static void assertDims(
@@ -109,6 +132,23 @@ public class MutationGraphTest {
             assertEquals("Incorrect target for element index " + elemInd + "!",
                     source.tensorAlongDimension(orderToKeep[elemInd], dims),
                     target.tensorAlongDimension(elemInd, dims));
+        }
+    }
+
+    private static void assertDoubleDims(
+            int[] expectedElementOrderDim0,
+            int[] expectedElementOrderDim1,
+            INDArray source,
+            INDArray target) {
+        final long[] shapeTarget = target.shape();
+        final int[] firstTensorDims = IntStream.range(0, shapeTarget.length).filter(i -> i != 0).toArray();
+        final int[] secondTensorDims = IntStream.range(0, shapeTarget.length-2).map(i -> i+1).toArray();
+        for (int elemInd0 = 0; elemInd0 < shapeTarget[0]; elemInd0++) {
+            for (int elemInd1 = 0; elemInd1 < shapeTarget[1]; elemInd1++) {
+                assertEquals("Incorrect target output for element index " + elemInd0 + ", " + elemInd1 + "!",
+                        source.tensorAlongDimension(expectedElementOrderDim0[elemInd0], firstTensorDims).tensorAlongDimension(expectedElementOrderDim1[elemInd1],secondTensorDims),
+                        target.tensorAlongDimension(elemInd0, firstTensorDims).tensorAlongDimension(elemInd1, secondTensorDims));
+            }
         }
     }
 

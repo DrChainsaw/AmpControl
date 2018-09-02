@@ -7,6 +7,7 @@ import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
 
@@ -28,16 +29,18 @@ public class ReshapeTaskTest {
         final long[] shapeTarget = {1, 3, 2, 2};
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
+        final ReshapeRegistry registry = new ReshapeRegistry();
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .targetShape(shapeTarget)
                 .sourceShape(shapeSource)
                 .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .source(source)
-                        .target(target)
+                        .source(registry.register(source))
+                        .target(registry.register(target))
                         .build())
                 .build();
 
         reshapeTask.reshape();
+        registry.commit();
         final INDArray expected = Nd4j.create(new double[][][][]{{
                 {
                         {12, 13},
@@ -74,16 +77,18 @@ public class ReshapeTaskTest {
         shape[0] -= 2;
         shape[2] -= 1;
         final INDArray target = Nd4j.create(shape);
+        final ReshapeRegistry registry = new ReshapeRegistry();
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .targetShape(target.shape())
                 .sourceShape(source.shape())
                 .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .source(source)
-                        .target(target)
+                        .source(registry.register(source))
+                        .target(registry.register(target))
                         .build())
                 .build();
 
         reshapeTask.reshape();
+        registry.commit();
         final INDArray expected = Nd4j.create(new double[][][][]{
                 {{{6}}, {{4}}, {{2}}},
                 {{{3}}, {{2}}, {{0}}},
@@ -112,19 +117,20 @@ public class ReshapeTaskTest {
         final INDArray target = Nd4j.create(shapeTarget);
         final INDArray targetOutput = Nd4j.create(shapeTargetOutput);
 
+        final ReshapeRegistry registry = new ReshapeRegistry();
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
                 .reshapeSubTask(
                         ReshapeSubTaskList.builder()
                                 .instruction(SingleReshapeSubTask.builder()
-                                        .compFactory(dummy -> Comparator.comparingInt(i -> Ints.indexOf(orderToKeep, i)))
-                                        .source(source)
-                                        .target(target)
+                                        .compFactory(fixedOrderComp(orderToKeep))
+                                        .source(registry.register(source))
+                                        .target(registry.register(target))
                                         .build())
                                 .instruction(SingleReshapeSubTask.builder()
-                                        .source(sourceOutput)
-                                        .target(targetOutput)
+                                        .source(registry.register(sourceOutput))
+                                        .target(registry.register(targetOutput))
                                         .sourceIndMapping(SingleReshapeSubTask.IndMapping.builder()
                                                 .dimensionMapper(dim -> dim == 1 ? 0 : (dim == 0 ? 1 : dim)) // Swap dim 0 and 1
                                                 .build())
@@ -135,6 +141,7 @@ public class ReshapeTaskTest {
 
 
         reshapeTask.reshape();
+        registry.commit();
         for (int elemInd = 0; elemInd < shapeTarget[1]; elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
                     source.tensorAlongDimension(orderToKeep[elemInd], 0, 2, 3),
@@ -158,6 +165,7 @@ public class ReshapeTaskTest {
         final long[] shapeSource = {2, 4, 3, 3};
         final long[] shapeTarget = {2, 6, 3, 3};
 
+        final ReshapeRegistry registry = new ReshapeRegistry();
 
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
@@ -166,12 +174,13 @@ public class ReshapeTaskTest {
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
                 .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .source(source)
-                        .target(target)
+                        .source(registry.register(source))
+                        .target(registry.register(target))
                         .build())
                 .build();
 
         reshapeTask.reshape();
+        registry.commit();
         for (int elemInd = 0; elemInd < shapeSource[1]; elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
                     source.tensorAlongDimension(elemInd, 0, 2, 3),
@@ -198,24 +207,25 @@ public class ReshapeTaskTest {
         final INDArray target = Nd4j.ones(shapeTarget);
         final INDArray targetOutput = Nd4j.ones(shapeTargetOutput);
 
+        final ReshapeRegistry registry = new ReshapeRegistry();
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
                 .reshapeSubTask(
                         ReshapeSubTaskList.builder()
                                 .instruction(SingleReshapeSubTask.builder()
-                                        .source(source)
-                                        .target(target)
+                                        .source(registry.register(source))
+                                        .target(registry.register(target))
                                         .build())
                                 .instruction(SingleReshapeSubTask.builder()
-                                        .source(sourceOutput)
-                                        .target(targetOutput)
+                                        .source(registry.register(sourceOutput))
+                                        .target(registry.register(targetOutput))
                                         .build())
                                 .build())
                 .build();
 
         reshapeTask.reshape();
-
+        registry.commit();
         for (int elemInd = 0; elemInd < shapeSource[1]; elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
                     source.tensorAlongDimension(elemInd, 0, 2, 3),
@@ -245,13 +255,14 @@ public class ReshapeTaskTest {
 
         final int[] orderToKeep = {0, 2, 1, 3}; // Note: first 2 indexes must be in order for testcase to pass
         final int dimOneElemOffset = 1;
+        final ReshapeRegistry registry = new ReshapeRegistry();
         final ReshapeTask reshapeTask = ReshapeTask.builder()
                 .sourceShape(shapeSource)
                 .targetShape(shapeTarget)
                 .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .compFactory(dummy -> Comparator.comparingInt(i -> Ints.indexOf(orderToKeep, i)))
-                        .source(source)
-                        .target(target)
+                        .compFactory(fixedOrderComp(orderToKeep))
+                        .source(registry.register(source))
+                        .target(registry.register(target))
                         .targetIndMapping(SingleReshapeSubTask.IndMapping.builder()
                                 .remapper(dim -> dim == 1 ? elem -> elem + dimOneElemOffset : IntUnaryOperator.identity())
                                 .build())
@@ -259,6 +270,7 @@ public class ReshapeTaskTest {
                 .build();
 
         reshapeTask.reshape();
+        registry.commit();
         for (int elemInd0 = 0; elemInd0 < shapeTarget[0]; elemInd0++) {
             for (int elemInd1 = 0; elemInd1 < shapeSource[1]; elemInd1++) {
                 assertEquals("Incorrect target for element index " + elemInd0 + " + " + elemInd1 + "!",
@@ -275,8 +287,93 @@ public class ReshapeTaskTest {
 
     }
 
+    /**
+     * Test size decrease of two different dimensions, once due to input pruning and once
+     * due to output pruning.
+     */
+    @Test
+    public void applySizeDecreaseTwiceDifferentInstances() {
+        final long[] shapeSource = {5, 1, 2, 2}; // Dim 0 is coupled to dim1 sourceOutput
+        final long[] shapeTarget = {3, 1, 2, 2}; // Dim 0 is coupled to dim1 targetOutput, dim0 is decreased
+        final long[] shapeSourceOutput = {4, 5, 2, 2}; // Dim 1 is coupled to dim0 in source
+        final long[] shapeTargetOutput = {2, 3, 2, 2}; // Dim 1 is coupled to dim0 target, dim0 is decreased compared to sourceOutput
+        final INDArray source = createLinspace(shapeSource);
+        final INDArray sourceOutput = Nd4j.reverse(createLinspace(shapeSourceOutput));
+
+        final INDArray target = Nd4j.create(shapeTarget);
+        final INDArray targetOutput = Nd4j.create(shapeTargetOutput);
+
+        final ReshapeRegistry registry = new ReshapeRegistry();
+        final int[] orderToKeepFirst = {3, 1, 4, 2, 0};
+        final int[] orderToKeepSecond = {0, 2, 3, 1};
+        final ReshapeTask reshapeTaskFirst = ReshapeTask.builder()
+                .targetShape(shapeTarget)
+                .sourceShape(shapeSource)
+                .reshapeSubTask(
+                        ReshapeSubTaskList.builder()
+                                .instruction(
+                                        SingleReshapeSubTask.builder()
+                                                .compFactory(fixedOrderComp(orderToKeepFirst))
+                                                .source(registry.register(source, "source"))
+                                                .target(registry.register(target, "target"))
+                                                .build())
+                                .instruction(SingleReshapeSubTask.builder()
+                                        .source(registry.register(sourceOutput, "sourceOut"))
+                                        .target(registry.register(targetOutput, "targetOut"))
+                                        .sourceIndMapping(SingleReshapeSubTask.IndMapping.builder()
+                                                .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
+                                                .build())
+                                        .build())
+                                .build())
+                .build();
+
+        final ReshapeTask reshapeTaskSecond = ReshapeTask.builder()
+                .targetShape(shapeTargetOutput)
+                .sourceShape(shapeSourceOutput)
+                .maskDim(1)
+                .reshapeSubTask(
+                        SingleReshapeSubTask.builder()
+                                .compFactory(fixedOrderComp(orderToKeepSecond))
+                                .source(registry.register(sourceOutput, "sourceOutShallNotBeThere"))
+                                .target(registry.register(targetOutput, "targetOutShallNotBeThere"))
+                                .build())
+                .build();
+
+        reshapeTaskFirst.reshape();
+        reshapeTaskSecond.reshape();
+        registry.commit();
+
+        final int[] expectedElemsFirst = IntStream.of(orderToKeepFirst).limit(shapeTarget[0]).sorted().toArray();
+        for (int elemInd0 = 0; elemInd0 < shapeTarget[0]; elemInd0++) {
+            assertEquals("Incorrect target for element index " + elemInd0 + "!",
+                    source.tensorAlongDimension(expectedElemsFirst[elemInd0], 1, 2, 3),
+                    target.tensorAlongDimension(elemInd0, 1, 2, 3));
+        }
+
+        final int[] expectedElemsSecond = IntStream.of(orderToKeepSecond).limit(shapeTargetOutput[0]).sorted().toArray();
+        for (int elemInd0 = 0; elemInd0 < shapeTargetOutput[0]; elemInd0++) {
+            for (int elemInd1 = 0; elemInd1 < shapeTargetOutput[1]; elemInd1++) {
+                // Remember that "expectedElemsFirst" is mapped to dim1 for output
+                assertEquals("Incorrect target output for element index " + elemInd0 + ", " + elemInd1 + "!",
+                        sourceOutput.tensorAlongDimension(expectedElemsSecond[elemInd0], 1,2,3).tensorAlongDimension(expectedElemsFirst[elemInd1],1,2),
+                        targetOutput.tensorAlongDimension(elemInd0, 1,2,3).tensorAlongDimension(elemInd1, 1,2));
+            }
+        }
+
+    }
+
     private static INDArray createLinspace(long[] shapeSource) {
         final long nrofElemsSource = Arrays.stream(shapeSource).reduce((i1, i2) -> i1 * i2).orElseThrow(() -> new IllegalArgumentException("No elements!"));
         return Nd4j.linspace(0, nrofElemsSource - 1, nrofElemsSource).reshape(shapeSource);
+    }
+
+    /**
+     * Creates a comparator with a predefined index order
+     *
+     * @param order the desired order
+     * @return a Comparator which will sort integers in the given order
+     */
+    public static Function<int[], Comparator<Integer>> fixedOrderComp(int[] order) {
+        return dummy -> Comparator.comparingInt(i -> Ints.indexOf(order, i));
     }
 }

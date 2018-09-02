@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.Comparator;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 @Getter
@@ -12,10 +13,11 @@ public class ReshapeTask {
     private final long[] targetShape;
     private final long[] sourceShape;
     private final ReshapeSubTask reshapeSubTask;
+    @lombok.Singular("maskDim") private final Set<Integer> dimensionMask;
 
     public void reshape() {
         for (int i = 0; i < targetShape.length; i++) {
-            if (targetShape[i] < sourceShape[i]) {
+            if (targetShape[i] < sourceShape[i] && !dimensionMask.contains(i)) {
                 final int tensorDim = i;
                 final int[] tensorDimensions = IntStream.range(0, targetShape.length)
                         .filter(dim -> tensorDim != dim)
