@@ -95,12 +95,12 @@ public class ReshapeRegistry {
         }
 
 
-
         private INDArrayIndex merge(INDArrayIndex index1, Optional<INDArrayIndex> index2) {
-            if (!index2.isPresent()) {
+            if (!index2.isPresent() ||index2.get().equals(index1)) {
                 return index1;
             }
-            throw new UnsupportedOperationException("Not implemented yet!");
+
+            throw new UnsupportedOperationException("Not implemented yet! name: " + debugName + " ind1 " + index1 + " ind2: " + index2.get());
         }
 
         private INDArrayIndex[] asIndArray() {

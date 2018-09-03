@@ -17,6 +17,7 @@ public class ReshapeTask {
 
     public void reshape() {
         for (int i = 0; i < targetShape.length; i++) {
+
             if (targetShape[i] < sourceShape[i] && !dimensionMask.contains(i)) {
                 final int tensorDim = i;
                 final int[] tensorDimensions = IntStream.range(0, targetShape.length)
