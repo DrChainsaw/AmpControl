@@ -17,7 +17,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class MutateNout {
+public class MutateNout implements Mutation {
 
     private final Supplier<Stream<String>> mutationLayerSupplier;
     private final IntUnaryOperator mutationFunction;
@@ -27,7 +27,7 @@ public class MutateNout {
         this.mutationFunction = mutationFunction;
     }
 
-
+    @Override
     public TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder, ComputationGraph prevGraph) {
         return mutationLayerSupplier.get().reduce(builder, (b, layername) -> mutateBuilder(b, prevGraph, layername), (b1,b2) -> b2);
     }
