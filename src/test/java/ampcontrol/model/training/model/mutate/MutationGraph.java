@@ -1,8 +1,8 @@
 package ampcontrol.model.training.model.mutate;
 
 import ampcontrol.model.training.model.mutate.reshape.ReshapeRegistry;
-import ampcontrol.model.training.model.mutate.reshape.ReshapeTask;
-import ampcontrol.model.training.model.mutate.reshape.SingleReshapeSubTask;
+import ampcontrol.model.training.model.mutate.reshape.SingleTransferTask;
+import ampcontrol.model.training.model.mutate.reshape.TransferTask;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
@@ -71,51 +71,45 @@ public class MutationGraph {
             final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
             final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
 
-            ReshapeTask.Builder taskBuilder = ReshapeTask.builder()
-                    .sourceShape(sourceParams.get(DefaultParamInitializer.WEIGHT_KEY).shape())
-                    .targetShape(targetParams.get(DefaultParamInitializer.WEIGHT_KEY).shape());
-
-            SingleReshapeSubTask.Builder reshapeListBuilder = initReshapeListBuilder(registry, layerName, sourceParams, targetParams);
+            TransferTask.ListBuilder taskBuilder = initReshapeListBuilder(registry, layerName, sourceParams, targetParams);
 
             Optional.ofNullable(targetVertex.getOutputVertices())
                     .ifPresent(vertexIndices -> {
                         for (VertexIndices vertexIndex : vertexIndices) {
                             final String name = newGraph.getVertices()[vertexIndex.getVertexIndex()].getVertexName();
-                            transferOutputParameters(registry, newGraph, name, reshapeListBuilder);
+                            transferOutputParameters(registry, newGraph, name, taskBuilder);
                         }
                     });
 
-            taskBuilder.reshapeSubTask(reshapeListBuilder.build())
-                    .build()
-                    .reshape();
+            taskBuilder.build().execute();
         }
     }
 
-    private SingleReshapeSubTask.Builder initReshapeListBuilder(
+    private TransferTask.ListBuilder initReshapeListBuilder(
             ReshapeRegistry registry,
             String layerName,
             Map<String, INDArray> sourceParams,
             Map<String, INDArray> targetParams) {
 
-        final SingleReshapeSubTask.Builder firstSubtaskBuilder = SingleReshapeSubTask.builder()
+        final SingleTransferTask.Builder firstTaskBuilder = SingleTransferTask.builder()
                 .maskDim(1) // Dim 1 is input dim. Shall be transferred based on cropped outputs from previous layer
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(sourceParams.get(DefaultParamInitializer.WEIGHT_KEY), layerName + "_source_W"))
                         .build())
-                .target(SingleReshapeSubTask.IndMapping.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(targetParams.get(DefaultParamInitializer.WEIGHT_KEY), layerName + "_target_W"))
                         .build());
 
         compFactory.apply(layerName)
-                .ifPresent(firstSubtaskBuilder::compFactory);
+                .ifPresent(firstTaskBuilder::compFactory);
 
-        return firstSubtaskBuilder
-                .addDependentTask(SingleReshapeSubTask.builder()
-                        .source(SingleReshapeSubTask.IndMapping.builder()
+        return firstTaskBuilder
+                .addDependentTask(SingleTransferTask.builder()
+                        .source(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(sourceParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_source_b"))
                                 .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : 1)
                                 .build())
-                        .target(SingleReshapeSubTask.IndMapping.builder()
+                        .target(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(targetParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_target_b"))
                                 .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
                                 .build())
@@ -126,7 +120,7 @@ public class MutationGraph {
             ReshapeRegistry registry,
             ComputationGraph newGraph,
             String layerName,
-            SingleReshapeSubTask.Builder sublistBuilder) {
+            TransferTask.ListBuilder taskListBuilder) {
         Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
         Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
 
@@ -139,12 +133,12 @@ public class MutationGraph {
             final INDArray sourceParam = sourceParams.get(DefaultParamInitializer.WEIGHT_KEY);
             final INDArray targetParam = targetParams.get(DefaultParamInitializer.WEIGHT_KEY);
 
-            sublistBuilder.addDependentTask(SingleReshapeSubTask.builder()
-                    .source(SingleReshapeSubTask.IndMapping.builder()
+            taskListBuilder.addDependentTask(SingleTransferTask.builder()
+                    .source(SingleTransferTask.IndMapping.builder()
                             .entry(registry.register(sourceParam, layerName + "_source_W"))
                             .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim) // flip dim 0 and 1
                             .build())
-                    .target(SingleReshapeSubTask.IndMapping.builder()
+                    .target(SingleTransferTask.IndMapping.builder()
                             .entry(registry.register(targetParam, layerName + "_target_W"))
                             .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim) // flip dim 0 and 1
                             .build()));

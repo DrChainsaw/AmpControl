@@ -1,13 +1,12 @@
 package ampcontrol.model.training.model.mutate.reshape;
 
-import java.util.Comparator;
-
 /**
- * No-op used to terminate a chain of {@link ReshapeSubTask}s
+ * No-op typically used to terminate a chain of dependent {@link TransferTask}s
  *
  * @author Christian Skärby
  */
-public class NoTransferTask implements ReshapeSubTask {
+public class NoTransferTask implements TransferTask {
+
     @Override
     public void addWantedElementsFromSource(int dim, int[] indexes) {
         // Ignore
@@ -16,11 +15,6 @@ public class NoTransferTask implements ReshapeSubTask {
     @Override
     public void addWantedNrofElementsFromTarget(int dim, int nrofElements) {
         // Ignore
-    }
-
-    @Override
-    public Comparator<Integer> getComparator(int[] tensorDimensions) {
-        return null;
     }
 
     @Override

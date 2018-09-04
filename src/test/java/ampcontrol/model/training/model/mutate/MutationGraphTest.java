@@ -1,6 +1,6 @@
 package ampcontrol.model.training.model.mutate;
 
-import ampcontrol.model.training.model.mutate.reshape.ReshapeTaskTest;
+import ampcontrol.model.training.model.mutate.reshape.SingleTransferTaskTest;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
 import org.deeplearning4j.nn.conf.inputs.InputType;
@@ -49,8 +49,8 @@ public class MutationGraphTest {
         final int[] orderToKeepFirst = {1, 3, 5, 6, 7, 9, 2, 4, 8, 0};
         final int[] orderToKeepSecond = {0, 3, 4, 2, 1};
         final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
-        comparatorMap.put(mutationName, ReshapeTaskTest.fixedOrderComp(orderToKeepFirst));
-        comparatorMap.put(nextMutationName, ReshapeTaskTest.fixedOrderComp(orderToKeepSecond));
+        comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
+        comparatorMap.put(nextMutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepSecond));
 
         final MutationGraph mutationGraph = new MutationGraph(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
@@ -108,7 +108,7 @@ public class MutationGraphTest {
 
         final int[] orderToKeepFirst = {0, 1, 4, 6, 7, 5, 2, 3, 8, 9};
         final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
-        comparatorMap.put(mutationName, ReshapeTaskTest.fixedOrderComp(orderToKeepFirst));
+        comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
 
         final MutationGraph mutationGraph = new MutationGraph(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));

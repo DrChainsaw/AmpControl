@@ -14,11 +14,11 @@ import java.util.stream.IntStream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Test cases for {@link ReshapeTask}
+ * Test cases for {@link SingleTransferTask}
  *
  * @author Christian Skärby
  */
-public class ReshapeTaskTest {
+public class SingleTransferTaskTest {
 
     /**
      * Test pruning in one dimension out of four
@@ -30,11 +30,11 @@ public class ReshapeTaskTest {
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
         final ReshapeRegistry registry = new ReshapeRegistry();
-        SingleReshapeSubTask.builder()
-                .target(SingleReshapeSubTask.IndMapping.builder()
+        SingleTransferTask.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source))
                         .build())
                 .build().execute();
@@ -77,11 +77,11 @@ public class ReshapeTaskTest {
         shape[2] -= 1;
         final INDArray target = Nd4j.create(shape);
         final ReshapeRegistry registry = new ReshapeRegistry();
-        SingleReshapeSubTask.builder()
-                .target(SingleReshapeSubTask.IndMapping.builder()
+        SingleTransferTask.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source))
                         .build())
                 .build().execute();
@@ -116,19 +116,19 @@ public class ReshapeTaskTest {
         final INDArray targetOutput = Nd4j.create(shapeTargetOutput);
 
         final ReshapeRegistry registry = new ReshapeRegistry();
-        SingleReshapeSubTask.builder()
+        SingleTransferTask.builder()
                 .compFactory(fixedOrderComp(orderToKeep))
-                .target(SingleReshapeSubTask.IndMapping.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target, "target"))
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source, "source"))
                         .build())
-                .addDependentTask(SingleReshapeSubTask.builder()
-                        .target(SingleReshapeSubTask.IndMapping.builder()
+                .addDependentTask(SingleTransferTask.builder()
+                        .target(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(targetOutput, "targetOutput"))
                                 .build())
-                        .source(SingleReshapeSubTask.IndMapping.builder()
+                        .source(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(sourceOutput, "sourceOutput"))
                                 .dimensionMapper(dim -> dim == 1 ? 0 : (dim == 0 ? 1 : dim)) // Swap dim 0 and 1
                                 .build()))
@@ -164,11 +164,11 @@ public class ReshapeTaskTest {
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
 
-        SingleReshapeSubTask.builder()
-                .target(SingleReshapeSubTask.IndMapping.builder()
+        SingleTransferTask.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source))
                         .build())
                 .build().execute();
@@ -201,19 +201,19 @@ public class ReshapeTaskTest {
         final INDArray targetOutput = Nd4j.ones(shapeTargetOutput);
 
         final ReshapeRegistry registry = new ReshapeRegistry();
-        SingleReshapeSubTask.builder()
-                .target(SingleReshapeSubTask.IndMapping.builder()
+        SingleTransferTask.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source))
                         .build())
-                .addDependentTask(SingleReshapeSubTask.builder()
-                        .target(SingleReshapeSubTask.IndMapping.builder()
+                .addDependentTask(SingleTransferTask.builder()
+                        .target(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(targetOutput))
                                 .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
                                 .build())
-                        .source(SingleReshapeSubTask.IndMapping.builder()
+                        .source(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(sourceOutput))
                                 .build()))
                 .build().execute();
@@ -249,13 +249,13 @@ public class ReshapeTaskTest {
         final int[] orderToKeep = {0, 2, 1, 3}; // Note: first 2 indexes must be in order for testcase to pass
         final int dimOneElemOffset = 1;
         final ReshapeRegistry registry = new ReshapeRegistry();
-        SingleReshapeSubTask.builder()
+        SingleTransferTask.builder()
                 .compFactory(fixedOrderComp(orderToKeep))
-                .target(SingleReshapeSubTask.IndMapping.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
                         .remapper(dim -> dim == 1 ? elem -> elem + dimOneElemOffset : IntUnaryOperator.identity())
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source))
                         .build())
                 .build().execute();
@@ -296,31 +296,31 @@ public class ReshapeTaskTest {
         final ReshapeRegistry registry = new ReshapeRegistry();
         final int[] orderToKeepFirst = {3, 1, 4, 2, 0};
         final int[] orderToKeepSecond = {0, 2, 3, 1};
-        SingleReshapeSubTask.builder()
+        SingleTransferTask.builder()
                 .compFactory(fixedOrderComp(orderToKeepFirst))
-                .target(SingleReshapeSubTask.IndMapping.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target, "target"))
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source, "source"))
                         .build())
-                .addDependentTask(SingleReshapeSubTask.builder()
-                        .target(SingleReshapeSubTask.IndMapping.builder()
+                .addDependentTask(SingleTransferTask.builder()
+                        .target(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(targetOutput, "targetOutput"))
                                 .build())
-                        .source(SingleReshapeSubTask.IndMapping.builder()
+                        .source(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(sourceOutput, "sourceOutput"))
                                 .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
                                 .build()))
                 .build().execute();
 
-        SingleReshapeSubTask.builder()
+        SingleTransferTask.builder()
                 .maskDim(1)
                 .compFactory(fixedOrderComp(orderToKeepSecond))
-                .target(SingleReshapeSubTask.IndMapping.builder()
+                .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(targetOutput, "targetShallNotBeThere"))
                         .build())
-                .source(SingleReshapeSubTask.IndMapping.builder()
+                .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(sourceOutput, "sourceShallNotBeThere"))
                         .build())
                 .build().execute();
