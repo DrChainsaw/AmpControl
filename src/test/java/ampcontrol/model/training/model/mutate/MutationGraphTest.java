@@ -152,7 +152,7 @@ public class MutationGraphTest {
     }
 
     @NotNull
-    ComputationGraph getCnnGraph(String mutationName, String nextMutationName, String afterName) {
+    static ComputationGraph getCnnGraph(String mutationName, String nextMutationName, String afterName) {
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .weightInit(new ConstantDistribution(666))
                 .graphBuilder()

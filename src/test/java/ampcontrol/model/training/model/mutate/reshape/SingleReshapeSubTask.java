@@ -1,34 +1,42 @@
 package ampcontrol.model.training.model.mutate.reshape;
 
 import lombok.Builder;
-import lombok.Setter;
+import lombok.Getter;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.indexing.SpecifiedIndex;
 
 import java.util.Comparator;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
 
+/**
+ * Task to transfer weights from a source to a target {@link IndMapping}, typically when source and target
+ * have different sizes.
+ *
+ * @author Christian Skärby
+ */
 @Builder(builderClassName = "Builder", buildMethodName = "buildInternal")
 public class SingleReshapeSubTask implements ReshapeSubTask {
 
-    private final ReshapeRegistry.ArrayEntry source;
-    private final ReshapeRegistry.ArrayEntry target;
     @lombok.Builder.Default
-    private final IndMapping sourceIndMapping = IndMapping.builder().build();
+    private final IndMapping source = IndMapping.builder().build();
     @lombok.Builder.Default
-    private final IndMapping targetIndMapping = IndMapping.builder().build();
+    private final IndMapping target = IndMapping.builder().build();
     private final Function<int[], Comparator<Integer>> compFactory;
+    @lombok.Singular("maskDim") private final Set<Integer> dimensionMask;
+    @lombok.Builder.Default private final ReshapeSubTask dependentTask = new NoTransferTask();
 
 
     @lombok.Builder(builderClassName = "Builder")
     public static class IndMapping {
 
-        @Setter
-        private ReshapeRegistry.ArrayEntry entry;
+        @Getter
+        private final ReshapeRegistry.ArrayEntry entry;
         @lombok.Builder.Default
         private final IntUnaryOperator dimensionMapper = IntUnaryOperator.identity();
         @lombok.Builder.Default
@@ -47,23 +55,16 @@ public class SingleReshapeSubTask implements ReshapeSubTask {
         }
     }
 
-    private void init() {
-        sourceIndMapping.setEntry(source);
-        targetIndMapping.setEntry(target);
-        final long[] shapeSource = source.shape();
-        final long[] shapeTarget = target.shape();
-
-        for (int i = 0; i < shapeTarget.length; i++) {
-            if (shapeTarget[i] > shapeSource[i]) {
-                targetIndMapping.addWantedNrofElements(i, (int) shapeSource[i]);
-            }
-        }
-
+    @Override
+    public void addWantedElementsFromSource(int dim, int[] indexes) {
+        source.addWantedElements(dim, indexes);
+        dependentTask.addWantedElementsFromSource(dim, indexes);
     }
 
     @Override
-    public void addWantedElements(int dim, int[] wantedElementInds) {
-        sourceIndMapping.addWantedElements(dim, wantedElementInds);
+    public void addWantedNrofElementsFromTarget(int dim, int nrofElements) {
+        target.addWantedNrofElements(dim, nrofElements);
+        dependentTask.addWantedNrofElementsFromTarget(dim, nrofElements);
     }
 
     @Override
@@ -72,19 +73,71 @@ public class SingleReshapeSubTask implements ReshapeSubTask {
     }
 
     @Override
-    public void assign() {
-        target.put(source);
+    public void execute() {
+        final long[] sourceShape = source.getEntry().shape();
+        final long[] targetShape = target.getEntry().shape();
+
+        for (int i = 0; i < targetShape.length; i++) {
+            if(dimensionMask.contains(i)) {
+                continue;
+            }
+
+            if (targetShape[i] < sourceShape[i]) {
+                final int tensorDim = i;
+                final int[] tensorDimensions = IntStream.range(0, targetShape.length)
+                        .filter(dim -> tensorDim != dim)
+                        .toArray();
+
+                final Comparator<Integer> comparator = compFactory.apply(tensorDimensions);
+                final int[] wantedElements = IntStream.range(0, (int) sourceShape[tensorDim])
+                        .boxed()
+                        .sorted(comparator)
+                        .limit(targetShape[tensorDim])
+                        .mapToInt(e -> e)
+                        .sorted()
+                        .toArray();
+
+                addWantedElementsFromSource(tensorDim, wantedElements);
+            }
+
+            if (targetShape[i] > sourceShape[i]) {
+                addWantedNrofElementsFromTarget(i, (int) sourceShape[i]);
+            }
+        }
     }
+
 
     public static class Builder {
         // Used through lombok
-        private Function<int[], Comparator<Integer>> compFactory = tensorDimensions -> source.defaultComparatorFactory(tensorDimensions);
+        private Function<int[], Comparator<Integer>> compFactory = tensorDimensions -> source.getEntry().defaultComparatorFactory(tensorDimensions);
+
+        private Optional<Builder> dependentTaskBuilder = Optional.empty();
 
         // To trick lombok so all boilerplate is done in autogenerated buildInternal
         public SingleReshapeSubTask build() {
-            final SingleReshapeSubTask spi = this.buildInternal();
-            spi.init();
-            return spi;
+            target.getEntry().put(source.getEntry());
+            dependentTaskBuilder.ifPresent(builder -> dependentTask(builder.build()));
+            return this.buildInternal();
+        }
+
+        /**
+         * Adds a {@link Builder} for a dependent {@link ReshapeSubTask}. If a builder is already set, the added builder
+         * will be added as a dependent builder for the existing builder, thus creating a linked list of dependent tasks
+         * @param dependentTaskBuilder the dependent task
+         * @return This builder
+         */
+        public Builder addDependentTask(Builder dependentTaskBuilder) {
+            if(!this.dependentTaskBuilder.isPresent()) {
+                this.dependentTaskBuilder = Optional.of(dependentTaskBuilder);
+            } else {
+                this.dependentTaskBuilder.get().addDependentTask(dependentTaskBuilder);
+            }
+            return this;
+        }
+
+        private Builder dependendTask(ReshapeSubTask dependentTask) {
+            this.dependentTask = dependentTask;
+            return this;
         }
     }
 }

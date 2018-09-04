@@ -30,16 +30,15 @@ public class ReshapeTaskTest {
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
         final ReshapeRegistry registry = new ReshapeRegistry();
-        final ReshapeTask reshapeTask = ReshapeTask.builder()
-                .targetShape(shapeTarget)
-                .sourceShape(shapeSource)
-                .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .source(registry.register(source))
-                        .target(registry.register(target))
+        SingleReshapeSubTask.builder()
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(target))
                         .build())
-                .build();
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(source))
+                        .build())
+                .build().execute();
 
-        reshapeTask.reshape();
         registry.commit();
         final INDArray expected = Nd4j.create(new double[][][][]{{
                 {
@@ -78,16 +77,15 @@ public class ReshapeTaskTest {
         shape[2] -= 1;
         final INDArray target = Nd4j.create(shape);
         final ReshapeRegistry registry = new ReshapeRegistry();
-        final ReshapeTask reshapeTask = ReshapeTask.builder()
-                .targetShape(target.shape())
-                .sourceShape(source.shape())
-                .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .source(registry.register(source))
-                        .target(registry.register(target))
+        SingleReshapeSubTask.builder()
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(target))
                         .build())
-                .build();
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(source))
+                        .build())
+                .build().execute();
 
-        reshapeTask.reshape();
         registry.commit();
         final INDArray expected = Nd4j.create(new double[][][][]{
                 {{{6}}, {{4}}, {{2}}},
@@ -118,29 +116,25 @@ public class ReshapeTaskTest {
         final INDArray targetOutput = Nd4j.create(shapeTargetOutput);
 
         final ReshapeRegistry registry = new ReshapeRegistry();
-        final ReshapeTask reshapeTask = ReshapeTask.builder()
-                .sourceShape(shapeSource)
-                .targetShape(shapeTarget)
-                .reshapeSubTask(
-                        ReshapeSubTaskList.builder()
-                                .instruction(SingleReshapeSubTask.builder()
-                                        .compFactory(fixedOrderComp(orderToKeep))
-                                        .source(registry.register(source))
-                                        .target(registry.register(target))
-                                        .build())
-                                .instruction(SingleReshapeSubTask.builder()
-                                        .source(registry.register(sourceOutput))
-                                        .target(registry.register(targetOutput))
-                                        .sourceIndMapping(SingleReshapeSubTask.IndMapping.builder()
-                                                .dimensionMapper(dim -> dim == 1 ? 0 : (dim == 0 ? 1 : dim)) // Swap dim 0 and 1
-                                                .build())
-                                        .build())
-
+        SingleReshapeSubTask.builder()
+                .compFactory(fixedOrderComp(orderToKeep))
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(target, "target"))
+                        .build())
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(source, "source"))
+                        .build())
+                .addDependentTask(SingleReshapeSubTask.builder()
+                        .target(SingleReshapeSubTask.IndMapping.builder()
+                                .entry(registry.register(targetOutput, "targetOutput"))
                                 .build())
-                .build();
+                        .source(SingleReshapeSubTask.IndMapping.builder()
+                                .entry(registry.register(sourceOutput, "sourceOutput"))
+                                .dimensionMapper(dim -> dim == 1 ? 0 : (dim == 0 ? 1 : dim)) // Swap dim 0 and 1
+                                .build()))
+                .build()
+                .execute();
 
-
-        reshapeTask.reshape();
         registry.commit();
         for (int elemInd = 0; elemInd < shapeTarget[1]; elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
@@ -170,16 +164,15 @@ public class ReshapeTaskTest {
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
 
-        final ReshapeTask reshapeTask = ReshapeTask.builder()
-                .sourceShape(shapeSource)
-                .targetShape(shapeTarget)
-                .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .source(registry.register(source))
-                        .target(registry.register(target))
+        SingleReshapeSubTask.builder()
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(target))
                         .build())
-                .build();
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(source))
+                        .build())
+                .build().execute();
 
-        reshapeTask.reshape();
         registry.commit();
         for (int elemInd = 0; elemInd < shapeSource[1]; elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
@@ -189,7 +182,7 @@ public class ReshapeTaskTest {
     }
 
     /**
-     * Test increasing the size
+     * Test increasing the size of a dependent task
      */
     @Test
     public void applySizeIncreaseCoupled() {
@@ -208,23 +201,23 @@ public class ReshapeTaskTest {
         final INDArray targetOutput = Nd4j.ones(shapeTargetOutput);
 
         final ReshapeRegistry registry = new ReshapeRegistry();
-        final ReshapeTask reshapeTask = ReshapeTask.builder()
-                .sourceShape(shapeSource)
-                .targetShape(shapeTarget)
-                .reshapeSubTask(
-                        ReshapeSubTaskList.builder()
-                                .instruction(SingleReshapeSubTask.builder()
-                                        .source(registry.register(source))
-                                        .target(registry.register(target))
-                                        .build())
-                                .instruction(SingleReshapeSubTask.builder()
-                                        .source(registry.register(sourceOutput))
-                                        .target(registry.register(targetOutput))
-                                        .build())
+        SingleReshapeSubTask.builder()
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(target))
+                        .build())
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(source))
+                        .build())
+                .addDependentTask(SingleReshapeSubTask.builder()
+                        .target(SingleReshapeSubTask.IndMapping.builder()
+                                .entry(registry.register(targetOutput))
+                                .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
                                 .build())
-                .build();
+                        .source(SingleReshapeSubTask.IndMapping.builder()
+                                .entry(registry.register(sourceOutput))
+                                .build()))
+                .build().execute();
 
-        reshapeTask.reshape();
         registry.commit();
         for (int elemInd = 0; elemInd < shapeSource[1]; elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
@@ -256,20 +249,17 @@ public class ReshapeTaskTest {
         final int[] orderToKeep = {0, 2, 1, 3}; // Note: first 2 indexes must be in order for testcase to pass
         final int dimOneElemOffset = 1;
         final ReshapeRegistry registry = new ReshapeRegistry();
-        final ReshapeTask reshapeTask = ReshapeTask.builder()
-                .sourceShape(shapeSource)
-                .targetShape(shapeTarget)
-                .reshapeSubTask(SingleReshapeSubTask.builder()
-                        .compFactory(fixedOrderComp(orderToKeep))
-                        .source(registry.register(source))
-                        .target(registry.register(target))
-                        .targetIndMapping(SingleReshapeSubTask.IndMapping.builder()
-                                .remapper(dim -> dim == 1 ? elem -> elem + dimOneElemOffset : IntUnaryOperator.identity())
-                                .build())
+        SingleReshapeSubTask.builder()
+                .compFactory(fixedOrderComp(orderToKeep))
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(target))
+                        .remapper(dim -> dim == 1 ? elem -> elem + dimOneElemOffset : IntUnaryOperator.identity())
                         .build())
-                .build();
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(source))
+                        .build())
+                .build().execute();
 
-        reshapeTask.reshape();
         registry.commit();
         for (int elemInd0 = 0; elemInd0 < shapeTarget[0]; elemInd0++) {
             for (int elemInd1 = 0; elemInd1 < shapeSource[1]; elemInd1++) {
@@ -306,41 +296,35 @@ public class ReshapeTaskTest {
         final ReshapeRegistry registry = new ReshapeRegistry();
         final int[] orderToKeepFirst = {3, 1, 4, 2, 0};
         final int[] orderToKeepSecond = {0, 2, 3, 1};
-        final ReshapeTask reshapeTaskFirst = ReshapeTask.builder()
-                .targetShape(shapeTarget)
-                .sourceShape(shapeSource)
-                .reshapeSubTask(
-                        ReshapeSubTaskList.builder()
-                                .instruction(
-                                        SingleReshapeSubTask.builder()
-                                                .compFactory(fixedOrderComp(orderToKeepFirst))
-                                                .source(registry.register(source, "source"))
-                                                .target(registry.register(target, "target"))
-                                                .build())
-                                .instruction(SingleReshapeSubTask.builder()
-                                        .source(registry.register(sourceOutput, "sourceOut"))
-                                        .target(registry.register(targetOutput, "targetOut"))
-                                        .sourceIndMapping(SingleReshapeSubTask.IndMapping.builder()
-                                                .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
-                                                .build())
-                                        .build())
+        SingleReshapeSubTask.builder()
+                .compFactory(fixedOrderComp(orderToKeepFirst))
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(target, "target"))
+                        .build())
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(source, "source"))
+                        .build())
+                .addDependentTask(SingleReshapeSubTask.builder()
+                        .target(SingleReshapeSubTask.IndMapping.builder()
+                                .entry(registry.register(targetOutput, "targetOutput"))
                                 .build())
-                .build();
+                        .source(SingleReshapeSubTask.IndMapping.builder()
+                                .entry(registry.register(sourceOutput, "sourceOutput"))
+                                .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
+                                .build()))
+                .build().execute();
 
-        final ReshapeTask reshapeTaskSecond = ReshapeTask.builder()
-                .targetShape(shapeTargetOutput)
-                .sourceShape(shapeSourceOutput)
+        SingleReshapeSubTask.builder()
                 .maskDim(1)
-                .reshapeSubTask(
-                        SingleReshapeSubTask.builder()
-                                .compFactory(fixedOrderComp(orderToKeepSecond))
-                                .source(registry.register(sourceOutput, "sourceOutShallNotBeThere"))
-                                .target(registry.register(targetOutput, "targetOutShallNotBeThere"))
-                                .build())
-                .build();
+                .compFactory(fixedOrderComp(orderToKeepSecond))
+                .target(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(targetOutput, "targetShallNotBeThere"))
+                        .build())
+                .source(SingleReshapeSubTask.IndMapping.builder()
+                        .entry(registry.register(sourceOutput, "sourceShallNotBeThere"))
+                        .build())
+                .build().execute();
 
-        reshapeTaskFirst.reshape();
-        reshapeTaskSecond.reshape();
         registry.commit();
 
         final int[] expectedElemsFirst = IntStream.of(orderToKeepFirst).limit(shapeTarget[0]).sorted().toArray();
@@ -355,8 +339,8 @@ public class ReshapeTaskTest {
             for (int elemInd1 = 0; elemInd1 < shapeTargetOutput[1]; elemInd1++) {
                 // Remember that "expectedElemsFirst" is mapped to dim1 for output
                 assertEquals("Incorrect target output for element index " + elemInd0 + ", " + elemInd1 + "!",
-                        sourceOutput.tensorAlongDimension(expectedElemsSecond[elemInd0], 1,2,3).tensorAlongDimension(expectedElemsFirst[elemInd1],1,2),
-                        targetOutput.tensorAlongDimension(elemInd0, 1,2,3).tensorAlongDimension(elemInd1, 1,2));
+                        sourceOutput.tensorAlongDimension(expectedElemsSecond[elemInd0], 1, 2, 3).tensorAlongDimension(expectedElemsFirst[elemInd1], 1, 2),
+                        targetOutput.tensorAlongDimension(elemInd0, 1, 2, 3).tensorAlongDimension(elemInd1, 1, 2));
             }
         }
 

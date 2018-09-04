@@ -68,7 +68,6 @@ public class ReshapeRegistry {
         }
 
         private INDArray get() {
-
             // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
             if(indexMap.isEmpty()) {
                 return array.dup();
@@ -96,7 +95,8 @@ public class ReshapeRegistry {
 
 
         private INDArrayIndex merge(INDArrayIndex index1, Optional<INDArrayIndex> index2) {
-            if (!index2.isPresent() ||index2.get().equals(index1)) {
+            // Equals check is a hack since I couldn't figure out the right place to transfer when size is increased
+            if (!index2.isPresent() || index2.get().equals(index1)) {
                 return index1;
             }
 
