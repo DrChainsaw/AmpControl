@@ -1,13 +1,14 @@
 package ampcontrol.model.training.model.mutate;
 
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
-import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.graph.vertex.GraphVertex;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
-import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.nn.graph.vertex.VertexIndices;
+import org.deeplearning4j.nn.transferlearning.TransferLearning.GraphBuilder;
 
-import java.util.Objects;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -28,27 +29,55 @@ public class MutateNout implements Mutation {
     }
 
     @Override
-    public TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder, ComputationGraph prevGraph) {
-        return mutationLayerSupplier.get().reduce(builder, (b, layername) -> mutateBuilder(b, prevGraph, layername), (b1,b2) -> b2);
+    public GraphBuilder mutate(GraphBuilder builder, ComputationGraph prevGraph) {
+        final Map<String, FeedForwardLayer> changedLayers = new HashMap<>(); // To be filled in
+        mutationLayerSupplier.get().forEach(layerName -> updateNoutOfLayer(changedLayers, builder, prevGraph, layerName));
+        return builder;
     }
 
-    private TransferLearning.GraphBuilder mutateBuilder(TransferLearning.GraphBuilder builder, ComputationGraph prevGraph, String layerName) {
-        final ComputationGraph tmpGraph = builder.nOutReplace(layerName, mutateNout(prevGraph, layerName), WeightInit.ZERO).build();
-        return new TransferLearning.GraphBuilder(tmpGraph);
+    private GraphBuilder updateNoutOfLayer(
+            Map<String, FeedForwardLayer> changedLayers,
+            GraphBuilder builder,
+            ComputationGraph prevGraph,
+            String layerName) {
+        final FeedForwardLayer newLayerConf = changedLayers.computeIfAbsent(layerName,
+                key -> (FeedForwardLayer) prevGraph.getLayer(layerName).conf().getLayer().clone());
+        newLayerConf.setNOut(mutationFunction.applyAsInt((int) newLayerConf.getNOut()));
+
+        final List<String> inputs = prevGraph.getConfiguration().getVertexInputs().get(layerName);
+        builder.removeVertexKeepConnections(layerName)
+                .addLayer(layerName, newLayerConf, inputs.toArray(new String[0]));
+
+        updateNinOfOutputs(changedLayers, builder, prevGraph, layerName, prevGraph.layerSize(layerName) - newLayerConf.getNOut());
+        return builder;
     }
 
-    private int mutateNout(ComputationGraph prevGraph, String layerName) {
-        GraphVertex vertex = Objects.requireNonNull(prevGraph.getVertex(layerName));
+    private void updateNinOfOutputs(
+            Map<String, FeedForwardLayer> changedLayers,
+            GraphBuilder builder,
+            ComputationGraph prevGraph,
+            String layerName,
+            long nNinDelta) {
+        Stream.of(Optional.ofNullable(prevGraph.getVertex(layerName).getOutputVertices()).orElse(new VertexIndices[0]))
+                .map(vertexInd -> prevGraph.getVertices()[vertexInd.getVertexIndex()])
+                .filter(vertex -> !vertex.getVertexName().equals(layerName))
+                .forEachOrdered(graphVertex -> {
+                    if (graphVertex.hasLayer() && graphVertex.getLayer().conf().getLayer() instanceof FeedForwardLayer) { // Layer for which it is possible to set inputs
+                        final FeedForwardLayer newLayerConf = changedLayers.computeIfAbsent(graphVertex.getVertexName(),
+                                key -> (FeedForwardLayer) graphVertex.getLayer().conf().getLayer().clone());
+                        newLayerConf.setNIn(newLayerConf.getNIn() - nNinDelta);
+                        final List<String> vertexInputs = prevGraph.getConfiguration().getVertexInputs().get(newLayerConf.getLayerName());
+                        builder.removeVertexKeepConnections(newLayerConf.getLayerName());
 
-        if (!vertex.hasLayer()) {
-            throw new IllegalArgumentException("Vertex " + layerName + " has no layer!");
-        }
-
-        final Layer layer = vertex.getLayer().conf().getLayer();
-        if (layer instanceof FeedForwardLayer) {
-            return mutationFunction.applyAsInt((int) ((FeedForwardLayer) layer).getNOut());
-        }
-        throw new IllegalArgumentException("Can not mutate Nout of layer: " + layer);
-
+                        builder.addLayer(
+                                newLayerConf.getLayerName(),
+                                newLayerConf,
+                                vertexInputs.toArray(new String[0]));
+                    }
+                    if (Mutation.doesNinPropagateToNext(graphVertex)) {
+                        updateNinOfOutputs(changedLayers, builder, prevGraph, graphVertex.getVertexName(), nNinDelta);
+                    }
+                });
     }
+
 }

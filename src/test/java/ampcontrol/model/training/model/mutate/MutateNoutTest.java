@@ -1,10 +1,9 @@
 package ampcontrol.model.training.model.mutate;
 
-import org.deeplearning4j.nn.api.Layer;
-import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.junit.Test;
+import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.stream.Stream;
 
@@ -27,15 +26,15 @@ public class MutateNoutTest {
         final String noMut = "noMut";
         final ComputationGraph graph = MutationGraphTest.getCnnGraph(mut1, mut2, noMut);
 
-        final MutateNout mutateNout = new MutateNout(() -> Stream.of(mut1, mut2), i -> 2*i);
+        final MutateNout mutateNout = new MutateNout(() -> Stream.of(mut1, mut2), i -> 2 * i);
         final ComputationGraph newGraph = mutateNout.mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+        newGraph.init();
 
-        assertEquals("Incorrect nOut!", 2 * getNout(graph.getLayer(mut1)), getNout(newGraph.getLayer(mut1)));
-        assertEquals("Incorrect nOut!", 2 * getNout(graph.getLayer(mut2)), getNout(newGraph.getLayer(mut2)));
-        assertEquals("Incorrect nOut!", getNout(graph.getLayer(noMut)), getNout(newGraph.getLayer(noMut)));
-    }
+        assertEquals("Incorrect nOut!", 2 * graph.layerSize(mut1), newGraph.layerSize(mut1));
+        assertEquals("Incorrect nOut!", 2 * graph.layerSize(mut2), newGraph.layerSize(mut2));
+        assertEquals("Incorrect nOut!", graph.layerSize(noMut), newGraph.layerSize(noMut));
 
-    private long getNout(Layer layer) {
-        return ((FeedForwardLayer)layer.conf().getLayer()).getNOut();
+        graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
 }

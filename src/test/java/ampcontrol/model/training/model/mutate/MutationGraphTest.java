@@ -6,6 +6,7 @@ import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.Convolution2D;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
+import org.deeplearning4j.nn.conf.layers.SubsamplingLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
@@ -19,6 +20,7 @@ import org.nd4j.linalg.indexing.NDArrayIndex;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertEquals;
 
@@ -37,7 +39,7 @@ public class MutationGraphTest {
 
 
     /**
-     * Test to decrease nOut in a CNN layer which is input to another CNN layer and see that weights get transferred
+     * Test to decrease nOut in a CNN layer which is input to another CNN layer and see that weights get transferred.
      */
     @Test
     public void decreaseNoutCnnToCnn() {
@@ -55,28 +57,10 @@ public class MutationGraphTest {
         final MutationGraph mutationGraph = new MutationGraph(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
-        // Workaround for dl4j issue #6343. Create the graphs step by step to avoid overwriting nIn to nextMutationName
-         final ComputationGraph newGraph = new TransferLearning.GraphBuilder(new TransferLearning
-                .GraphBuilder(graph)
-                .nOutReplace(mutationName, 5, new ConstantDistribution(333))
-                .build())
-          .nOutReplace(nextMutationName, 3, new ConstantDistribution(111))
-         .build();
+         final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName), prevNout -> (int)Math.ceil(prevNout / 2d))
+                 .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        assertEquals("newGraph not initialized as expected!",
-                333d,
-                newGraph.getLayer(mutationName).paramTable().get(W).meanNumber().doubleValue(), 1e-10);
-
-        assertEquals("newGraph not initialized as expected!",
-                111d,
-                newGraph.getLayer(nextMutationName).paramTable().get(W).meanNumber().doubleValue(), 1e-10);
-
-        assertEquals("newGraph not initialized as expected!",
-                111d,
-                newGraph.getLayer(afterName).paramTable().get(W).meanNumber().doubleValue(), 1e-10);
-
-
-        final ComputationGraph mutatedGraph = mutationGraph.mutateTo(newGraph.getConfiguration());
+        final ComputationGraph mutatedGraph = mutationGraph.mutateTo(newGraph);
 
         final INDArray source = graph.getLayer(mutationName).getParam(W);
         final INDArray target = mutatedGraph.getLayer(mutationName).getParam(W);
@@ -99,6 +83,9 @@ public class MutationGraphTest {
         assertDims(1, orderToKeepSecond, sourceOutput, targetOutput);
     }
 
+    /**
+     * Test one layer increases while the other one increases and see that weights are transferred.
+     */
     @Test
     public void decreaseIncreaseCnnToCnn() {
         final String mutationName = "toMutate";
@@ -113,19 +100,17 @@ public class MutationGraphTest {
         final MutationGraph mutationGraph = new MutationGraph(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
+        final int mutationNewNout = 5;
+        final int mutationPrevNout = graph.layerSize(mutationName);
         final int nextMutationNewNout = 9;
-        final int nextMutationPrevNout = 5;
-        final double nextMutationNewVal = 111d;
-        // Workaround for dl4j issue #6343. Create the graphs step by step to avoid overwriting nIn to nextMutationName
-        final ComputationGraph newGraph = new TransferLearning.GraphBuilder(new TransferLearning
-                .GraphBuilder(graph)
-                .nOutReplace(mutationName, 5, new ConstantDistribution(333))
-                .build())
-                .nOutReplace(nextMutationName, nextMutationNewNout, new ConstantDistribution(nextMutationNewVal))
-                .build();
+        final int nextMutationPrevNout = graph.layerSize(nextMutationName);
+        final double nextMutationNewVal = 666d; // Is this obtainable somehow?
 
+        final ComputationGraph newGraph = new MutateNout(() ->Stream.of(mutationName, nextMutationName),
+                prevNout -> prevNout == mutationPrevNout ? mutationNewNout : prevNout == nextMutationPrevNout ? nextMutationNewNout : -1)
+                .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        final ComputationGraph mutatedGraph = mutationGraph.mutateTo(newGraph.getConfiguration());
+        final ComputationGraph mutatedGraph = mutationGraph.mutateTo(newGraph);
 
         final INDArray source = graph.getLayer(mutationName).getParam(W);
         final INDArray target = mutatedGraph.getLayer(mutationName).getParam(W);
@@ -165,9 +150,10 @@ public class MutationGraphTest {
                 .addLayer(nextMutationName, new Convolution2D.Builder(1, 1)
                         .nOut(5)
                         .build(), mutationName)
+                .addLayer("pool", new SubsamplingLayer.Builder().build(), nextMutationName)
                 .addLayer(afterName, new Convolution2D.Builder(2, 2)
                         .nOut(7)
-                        .build(), nextMutationName)
+                        .build(), "pool")
                 .addLayer(outputName, new OutputLayer.Builder()
                         .nOut(2)
                         .build(), afterName)

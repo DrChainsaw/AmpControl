@@ -33,13 +33,10 @@ public class MutationGraph {
     /**
      * Mutate the current graph into a new {@link ComputationGraphConfiguration} by transferring parameters
      *
-     * @param config configuration of the new graph
-     * @return A {@link ComputationGraph} build from the given config initialized with parameters from the existing graph
+     * @param newGraph new computation graph for which weights shall be transferred
+     * @return A {@link ComputationGraph} initialized with parameters from the existing graph
      */
-    public ComputationGraph mutateTo(ComputationGraphConfiguration config) {
-
-        final ComputationGraph newGraph = new ComputationGraph(config);
-        newGraph.init();
+    public ComputationGraph mutateTo(ComputationGraph newGraph) {
 
         final ReshapeRegistry registry = new ReshapeRegistry();
         final int[] topologicalOrder = newGraph.topologicalSortOrder();
@@ -73,13 +70,7 @@ public class MutationGraph {
 
             TransferTask.ListBuilder taskBuilder = initReshapeListBuilder(registry, layerName, sourceParams, targetParams);
 
-            Optional.ofNullable(targetVertex.getOutputVertices())
-                    .ifPresent(vertexIndices -> {
-                        for (VertexIndices vertexIndex : vertexIndices) {
-                            final String name = newGraph.getVertices()[vertexIndex.getVertexIndex()].getVertexName();
-                            transferOutputParameters(registry, newGraph, name, taskBuilder);
-                        }
-                    });
+            transferOutputParameters(registry, newGraph, targetVertex, taskBuilder);
 
             taskBuilder.build().execute();
         }
@@ -113,36 +104,45 @@ public class MutationGraph {
                                 .entry(registry.register(targetParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_target_b"))
                                 .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
                                 .build())
-                        );
+                );
     }
 
     private void transferOutputParameters(
             ReshapeRegistry registry,
             ComputationGraph newGraph,
-            String layerName,
+            GraphVertex rootNode,
             TransferTask.ListBuilder taskListBuilder) {
-        Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
-        Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
 
-        if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
-            final GraphVertex sourceVertex = sourceVertexMaybe.get();
-            final GraphVertex targetVertex = targetVertexMaybe.get();
+        Stream.of(Optional.ofNullable(rootNode.getOutputVertices()).orElse(new VertexIndices[0]))
+                .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
+                .forEachOrdered(vertex -> {
+                    final String layerName = vertex.getVertexName();
 
-            final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
-            final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
-            final INDArray sourceParam = sourceParams.get(DefaultParamInitializer.WEIGHT_KEY);
-            final INDArray targetParam = targetParams.get(DefaultParamInitializer.WEIGHT_KEY);
+                    Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
+                    Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
 
-            taskListBuilder.addDependentTask(SingleTransferTask.builder()
-                    .source(SingleTransferTask.IndMapping.builder()
-                            .entry(registry.register(sourceParam, layerName + "_source_W"))
-                            .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim) // flip dim 0 and 1
-                            .build())
-                    .target(SingleTransferTask.IndMapping.builder()
-                            .entry(registry.register(targetParam, layerName + "_target_W"))
-                            .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim) // flip dim 0 and 1
-                            .build()));
-        }
+                    if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
+                        final GraphVertex sourceVertex = sourceVertexMaybe.get();
+                        final GraphVertex targetVertex = targetVertexMaybe.get();
 
+                        final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
+                        final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
+                        final INDArray sourceParam = sourceParams.get(DefaultParamInitializer.WEIGHT_KEY);
+                        final INDArray targetParam = targetParams.get(DefaultParamInitializer.WEIGHT_KEY);
+
+                        taskListBuilder.addDependentTask(SingleTransferTask.builder()
+                                .source(SingleTransferTask.IndMapping.builder()
+                                        .entry(registry.register(sourceParam, layerName + "_source_W"))
+                                        .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim) // flip dim 0 and 1
+                                        .build())
+                                .target(SingleTransferTask.IndMapping.builder()
+                                        .entry(registry.register(targetParam, layerName + "_target_W"))
+                                        .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim) // flip dim 0 and 1
+                                        .build()));
+                    }
+                    if (Mutation.doesNinPropagateToNext(vertex)) {
+                        transferOutputParameters(registry, newGraph, vertex, taskListBuilder);
+                    }
+                });
     }
 }
