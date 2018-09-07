@@ -39,7 +39,7 @@ class TrainingHarness {
 
     private static final boolean doStatsLogging = false;
     private static final int evalEveryNrofSteps = 100;
-    private static final int nrofStepsBeforeFirstEval = 20;
+    private static final int nrofStepsBeforeFirstEval = 200;
     private static final String bestSuffix = "_best";
     private static final String scoreSuffix = ".score";
     private static final double saveThreshold = 0.9;

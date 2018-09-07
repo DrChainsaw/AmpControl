@@ -14,7 +14,7 @@ import java.util.stream.IntStream;
  *
  * @author Christian Skärby
  */
-public class TransferRegistry {
+class TransferRegistry {
 
     private final Map<INDArray, ArrayEntry> registry = new HashMap<>();
     private final Map<ArrayEntry, Runnable> actions = new LinkedHashMap<>();
@@ -112,15 +112,15 @@ public class TransferRegistry {
 
     }
 
-    public ArrayEntry register(INDArray array) {
+    ArrayEntry register(INDArray array) {
         return register(array, String.valueOf(runningNr++));
     }
 
-    public ArrayEntry register(INDArray array, String debugName) {
-        return registry.computeIfAbsent(array, arr -> new ArrayEntry(array, debugName));
+    ArrayEntry register(INDArray array, String debugName) {
+        return registry.computeIfAbsent(Objects.requireNonNull(array, "Got null array for " + debugName), arr -> new ArrayEntry(array, debugName));
     }
 
-    public void commit() {
+    void commit() {
         actions.values().forEach(Runnable::run);
     }
 }

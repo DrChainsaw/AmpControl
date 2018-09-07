@@ -20,11 +20,11 @@ import java.util.stream.Stream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Test cases for {@link WeightTransfer}
+ * Test cases for {@link ParameterTransfer}
  *
  * @author Christian Skärby
  */
-public class WeightTransferTest {
+public class ParameterTransferTest {
 
 
     /**
@@ -43,13 +43,13 @@ public class WeightTransferTest {
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
         comparatorMap.put(nextMutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepSecond));
 
-        final WeightTransfer weightTransfer = new WeightTransfer(graph,
+        final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
          final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName), prevNout -> (int)Math.ceil(prevNout / 2d))
                  .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        final ComputationGraph mutatedGraph = weightTransfer.mutateTo(newGraph);
+        final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
 
         final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
         final INDArray target = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.W);
@@ -86,7 +86,7 @@ public class WeightTransferTest {
         final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
 
-        final WeightTransfer weightTransfer = new WeightTransfer(graph,
+        final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
         final int mutationNewNout = 5;
@@ -99,7 +99,7 @@ public class WeightTransferTest {
                 prevNout -> prevNout == mutationPrevNout ? mutationNewNout : prevNout == nextMutationPrevNout ? nextMutationNewNout : -1)
                 .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        final ComputationGraph mutatedGraph = weightTransfer.mutateTo(newGraph);
+        final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
 
         final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
         final INDArray target = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.W);
