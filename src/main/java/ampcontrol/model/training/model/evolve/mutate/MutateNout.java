@@ -1,9 +1,11 @@
-package ampcontrol.model.training.model.mutate;
+package ampcontrol.model.training.model.evolve.mutate;
 
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
 import org.deeplearning4j.nn.transferlearning.TransferLearning.GraphBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +21,8 @@ import java.util.stream.Stream;
  * @author Christian Skärby
  */
 public class MutateNout implements Mutation {
+
+    private static final Logger log = LoggerFactory.getLogger(MutateNout.class);
 
     private final Supplier<Stream<String>> mutationLayerSupplier;
     private final IntUnaryOperator mutationFunction;
@@ -43,16 +47,16 @@ public class MutateNout implements Mutation {
         final FeedForwardLayer newLayerConf = changedLayers.computeIfAbsent(layerName,
                 key -> (FeedForwardLayer) prevGraph.getLayer(layerName).conf().getLayer().clone());
         newLayerConf.setNOut(mutationFunction.applyAsInt((int) newLayerConf.getNOut()));
-
+        log.info("Mutating nOut of layer " + layerName + " from " + prevGraph.layerSize(layerName) + " to " + newLayerConf.getNOut());
         final List<String> inputs = prevGraph.getConfiguration().getVertexInputs().get(layerName);
         builder.removeVertexKeepConnections(layerName)
                 .addLayer(layerName, newLayerConf, inputs.toArray(new String[0]));
 
-        updateNinOfOutputs(changedLayers, builder, prevGraph, layerName, prevGraph.layerSize(layerName) - newLayerConf.getNOut());
+        updateNinOfOutputLayer(changedLayers, builder, prevGraph, layerName, prevGraph.layerSize(layerName) - newLayerConf.getNOut());
         return builder;
     }
 
-    private void updateNinOfOutputs(
+    private void updateNinOfOutputLayer(
             Map<String, FeedForwardLayer> changedLayers,
             GraphBuilder builder,
             ComputationGraph prevGraph,
@@ -75,7 +79,7 @@ public class MutateNout implements Mutation {
                                 vertexInputs.toArray(new String[0]));
                     }
                     if (Mutation.doesNinPropagateToNext(graphVertex)) {
-                        updateNinOfOutputs(changedLayers, builder, prevGraph, graphVertex.getVertexName(), nNinDelta);
+                        updateNinOfOutputLayer(changedLayers, builder, prevGraph, graphVertex.getVertexName(), nNinDelta);
                     }
                 });
     }

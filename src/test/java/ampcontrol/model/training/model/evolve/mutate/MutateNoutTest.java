@@ -1,5 +1,6 @@
-package ampcontrol.model.training.model.mutate;
+package ampcontrol.model.training.model.evolve.mutate;
 
+import ampcontrol.model.training.model.evolve.GraphUtils;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.junit.Test;
@@ -24,7 +25,7 @@ public class MutateNoutTest {
         final String mut1 = "mut1";
         final String mut2 = "mut2";
         final String noMut = "noMut";
-        final ComputationGraph graph = MutationGraphTest.getCnnGraph(mut1, mut2, noMut);
+        final ComputationGraph graph = GraphUtils.getCnnGraph(mut1, mut2, noMut);
 
         final MutateNout mutateNout = new MutateNout(() -> Stream.of(mut1, mut2), i -> 2 * i);
         final ComputationGraph newGraph = mutateNout.mutate(new TransferLearning.GraphBuilder(graph), graph).build();

@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.mutate.reshape;
+package ampcontrol.model.training.model.evolve.transfer;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -36,7 +36,7 @@ public class SingleTransferTask implements TransferTask {
     public static class IndMapping {
 
         @Getter
-        private final ReshapeRegistry.ArrayEntry entry;
+        private final TransferRegistry.ArrayEntry entry;
         @lombok.Builder.Default
         private final IntUnaryOperator dimensionMapper = IntUnaryOperator.identity();
         @lombok.Builder.Default

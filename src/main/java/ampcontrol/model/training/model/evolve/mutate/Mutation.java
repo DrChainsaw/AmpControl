@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.mutate;
+package ampcontrol.model.training.model.evolve.mutate;
 
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;

@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.mutate.reshape;
+package ampcontrol.model.training.model.evolve.transfer;
 
 /**
  * No-op typically used to terminate a chain of dependent {@link TransferTask}s

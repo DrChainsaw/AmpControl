@@ -9,7 +9,7 @@ import ampcontrol.model.training.data.iterators.factory.Cnn2D;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
-import ampcontrol.model.training.model.description.DenseNetFactory;
+import ampcontrol.model.training.model.description.MutatingConv2dFactory;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
 import org.jetbrains.annotations.NotNull;
@@ -43,7 +43,7 @@ public class TrainingDescription {
     private final static int trainingIterations = 10;
     private final static int trainBatchSize = 64;
     private final static int evalBatchSize = 64;
-    private final static double evalSetPercentage = 10;
+    private final static double evalSetPercentage = 2;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -172,12 +172,13 @@ public class TrainingDescription {
         //new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         //new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-         new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SoundnetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelDir).addModelData(modelData);
     }
 
     private static void mapFilesToDataSets(DataProviderBuilder train, DataProviderBuilder eval) {

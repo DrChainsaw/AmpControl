@@ -21,19 +21,18 @@ public class WorkSpaceWrappingIterator implements MiniEpochDataSetIterator {
 
     private final MiniEpochDataSetIterator sourceIter;
 
-    private final WorkspaceConfiguration workspaceConfig;
+    private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
+            .policyAllocation(AllocationPolicy.STRICT)
+            .policyLearning(LearningPolicy.FIRST_LOOP)
+            .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
+            .policySpill(SpillPolicy.REALLOCATE)
+            .initialSize(0)
+            .build();
 
     private final String wsName = "WorkspaceWrappingIteratorWs" + this.toString().split("@")[1];
 
     public WorkSpaceWrappingIterator(MiniEpochDataSetIterator sourceIter) {
         this.sourceIter = sourceIter;
-        workspaceConfig = WorkspaceConfiguration.builder()
-                .overallocationLimit(sourceIter.miniEpochSize() + 1)
-                .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
-                .policyLearning(LearningPolicy.FIRST_LOOP)
-                .policyAllocation(AllocationPolicy.OVERALLOCATE)
-                .policySpill(SpillPolicy.REALLOCATE)
-                .build();
     }
 
     @Override

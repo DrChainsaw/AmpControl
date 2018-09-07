@@ -1,8 +1,6 @@
-package ampcontrol.model.training.model.mutate;
+package ampcontrol.model.training.model.evolve.transfer;
 
-import ampcontrol.model.training.model.mutate.reshape.ReshapeRegistry;
-import ampcontrol.model.training.model.mutate.reshape.SingleTransferTask;
-import ampcontrol.model.training.model.mutate.reshape.TransferTask;
+import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
@@ -16,16 +14,16 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public class MutationGraph {
+public class WeightTransfer {
 
     private final ComputationGraph graph;
     private final Function<String, Optional<Function<int[], Comparator<Integer>>>> compFactory;
 
-    public MutationGraph(ComputationGraph graph) {
+    public WeightTransfer(ComputationGraph graph) {
         this(graph, str -> Optional.empty());
     }
 
-    public MutationGraph(ComputationGraph graph, Function<String, Optional<Function<int[], Comparator<Integer>>>> compFactory) {
+    public WeightTransfer(ComputationGraph graph, Function<String, Optional<Function<int[], Comparator<Integer>>>> compFactory) {
         this.graph = graph;
         this.compFactory = compFactory;
     }
@@ -38,7 +36,7 @@ public class MutationGraph {
      */
     public ComputationGraph mutateTo(ComputationGraph newGraph) {
 
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
         final int[] topologicalOrder = newGraph.topologicalSortOrder();
         final GraphVertex[] vertices = newGraph.getVertices();
         //set params from orig graph as necessary to new graph
@@ -57,7 +55,7 @@ public class MutationGraph {
                 .findAny();
     }
 
-    private void transferParameters(ReshapeRegistry registry, ComputationGraph newGraph, String layerName) {
+    private void transferParameters(TransferRegistry registry, ComputationGraph newGraph, String layerName) {
         Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
         Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
 
@@ -77,7 +75,7 @@ public class MutationGraph {
     }
 
     private TransferTask.ListBuilder initReshapeListBuilder(
-            ReshapeRegistry registry,
+            TransferRegistry registry,
             String layerName,
             Map<String, INDArray> sourceParams,
             Map<String, INDArray> targetParams) {
@@ -108,7 +106,7 @@ public class MutationGraph {
     }
 
     private void transferOutputParameters(
-            ReshapeRegistry registry,
+            TransferRegistry registry,
             ComputationGraph newGraph,
             GraphVertex rootNode,
             TransferTask.ListBuilder taskListBuilder) {

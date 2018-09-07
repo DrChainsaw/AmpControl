@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.mutate.reshape;
+package ampcontrol.model.training.model.evolve.transfer;
 
 import com.google.common.primitives.Ints;
 import org.junit.Test;
@@ -29,7 +29,7 @@ public class SingleTransferTaskTest {
         final long[] shapeTarget = {1, 3, 2, 2};
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
         SingleTransferTask.builder()
                 .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
@@ -76,7 +76,7 @@ public class SingleTransferTaskTest {
         shape[0] -= 2;
         shape[2] -= 1;
         final INDArray target = Nd4j.create(shape);
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
         SingleTransferTask.builder()
                 .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
@@ -115,7 +115,7 @@ public class SingleTransferTaskTest {
         final INDArray target = Nd4j.create(shapeTarget);
         final INDArray targetOutput = Nd4j.create(shapeTargetOutput);
 
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
         SingleTransferTask.builder()
                 .compFactory(fixedOrderComp(orderToKeep))
                 .target(SingleTransferTask.IndMapping.builder()
@@ -159,7 +159,7 @@ public class SingleTransferTaskTest {
         final long[] shapeSource = {2, 4, 3, 3};
         final long[] shapeTarget = {2, 6, 3, 3};
 
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
 
         final INDArray source = createLinspace(shapeSource);
         final INDArray target = Nd4j.create(shapeTarget);
@@ -200,7 +200,7 @@ public class SingleTransferTaskTest {
         final INDArray target = Nd4j.ones(shapeTarget);
         final INDArray targetOutput = Nd4j.ones(shapeTargetOutput);
 
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
         SingleTransferTask.builder()
                 .target(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(target))
@@ -248,7 +248,7 @@ public class SingleTransferTaskTest {
 
         final int[] orderToKeep = {0, 2, 1, 3}; // Note: first 2 indexes must be in order for testcase to pass
         final int dimOneElemOffset = 1;
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
         SingleTransferTask.builder()
                 .compFactory(fixedOrderComp(orderToKeep))
                 .target(SingleTransferTask.IndMapping.builder()
@@ -293,7 +293,7 @@ public class SingleTransferTaskTest {
         final INDArray target = Nd4j.create(shapeTarget);
         final INDArray targetOutput = Nd4j.create(shapeTargetOutput);
 
-        final ReshapeRegistry registry = new ReshapeRegistry();
+        final TransferRegistry registry = new TransferRegistry();
         final int[] orderToKeepFirst = {3, 1, 4, 2, 0};
         final int[] orderToKeepSecond = {0, 2, 3, 1};
         SingleTransferTask.builder()

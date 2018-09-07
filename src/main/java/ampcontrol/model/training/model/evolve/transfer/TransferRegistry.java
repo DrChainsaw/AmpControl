@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.mutate.reshape;
+package ampcontrol.model.training.model.evolve.transfer;
 
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.exception.ND4JIllegalStateException;
@@ -9,12 +9,12 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 /**
- * Registry for {@link INDArray}s which are to be reshaped. Allows for decisions on how and why to reshape an array to
- * be done as separate activities.
+ * Registry for {@link INDArray}s for which one or more elements are to be transferred to another array. Allows for
+ * decisions on how and why to transfer an array to be done as separate activities.
  *
  * @author Christian Skärby
  */
-public class ReshapeRegistry {
+public class TransferRegistry {
 
     private final Map<INDArray, ArrayEntry> registry = new HashMap<>();
     private final Map<ArrayEntry, Runnable> actions = new LinkedHashMap<>();

@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.mutate.reshape;
+package ampcontrol.model.training.model.evolve.transfer;
 
 /**
  * An instruction for how to prune weights of a layer, including inputs to subsequent layers

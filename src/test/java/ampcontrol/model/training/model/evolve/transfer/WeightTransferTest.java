@@ -1,23 +1,18 @@
-package ampcontrol.model.training.model.mutate;
+package ampcontrol.model.training.model.evolve.transfer;
 
-import ampcontrol.model.training.model.mutate.reshape.SingleTransferTaskTest;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
-import org.deeplearning4j.nn.conf.inputs.InputType;
-import org.deeplearning4j.nn.conf.layers.Convolution2D;
-import org.deeplearning4j.nn.conf.layers.OutputLayer;
-import org.deeplearning4j.nn.conf.layers.SubsamplingLayer;
+import ampcontrol.model.training.model.evolve.GraphUtils;
+import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
-import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -25,17 +20,11 @@ import java.util.stream.Stream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Test cases for {@link MutationGraph}
+ * Test cases for {@link WeightTransfer}
  *
  * @author Christian Skärby
  */
-public class MutationGraphTest {
-
-    private final static String inputName = "input";
-    private final static String outputName = "output";
-
-    private final static String W = DefaultParamInitializer.WEIGHT_KEY;
-    private final static String B = DefaultParamInitializer.BIAS_KEY;
+public class WeightTransferTest {
 
 
     /**
@@ -46,7 +35,7 @@ public class MutationGraphTest {
         final String mutationName = "toMutate";
         final String nextMutationName = "toMutateToo";
         final String afterName = "afterMutate";
-        final ComputationGraph graph = getCnnGraph(mutationName, nextMutationName, afterName);
+        final ComputationGraph graph = GraphUtils.getCnnGraph(mutationName, nextMutationName, afterName);
 
         final int[] orderToKeepFirst = {1, 3, 5, 6, 7, 9, 2, 4, 8, 0};
         final int[] orderToKeepSecond = {0, 3, 4, 2, 1};
@@ -54,32 +43,32 @@ public class MutationGraphTest {
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
         comparatorMap.put(nextMutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepSecond));
 
-        final MutationGraph mutationGraph = new MutationGraph(graph,
+        final WeightTransfer weightTransfer = new WeightTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
          final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName), prevNout -> (int)Math.ceil(prevNout / 2d))
                  .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        final ComputationGraph mutatedGraph = mutationGraph.mutateTo(newGraph);
+        final ComputationGraph mutatedGraph = weightTransfer.mutateTo(newGraph);
 
-        final INDArray source = graph.getLayer(mutationName).getParam(W);
-        final INDArray target = mutatedGraph.getLayer(mutationName).getParam(W);
+        final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
+        final INDArray target = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.W);
         assertDims(0, orderToKeepFirst, source, target);
 
-        final INDArray sourceBias = graph.getLayer(mutationName).getParam(B);
-        final INDArray targetBias = mutatedGraph.getLayer(mutationName).getParam(B);
+        final INDArray sourceBias = graph.getLayer(mutationName).getParam(GraphUtils.B);
+        final INDArray targetBias = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.B);
         assertDims(1, orderToKeepFirst, sourceBias, targetBias);
 
-        final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(W);
-        final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(W);
+        final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(GraphUtils.W);
+        final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.W);
         assertDoubleDims(orderToKeepSecond, orderToKeepFirst, sourceNext, targetNext);
 
-        final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(B);
-        final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(B);
+        final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(GraphUtils.B);
+        final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.B);
         assertDims(1, orderToKeepSecond, sourceNextBias, targetNextBias);
 
-        final INDArray sourceOutput = graph.getLayer(afterName).getParam(W);
-        final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(W);
+        final INDArray sourceOutput = graph.getLayer(afterName).getParam(GraphUtils.W);
+        final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
         assertDims(1, orderToKeepSecond, sourceOutput, targetOutput);
     }
 
@@ -91,13 +80,13 @@ public class MutationGraphTest {
         final String mutationName = "toMutate";
         final String nextMutationName = "toMutateToo";
         final String afterName = "afterMutate";
-        final ComputationGraph graph = getCnnGraph(mutationName, nextMutationName, afterName);
+        final ComputationGraph graph = GraphUtils.getCnnGraph(mutationName, nextMutationName, afterName);
 
         final int[] orderToKeepFirst = {0, 1, 4, 6, 7, 5, 2, 3, 8, 9};
         final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
 
-        final MutationGraph mutationGraph = new MutationGraph(graph,
+        final WeightTransfer weightTransfer = new WeightTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
         final int mutationNewNout = 5;
@@ -110,62 +99,30 @@ public class MutationGraphTest {
                 prevNout -> prevNout == mutationPrevNout ? mutationNewNout : prevNout == nextMutationPrevNout ? nextMutationNewNout : -1)
                 .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        final ComputationGraph mutatedGraph = mutationGraph.mutateTo(newGraph);
+        final ComputationGraph mutatedGraph = weightTransfer.mutateTo(newGraph);
 
-        final INDArray source = graph.getLayer(mutationName).getParam(W);
-        final INDArray target = mutatedGraph.getLayer(mutationName).getParam(W);
+        final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
+        final INDArray target = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.W);
         assertDims(0, orderToKeepFirst, source, target);
 
-        final INDArray sourceBias = graph.getLayer(mutationName).getParam(B);
-        final INDArray targetBias = mutatedGraph.getLayer(mutationName).getParam(B);
+        final INDArray sourceBias = graph.getLayer(mutationName).getParam(GraphUtils.B);
+        final INDArray targetBias = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.B);
         assertDims(1, orderToKeepFirst, sourceBias, targetBias);
 
-        final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(W);
-        final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(W);
+        final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(GraphUtils.W);
+        final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.W);
         assertDoubleDims(IntStream.range(0, nextMutationNewNout).toArray(), orderToKeepFirst, sourceNext, targetNext);
         assertScalar(0, nextMutationPrevNout, nextMutationNewVal, targetNext);
 
-        final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(B);
-        final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(B);
+        final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(GraphUtils.B);
+        final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.B);
         assertDims(1, IntStream.range(0, nextMutationNewNout).toArray(), sourceNextBias, targetNextBias);
         assertScalar(1, nextMutationPrevNout, 0, targetNextBias);
 
-        final INDArray sourceOutput = graph.getLayer(afterName).getParam(W);
-        final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(W);
+        final INDArray sourceOutput = graph.getLayer(afterName).getParam(GraphUtils.W);
+        final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
         assertDims(1, IntStream.range(0, nextMutationNewNout).toArray(), sourceOutput, targetOutput);
 
-    }
-
-    @NotNull
-    static ComputationGraph getCnnGraph(String mutationName, String nextMutationName, String afterName) {
-        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
-                .weightInit(new ConstantDistribution(666))
-                .graphBuilder()
-                .addInputs(inputName)
-                .setOutputs(outputName)
-                .setInputTypes(InputType.convolutional(33, 33, 3))
-                .addLayer(mutationName, new Convolution2D.Builder(3, 3)
-                        .nOut(10)
-                        .build(), inputName)
-                .addLayer(nextMutationName, new Convolution2D.Builder(1, 1)
-                        .nOut(5)
-                        .build(), mutationName)
-                .addLayer("pool", new SubsamplingLayer.Builder().build(), nextMutationName)
-                .addLayer(afterName, new Convolution2D.Builder(2, 2)
-                        .nOut(7)
-                        .build(), "pool")
-                .addLayer(outputName, new OutputLayer.Builder()
-                        .nOut(2)
-                        .build(), afterName)
-                .build());
-        graph.init();
-
-        setToLinspace(graph.getLayer(mutationName).getParam(W), true);
-        setToLinspace(graph.getLayer(nextMutationName).getParam(W), false);
-        setToLinspace(graph.getLayer(afterName).getParam(W), true);
-        setToLinspace(graph.getLayer(mutationName).getParam(B), false);
-        setToLinspace(graph.getLayer(nextMutationName).getParam(B), true);
-        return graph;
     }
 
     private static void assertDims(
@@ -207,11 +164,4 @@ public class MutationGraphTest {
         }
     }
 
-    private static void setToLinspace(INDArray array, boolean reverse) {
-        final long nrofElemsSource = Arrays.stream(array.shape()).reduce((i1, i2) -> i1 * i2).orElseThrow(() -> new IllegalArgumentException("No elements!"));
-        array.assign(Nd4j.linspace(0, nrofElemsSource - 1, nrofElemsSource).reshape(array.shape()));
-        if (reverse) {
-            Nd4j.reverse(array);
-        }
-    }
 }
