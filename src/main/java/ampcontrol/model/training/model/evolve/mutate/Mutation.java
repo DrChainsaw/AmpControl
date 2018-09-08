@@ -41,4 +41,27 @@ public interface Mutation {
 
         }
     }
+
+    static boolean changeNinMeansChangeNout(GraphVertex vertex) {
+        if(!vertex.hasLayer()) {
+            return false;
+        }
+        // Is there any parameter which can tell this instead of hardcoding it to types like this?
+        switch (vertex.getLayer().type()) {
+            case FEED_FORWARD:
+            case RECURRENT:
+            case CONVOLUTIONAL:
+            case CONVOLUTIONAL3D:
+            case RECURSIVE:
+                return false;
+            case NORMALIZATION:
+                return true;
+            case SUBSAMPLING:
+            case UPSAMPLING:
+            case MULTILAYER:
+            default:
+                throw new UnsupportedOperationException("No idea what to do with this type: " + vertex.getLayer().type());
+
+        }
+    }
 }

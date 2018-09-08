@@ -9,8 +9,6 @@ import org.deeplearning4j.nn.params.BatchNormalizationParamInitializer;
 import org.deeplearning4j.nn.params.CenterLossParamInitializer;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
 import java.util.Map;
@@ -26,8 +24,7 @@ import java.util.stream.Stream;
  */
 public class ParameterTransfer {
 
-    private static final Logger log = LoggerFactory.getLogger(ParameterTransfer.class);
-
+   // private static final Logger log = LoggerFactory.getLogger(ParameterTransfer.class);
 
     private final ComputationGraph graph;
     private final Function<String, Optional<Function<int[], Comparator<Integer>>>> compFactory;
@@ -76,7 +73,7 @@ public class ParameterTransfer {
             final GraphVertex sourceVertex = sourceVertexMaybe.get();
             final GraphVertex targetVertex = targetVertexMaybe.get();
 
-            log.info("Transfer parameters from " + sourceVertex.getVertexName());
+           // log.info("Transfer parameters from " + sourceVertex.getVertexName());
 
             final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
             final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
@@ -174,7 +171,7 @@ public class ParameterTransfer {
                         final GraphVertex sourceVertex = sourceVertexMaybe.get();
                         final GraphVertex targetVertex = targetVertexMaybe.get();
 
-                        log.info("Transfer output parameters of " + layerName);
+                       // log.info("Transfer output parameters of " + layerName);
                         final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
                         final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
                         addTasksFor(registry, taskListBuilder, layerName, sourceParams, targetParams);

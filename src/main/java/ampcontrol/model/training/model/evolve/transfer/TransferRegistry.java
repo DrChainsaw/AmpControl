@@ -73,7 +73,7 @@ class TransferRegistry {
                 return array.dup();
             }
 
-            return addBackSingletonDimensions(array.get(asIndArray()));
+            return addBackSingletonDimensions(array.get(asIndArray()).dup());
         }
 
         // Workaround for dl4j issue #6341
@@ -95,8 +95,7 @@ class TransferRegistry {
 
 
         private INDArrayIndex merge(INDArrayIndex index1, Optional<INDArrayIndex> index2) {
-            // Equals check is a hack since I couldn't figure out the right place to transfer when size is increased
-            if (!index2.isPresent() || index2.get().equals(index1)) {
+            if (!index2.isPresent()) {
                 return index1;
             }
 

@@ -67,9 +67,16 @@ public class MutateNout implements Mutation {
                 .filter(vertex -> !vertex.getVertexName().equals(layerName))
                 .forEachOrdered(graphVertex -> {
                     if (graphVertex.hasLayer() && graphVertex.getLayer().conf().getLayer() instanceof FeedForwardLayer) { // Layer for which it is possible to set inputs
+
                         final FeedForwardLayer newLayerConf = changedLayers.computeIfAbsent(graphVertex.getVertexName(),
                                 key -> (FeedForwardLayer) graphVertex.getLayer().conf().getLayer().clone());
-                        newLayerConf.setNIn(newLayerConf.getNIn() - nNinDelta);
+
+                        final long newNIn = newLayerConf.getNIn() - nNinDelta;
+                        newLayerConf.setNIn(newNIn);
+                        if (Mutation.changeNinMeansChangeNout(graphVertex)) {
+                            newLayerConf.setNOut(newNIn);
+                        }
+
                         final List<String> vertexInputs = prevGraph.getConfiguration().getVertexInputs().get(newLayerConf.getLayerName());
                         builder.removeVertexKeepConnections(newLayerConf.getLayerName());
 
