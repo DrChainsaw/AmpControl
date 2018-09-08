@@ -1,6 +1,5 @@
 package ampcontrol.model.training.model.evolve.selection;
 
-import ampcontrol.model.training.model.evolve.Evolving;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +16,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class RouletteSelection<T extends Evolving<T>> implements Selection<T> {
+public final class RouletteSelection<T> implements Selection<T> {
 
     private static final Logger log = LoggerFactory.getLogger(RouletteSelection.class);
 

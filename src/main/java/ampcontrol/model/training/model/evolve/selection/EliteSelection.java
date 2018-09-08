@@ -1,7 +1,5 @@
 package ampcontrol.model.training.model.evolve.selection;
 
-import ampcontrol.model.training.model.evolve.Evolving;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -12,7 +10,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class EliteSelection<T extends Evolving<T>> implements Selection<T> {
+public final class EliteSelection<T> implements Selection<T> {
 
     @Override
     public Stream<T> selectCandiates(List<Map.Entry<Double, T>> fitnessCandidates) {

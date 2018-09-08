@@ -85,7 +85,7 @@ public class GenericModelHandle implements ModelHandle {
         }
 
         trainingIter.restartMiniEpoch();
-log.info("Fit for " + name);
+
         model.fit(trainingIter);
     }
 

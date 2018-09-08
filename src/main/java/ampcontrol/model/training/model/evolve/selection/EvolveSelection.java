@@ -12,7 +12,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class EvolveSelection<T extends Evolving<T>> implements Selection<T> {
+public final class EvolveSelection<T extends Evolving<T>> implements Selection<T> {
 
     private final Selection<T> sourceSelection;
 

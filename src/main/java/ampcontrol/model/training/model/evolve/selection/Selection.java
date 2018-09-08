@@ -1,7 +1,5 @@
 package ampcontrol.model.training.model.evolve.selection;
 
-import ampcontrol.model.training.model.evolve.Evolving;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -12,7 +10,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public interface Selection<T extends Evolving<T>> {
+public interface Selection<T> {
     /**
      * Selects candidates from the population
      * @param fitnessCandidates List of candidates and their fitness values

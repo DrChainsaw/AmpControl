@@ -69,8 +69,9 @@ class ProbingBuilderAdapter implements BuilderAdapter {
 
         private final Queue<Function<T,R>> queue;
 
-        public FunctionQueue(Function<T,R>... funcs) {
-            queue = Stream.of(funcs).collect(Collectors.toCollection(() -> new ConcurrentLinkedQueue<>()));
+        @SafeVarargs
+        FunctionQueue(Function<T,R>... funcs) {
+            queue = Stream.of(funcs).collect(Collectors.toCollection(ConcurrentLinkedQueue::new));
         }
 
         @Override

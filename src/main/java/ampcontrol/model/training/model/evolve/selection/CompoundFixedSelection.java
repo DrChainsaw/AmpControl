@@ -12,7 +12,7 @@ import java.util.stream.Stream;
  * @param <T>
  * @author Christian Skärby
  */
-public class CompoundFixedSelection<T extends Evolving<T>> implements Selection<T> {
+public final class CompoundFixedSelection<T> implements Selection<T> {
 
     private final List<Selection<T>> selections;
 
@@ -30,7 +30,7 @@ public class CompoundFixedSelection<T extends Evolving<T>> implements Selection<
                 .flatMap(sel -> sel.selectCandiates(fitnessCandidates));
     }
 
-    public static class Builder<T extends Evolving<T>> {
+    public static final class Builder<T> {
         private final List<Selection<T>> selections = new ArrayList<>();
 
         private Builder() {
