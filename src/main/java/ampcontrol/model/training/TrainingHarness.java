@@ -115,7 +115,7 @@ class TrainingHarness {
                             scorePlot.storePlotData(trainEvalName(model.name()));
                             scorePlot.storePlotData(lastEvalLabel);
                         } catch (IOException e) {
-                            log.warn("Failed to store plots!", e);
+                            log.warn("Failed to store plots! {}", e);
                         }
                     };
 
@@ -153,7 +153,7 @@ class TrainingHarness {
                             evalPlot.storePlotData(bestEvalLabel);
                             scorePlot.storePlotData(bestEvalLabel);
                         } catch (IOException e) {
-                            log.warn("Failed to store plots!", e);
+                            log.warn("Failed to store plots! {}", e);
                         }
                     };
 
@@ -172,7 +172,7 @@ class TrainingHarness {
                 try {
                     model.saveModel(fileBaseName);
                 } catch (IOException e) {
-                    log.warn("Failed to store model ", model.name(), e);
+                    log.warn("Failed to store model {}! {}", model.name(), e);
                 }
             };
             return modelCheckPointEc.andThen(scoreCheckPoint);

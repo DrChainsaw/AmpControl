@@ -11,6 +11,8 @@ import java.util.stream.IntStream;
 /**
  * Registry for {@link INDArray}s for which one or more elements are to be transferred to another array. Allows for
  * decisions on how and why to transfer an array to be done as separate activities.
+ * <br><br>
+ * Note: Creates new INDArrays. Make sure the commit method is called from inside a workspace scope to avoid memory leaks.
  *
  * @author Christian Skärby
  */
@@ -53,13 +55,13 @@ class TransferRegistry {
 
         private void put(INDArray anotherArray) {
             // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
-            if(indexMap.isEmpty()) {
+            if (indexMap.isEmpty()) {
                 array.assign(anotherArray);
             }
 
             try {
                 array.put(asIndArray(), anotherArray);
-            } catch(ND4JIllegalStateException e) {
+            } catch (ND4JIllegalStateException e) {
                 throw new ND4JIllegalStateException("Could not set array " + debugName + "! Tried to put array of shape "
                         + Arrays.toString(anotherArray.shape()) + " into target array of shape "
                         + Arrays.toString(array.shape()) + " at indexes " + Arrays.toString(asIndArray())
@@ -69,24 +71,25 @@ class TransferRegistry {
 
         private INDArray get() {
             // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
-            if(indexMap.isEmpty()) {
+            if (indexMap.isEmpty()) {
                 return array.dup();
             }
 
-            return addBackSingletonDimensions(array.get(asIndArray()).dup());
+            return addBackSingletonDimensions(array.get(asIndArray()));
         }
 
         // Workaround for dl4j issue #6341
         INDArray addBackSingletonDimensions(INDArray toReshape) {
             final long[] orgShape = array.shape();
             final long[] newShape = toReshape.shape();
-            if(orgShape.length == newShape.length) {
+
+            if (orgShape.length == newShape.length) {
                 return toReshape;
             }
 
             long[] actualShape = orgShape.clone();
             final INDArrayIndex[] reshapeInfo = asIndArray();
-            for(int i = 0; i < actualShape.length; i++) {
+            for (int i = 0; i < actualShape.length; i++) {
                 // Assumes NDArrayIndex.all() returns 0 here
                 actualShape[i] = reshapeInfo[i].length() == 0 ? actualShape[i] : reshapeInfo[i].length();
             }

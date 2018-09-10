@@ -50,7 +50,6 @@ public class GenericModelHandle implements ModelHandle {
         this.evalIter = evalIter;
         this.model = model;
         this.name = name;
-
         model.asModel().addListeners(new NanScoreWatcher(() -> nanTimeOutTimer = 0));
     }
 

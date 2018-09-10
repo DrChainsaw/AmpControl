@@ -2,6 +2,12 @@ package ampcontrol.model.training.model.evolve.transfer;
 
 import com.google.common.primitives.Ints;
 import org.junit.Test;
+import org.nd4j.linalg.api.memory.MemoryWorkspace;
+import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
+import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
+import org.nd4j.linalg.api.memory.enums.LearningPolicy;
+import org.nd4j.linalg.api.memory.enums.ResetPolicy;
+import org.nd4j.linalg.api.memory.enums.SpillPolicy;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -359,5 +365,47 @@ public class SingleTransferTaskTest {
      */
     public static Function<int[], Comparator<Integer>> fixedOrderComp(int[] order) {
         return dummy -> Comparator.comparingInt(i -> Ints.indexOf(order, i));
+    }
+
+    public static void main(String[] args) {
+        final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
+                .policyAllocation(AllocationPolicy.STRICT)
+                .policyLearning(LearningPolicy.FIRST_LOOP)
+                .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
+                .policySpill(SpillPolicy.REALLOCATE)
+                .initialSize(0)
+                .build();
+            INDArray source = Nd4j.randn(new long[]{100, 100, 100});
+            INDArray target = Nd4j.randn(new long[]{100, 100, 100});
+            int cnt = 1;
+            while (true) {
+//                final MemoryWorkspace tmpWs = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, "testWs");
+//                try (MemoryWorkspace ws = tmpWs.notifyScopeEntered()) {
+//                    Nd4j.getMemoryManager().invokeGc();
+//                    source = Nd4j.randn(new long[]{100, 100, 100}).migrate(true);
+//                    target = Nd4j.randn(new long[]{100, 100, 100}).migrate(true);
+//                }
+                final TransferRegistry registry = new TransferRegistry();
+                SingleTransferTask.builder()
+                        .source(SingleTransferTask.IndMapping.builder()
+                                .entry(registry.register(source, "source"))
+                                .build())
+                        .target(SingleTransferTask.IndMapping.builder()
+                                .entry(registry.register(target, "target"))
+                                .build())
+                        .build().execute();
+                registry.commit();
+
+
+                final MemoryWorkspace tmpWs = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, "testWs");
+                try (MemoryWorkspace ws = tmpWs.notifyScopeEntered()) {
+                    Nd4j.getMemoryManager().invokeGc();
+                    source = Nd4j.randn(new long[]{100, 100, 100}).migrate(true);
+                    target = Nd4j.randn(new long[]{99, 100, 100}).migrate(true);
+                }
+
+                System.out.println(cnt + " s: " + source.getDouble(13) + " t: " + target.getDouble(34));
+            }
+      //  }
     }
 }

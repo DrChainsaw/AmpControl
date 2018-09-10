@@ -1,12 +1,13 @@
 package ampcontrol.model.training.model.description;
 
+import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
+import ampcontrol.model.training.data.iterators.WorkSpaceWrappingIterator;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.selection.CompoundFixedSelection;
-import ampcontrol.model.training.model.evolve.selection.EliteSelection;
 import ampcontrol.model.training.model.evolve.selection.EvolveSelection;
 import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
 import ampcontrol.model.training.model.layerblocks.*;
@@ -61,18 +62,23 @@ public final class MutatingConv2dFactory {
         public ModelFitness(Consumer<Double> fitnessConsumer, int nrofParameters) {
             this.fitnessConsumer = fitnessConsumer;
             this.paramScore = Math.max(0, (1e8 - nrofParameters) / 1e10);
+
         }
 
         @Override
         public Validation<Evaluation> create(List<String> labels) {
-
             final Consumer<Evaluation> listener = eval -> fitnessConsumer.accept(calcFitness(eval));
-            return new Skipping<>(dummy -> 20, 1, new EvalValidation(new Evaluation(labels), listener));
+            return new Skipping<>(dummy -> 20, 20,
+                    new EvalValidation(
+                            new Evaluation(labels),
+                            listener
+                    ));
         }
 
         private double calcFitness(Evaluation evaluation) {
             return 1d / (Math.round(evaluation.accuracy() * 100) / 100d + paramScore) - 1;
         }
+
     }
 
     public MutatingConv2dFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
@@ -97,7 +103,7 @@ public final class MutatingConv2dFactory {
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
         final List<EvolvingGraphAdapter> population = new ArrayList<>();
-        IntStream.range(0, 20).forEach(candInd -> {
+        IntStream.range(0, 2).forEach(candInd -> {
 
             final Set<String> mutationLayers = new LinkedHashSet<>();
             final GraphSpyAdapter.LayerSpy spy = (layerName, layer, layerInputs) -> {
@@ -124,40 +130,53 @@ public final class MutatingConv2dFactory {
 
         // Perhaps this all should be in some class instead of as a dangling reference...
         final List<ModelHandle> evolvingPopulation = new ArrayList<>();
+        final MiniEpochDataSetIterator evolveIter = new WorkSpaceWrappingIterator(new CachingDataSetIterator(evalIter, 20));
         final Random rng = new Random(666);
         new EvolvingPopulation<>(
                 population,
                 (adapters, fitnessConsumer) -> {
                     evolvingPopulation.clear();
                     for (EvolvingGraphAdapter adapter : adapters) {
-                        final ModelHandle handle = new GenericModelHandle(trainIter, evalIter, adapter, "cand" + evolvingPopulation.size());
+                        final ModelHandle handle = new GenericModelHandle(
+                                trainIter,
+                                evolveIter,
+                                adapter,
+                                "cand" + evolvingPopulation.size());
                         handle.registerValidation(new ModelFitness(fitness -> fitnessConsumer.accept(fitness, adapter), handle.getModel().numParams()));
                         evolvingPopulation.add(handle);
                     }
                 },
                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
-                        .andThen(2, new EliteSelection<>())
-                        .andThen(population.size() - 2,
-                                new EvolveSelection<EvolvingGraphAdapter>(
+                        //.andThen(2, new EliteSelection<>())
+                        .andThen(population.size(),
+                                new EvolveSelection<>(
                                         new RouletteSelection<EvolvingGraphAdapter>(rng::nextDouble)))
                         .build()
         ).initEvolvingPopulation();
 
         modelData.add(new ModelHandlePopulation(evolvingPopulation, "mutationPop"));
+
+        // Add back: Elite selection and -2 roulette
+        // Mutation -0.5 instead of -1
+        while (true) {
+
+            //createModelBuilder(lrSched, momSched, (a,b,c) -> {}).buildGraph().doEvaluation(evolveIter, new Evaluation(evolveIter.getLabels()));
+            population.get(0).evolve(); //.eval(evolveIter, new Evaluation(evolveIter.getLabels())); evolveIter.restartMiniEpoch();
+            //modelData.get(0).eval();
+        }
     }
 
     private Mutation createMutation(final Set<String> mutationLayers, int seed) {
         final Random rng = new Random(seed);
         return new MutateNout(
+                //() -> Stream.empty(),
                 () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.3),
-                nOut -> (int) Math.max(4, nOut + 16 * (rng.nextDouble() - 0.5)));
+                nOut -> (int) Math.max(4, nOut + 16 * (rng.nextDouble() - 1)));
     }
 
     private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy spy) {
         // TODO Deserialize all models
         final LayerBlockConfig pool = new Pool2D().setSize(2).setStride(2);
-        //final LayerBlockConfig bufferBlock = new Conv2DBatchNormAfter().setKernelSize(1).setNrofKernels(64);
-        final LayerBlockConfig bufferBlock = new IdBlock();
         return new BlockBuilder()
                 .setUpdater(new Nesterovs(lrSched, momSched))
                 .setNamePrefix(namePrefix)
@@ -165,19 +184,16 @@ public final class MutatingConv2dFactory {
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
                         .setNrofKernels(32), spy))
-                .andThen(bufferBlock)
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
                         .setNrofKernels(64), spy))
-                .andThen(bufferBlock)
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
                         .setNrofKernels(128), spy))
-                .andThen(bufferBlock)
                 .andThen(pool)
 
                 .andThen(new GlobPool())
@@ -189,5 +205,4 @@ public final class MutatingConv2dFactory {
                         .setAlpha(0.6)
                         .setLambda(0.004));
     }
-
 }

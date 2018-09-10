@@ -6,6 +6,9 @@ import org.deeplearning4j.nn.transferlearning.TransferLearning;
 
 /**
  * Interface for mutation operation.
+ * <br><br>
+ * Note, the {@link TransferLearning.GraphBuilder} creates new INDArrays. Make sure to call the final build method as
+ * as well as {@link #mutate} within scope of a {@link org.nd4j.linalg.api.memory.MemoryWorkspace} to avoid memory leaks.
  *
  * @author Christian Skärby
  */

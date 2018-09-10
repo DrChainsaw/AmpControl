@@ -30,7 +30,7 @@ public class ModelHandlePopulation implements ModelHandle {
 
     @Override
     public void fit() {
-        if(bestModel != population.get(0)) {
+        if (bestModel != population.get(0)) {
             bestModel = population.get(0);
             validationFactories.forEach(validationFactory -> bestModel.registerValidation(validationFactory));
         }
@@ -39,9 +39,9 @@ public class ModelHandlePopulation implements ModelHandle {
 
     @Override
     public void eval() {
-        // TODO: Real solution...
-        final Collection<TrainingListener> listeners = new ArrayList<>(((ComputationGraph)population.get(0).getModel()).getListeners());
-        ((ComputationGraph)population.get(0).getModel()).getListeners().clear();
+        // TODO: Real solution. Maybe getModel return ModelFacade and spy decorator here as well?
+        final Collection<TrainingListener> listeners = new ArrayList<>(((ComputationGraph) population.get(0).getModel()).getListeners());
+        ((ComputationGraph) population.get(0).getModel()).getListeners().clear();
         // Population list might be changed as a result of this operation
         new ArrayList<>(population).forEach(ModelHandle::eval);
         population.get(0).getModel().addListeners(listeners.toArray(new TrainingListener[0]));
@@ -64,13 +64,31 @@ public class ModelHandlePopulation implements ModelHandle {
 
     @Override
     public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
-        validationFactories.add(validationFactory);
+        validationFactories.add(new CachingValidationFactory<>(validationFactory));
     }
 
     @Override
     public void saveModel(String fileName) throws IOException {
-        for(int i = 0; i < population.size(); i++) {
+        for (int i = 0; i < population.size(); i++) {
             population.get(i).saveModel(fileName + File.separator + i);
+        }
+    }
+
+    private final class CachingValidationFactory<T extends IEvaluation> implements Validation.Factory<T> {
+
+        private final Validation.Factory<T> sourceFactory;
+        private Validation<T> validation;
+
+        public CachingValidationFactory(Validation.Factory<T> sourceFactory) {
+            this.sourceFactory = sourceFactory;
+        }
+
+        @Override
+        public Validation<T> create(List<String> labels) {
+            if (validation == null) {
+                validation = sourceFactory.create(labels);
+            }
+            return validation;
         }
     }
 }

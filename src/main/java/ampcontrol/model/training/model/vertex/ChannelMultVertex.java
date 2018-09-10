@@ -73,8 +73,8 @@ public class ChannelMultVertex extends GraphVertex {
 
         if (!ok) {
             throw new InvalidInputTypeException(
-                    "Invalid input: Channel mult vertex " + this.toString() + "size mismatch!"
-                            + "depth of first type (" + first + ") must be equal to size of second type ("
+                    "Invalid input: Channel mult vertex " + this.toString() + "size mismatch! "
+                            + "Depth of first type (" + first + ") must be equal to size of second type ("
                              + second + ")!");
         }
 
