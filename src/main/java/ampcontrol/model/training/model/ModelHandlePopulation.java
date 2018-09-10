@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model;
 
+import ampcontrol.model.training.model.validation.CachingValidationFactory;
 import ampcontrol.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
@@ -74,21 +75,4 @@ public class ModelHandlePopulation implements ModelHandle {
         }
     }
 
-    private final class CachingValidationFactory<T extends IEvaluation> implements Validation.Factory<T> {
-
-        private final Validation.Factory<T> sourceFactory;
-        private Validation<T> validation;
-
-        public CachingValidationFactory(Validation.Factory<T> sourceFactory) {
-            this.sourceFactory = sourceFactory;
-        }
-
-        @Override
-        public Validation<T> create(List<String> labels) {
-            if (validation == null) {
-                validation = sourceFactory.create(labels);
-            }
-            return validation;
-        }
-    }
 }

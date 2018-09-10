@@ -7,14 +7,7 @@ import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.params.BatchNormalizationParamInitializer;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.jetbrains.annotations.NotNull;
-import org.nd4j.linalg.api.memory.MemoryWorkspace;
-import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
-import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
-import org.nd4j.linalg.api.memory.enums.LearningPolicy;
-import org.nd4j.linalg.api.memory.enums.ResetPolicy;
-import org.nd4j.linalg.api.memory.enums.SpillPolicy;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -22,7 +15,6 @@ import java.util.Arrays;
 
 /**
  * Utils for doing testing on Compu
- *
  */
 public class GraphUtils {
     private final static String inputName = "input";
@@ -36,6 +28,7 @@ public class GraphUtils {
 
     /**
      * Returns a CNN graph with pooling and batchnorm layers
+     *
      * @param cnn1Name Name of first conv layer
      * @param cnn2Name Name of first conv layer
      * @param cnn3Name Name of first conv layer
@@ -88,72 +81,5 @@ public class GraphUtils {
         if (reverse) {
             Nd4j.reverse(array);
         }
-    }
-
-    public static void main(String[] args) {
-        int cnt = 0;
-        final String inputName = "input";
-        final String outputName = "output";
-        final String conv1Name = "conv1";
-        final String conv2Name = "conv2";
-        final int conv1Nout = 1000;
-        ComputationGraph graph = getNewGraph(inputName, outputName, conv1Name, conv2Name, conv1Nout);
-
-
-        final MemoryWorkspace workspace = Nd4j.getWorkspaceManager().createNewWorkspace(WorkspaceConfiguration.builder()
-                        .policyAllocation(AllocationPolicy.STRICT)
-                        .policyLearning(LearningPolicy.FIRST_LOOP)
-                        .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
-                        .policySpill(SpillPolicy.REALLOCATE)
-                        .initialSize(0)
-                        .build(),
-                "testWorkspace");
-
-        while (true) {
-            try(MemoryWorkspace ws = workspace.notifyScopeEntered()) {
-                graph = getTransferedGraph(inputName, conv1Name, conv1Nout - cnt, graph);
-
-                // This also leaks, but not as fast as the above...
-                // graph = getNewGraph(inputName, outputName, conv1Name, conv2Name, conv1Nout-cnt);
-
-                System.out.println(cnt + " npar : " + graph.numParams());
-                // Comment out to stop memory leak (!?). Each created graph is identical to the previous
-                cnt++;
-            }
-        }
-
-    }
-
-    static ComputationGraph getTransferedGraph(String inputName, String conv1Name, int conv1Nout, ComputationGraph graph) {
-        graph = new TransferLearning.GraphBuilder(graph)
-                .removeVertexKeepConnections(conv1Name)
-                .addLayer(conv1Name, new ConvolutionLayer.Builder(15,15)
-                        .nIn(10)
-                        .nOut(conv1Nout)
-                        .build(), inputName)
-                .build();
-        return graph;
-    }
-
-    @NotNull
-    public static ComputationGraph getNewGraph(String inputName, String outputName, String conv1Name, String conv2Name, int conv1Nout) {
-        ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
-                .weightInit(new ConstantDistribution(666))
-                .graphBuilder()
-                .addInputs(inputName)
-                .setOutputs(outputName)
-                .setInputTypes(InputType.convolutional(33, 33, 3))
-                .addLayer(conv1Name, new Convolution2D.Builder(15, 15)
-                        .nOut(conv1Nout)
-                        .build(), inputName)
-                .addLayer(conv2Name, new Convolution2D.Builder(1, 1)
-                        .nOut(1)
-                        .build(), conv1Name)
-                .addLayer(outputName, new OutputLayer.Builder()
-                        .nOut(1)
-                        .build(), conv2Name)
-                .build());
-        graph.init();
-        return graph;
     }
 }

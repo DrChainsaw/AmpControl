@@ -8,6 +8,7 @@ import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.selection.CompoundFixedSelection;
+import ampcontrol.model.training.model.evolve.selection.EliteSelection;
 import ampcontrol.model.training.model.evolve.selection.EvolveSelection;
 import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
 import ampcontrol.model.training.model.layerblocks.*;
@@ -103,7 +104,7 @@ public final class MutatingConv2dFactory {
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
         final List<EvolvingGraphAdapter> population = new ArrayList<>();
-        IntStream.range(0, 2).forEach(candInd -> {
+        IntStream.range(0, 20).forEach(candInd -> {
 
             final Set<String> mutationLayers = new LinkedHashSet<>();
             final GraphSpyAdapter.LayerSpy spy = (layerName, layer, layerInputs) -> {
@@ -127,8 +128,8 @@ public final class MutatingConv2dFactory {
             population.add(adapter);
         });
 
-
         // Perhaps this all should be in some class instead of as a dangling reference...
+        // Poltergeist warning? Although objects are still referenced and do their stuff, just that noone needs to store the explict reference.
         final List<ModelHandle> evolvingPopulation = new ArrayList<>();
         final MiniEpochDataSetIterator evolveIter = new WorkSpaceWrappingIterator(new CachingDataSetIterator(evalIter, 20));
         final Random rng = new Random(666);
@@ -147,23 +148,17 @@ public final class MutatingConv2dFactory {
                     }
                 },
                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
-                        //.andThen(2, new EliteSelection<>())
-                        .andThen(population.size(),
+                        .andThen(2, new EliteSelection<>())
+                        .andThen(population.size() - 2,
                                 new EvolveSelection<>(
                                         new RouletteSelection<EvolvingGraphAdapter>(rng::nextDouble)))
                         .build()
         ).initEvolvingPopulation();
 
+        modelData.add(new GenericModelHandle(trainIter, evalIter,
+                new GraphModelAdapter(createModelBuilder(lrSched, momSched, (a,b,c) -> {/*ignore*/}).buildGraph()),
+                "reference"));
         modelData.add(new ModelHandlePopulation(evolvingPopulation, "mutationPop"));
-
-        // Add back: Elite selection and -2 roulette
-        // Mutation -0.5 instead of -1
-        while (true) {
-
-            //createModelBuilder(lrSched, momSched, (a,b,c) -> {}).buildGraph().doEvaluation(evolveIter, new Evaluation(evolveIter.getLabels()));
-            population.get(0).evolve(); //.eval(evolveIter, new Evaluation(evolveIter.getLabels())); evolveIter.restartMiniEpoch();
-            //modelData.get(0).eval();
-        }
     }
 
     private Mutation createMutation(final Set<String> mutationLayers, int seed) {
@@ -171,7 +166,7 @@ public final class MutatingConv2dFactory {
         return new MutateNout(
                 //() -> Stream.empty(),
                 () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.3),
-                nOut -> (int) Math.max(4, nOut + 16 * (rng.nextDouble() - 1)));
+                nOut -> (int) Math.max(4, nOut + 16 * (rng.nextDouble() - 0.5)));
     }
 
     private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy spy) {
