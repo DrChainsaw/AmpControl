@@ -5,7 +5,14 @@ import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.junit.Test;
+import org.nd4j.linalg.api.memory.MemoryWorkspace;
+import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
+import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
+import org.nd4j.linalg.api.memory.enums.LearningPolicy;
+import org.nd4j.linalg.api.memory.enums.ResetPolicy;
+import org.nd4j.linalg.api.memory.enums.SpillPolicy;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 
@@ -26,6 +33,14 @@ import static junit.framework.TestCase.assertEquals;
  */
 public class ParameterTransferTest {
 
+    final MemoryWorkspace workspace = Nd4j.getWorkspaceManager().createNewWorkspace(WorkspaceConfiguration.builder()
+                    .policyAllocation(AllocationPolicy.STRICT)
+                    .policyLearning(LearningPolicy.FIRST_LOOP)
+                    .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
+                    .policySpill(SpillPolicy.REALLOCATE)
+                    .initialSize(0)
+                    .build(),
+            this.getClass().getSimpleName() + "Workspace" + this.toString().split("@")[1]);
 
     /**
      * Test to decrease nOut in a CNN layer which is input to another CNN layer and see that weights get transferred.
@@ -43,14 +58,16 @@ public class ParameterTransferTest {
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
         comparatorMap.put(nextMutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepSecond));
 
-        final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
-                name -> Optional.ofNullable(comparatorMap.get(name)));
+        ComputationGraph mutatedGraph;
+        try(MemoryWorkspace ws = workspace.notifyScopeEntered()) {
+            final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
+                    name -> Optional.ofNullable(comparatorMap.get(name)));
 
-         final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName), prevNout -> (int)Math.ceil(prevNout / 2d))
-                 .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+            final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName), prevNout -> (int) Math.ceil(prevNout / 2d))
+                    .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
-
+            mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
+        }
         final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
         final INDArray target = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.W);
         assertDims(0, orderToKeepFirst, source, target);
@@ -70,6 +87,8 @@ public class ParameterTransferTest {
         final INDArray sourceOutput = graph.getLayer(afterName).getParam(GraphUtils.W);
         final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
         assertDims(1, orderToKeepSecond, sourceOutput, targetOutput);
+
+        mutatedGraph.output(Nd4j.randn(new long[] {1 ,3, 33, 33}));
     }
 
     /**
@@ -95,11 +114,14 @@ public class ParameterTransferTest {
         final int nextMutationPrevNout = graph.layerSize(nextMutationName);
         final double nextMutationNewVal = 666d; // Is this obtainable somehow?
 
-        final ComputationGraph newGraph = new MutateNout(() ->Stream.of(mutationName, nextMutationName),
-                prevNout -> prevNout == mutationPrevNout ? mutationNewNout : prevNout == nextMutationPrevNout ? nextMutationNewNout : -1)
-                .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+        ComputationGraph mutatedGraph;
+        try(MemoryWorkspace ws = workspace.notifyScopeEntered()) {
+            final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName),
+                    prevNout -> prevNout == mutationPrevNout ? mutationNewNout : prevNout == nextMutationPrevNout ? nextMutationNewNout : -1)
+                    .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
-        final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
+            mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
+        }
 
         final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
         final INDArray target = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.W);
@@ -122,6 +144,8 @@ public class ParameterTransferTest {
         final INDArray sourceOutput = graph.getLayer(afterName).getParam(GraphUtils.W);
         final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
         assertDims(1, IntStream.range(0, nextMutationNewNout).toArray(), sourceOutput, targetOutput);
+
+        mutatedGraph.output(Nd4j.randn(new long[] {1 ,3, 33, 33}));
 
     }
 
