@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve;
 
 import ampcontrol.model.training.model.evolve.selection.Selection;
+import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,8 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
                 .collect(Collectors.toList()));
         evalCands.clear();
         initEvolvingPopulation();
+        // Needed to get free memory
+        Nd4j.getMemoryManager().purgeCaches();
         return this;
     }
 

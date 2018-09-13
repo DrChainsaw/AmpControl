@@ -52,4 +52,16 @@ public interface ModelHandle {
      * @param fileName the filename
      */
     void saveModel(String fileName) throws IOException;
+
+    /**
+     * Compresses the string into a shorter version if it is "too long"
+     * @param str String to compress
+     * @return Compressed version of the string
+     */
+    static String compressIfNeeded(String str) {
+        if(str.length() > 100) {
+            return String.valueOf(str.hashCode());
+        }
+        return str;
+    }
 }

@@ -10,8 +10,8 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * {@link ModelBuilder} which loads the model from a file an identical model is found. If not found, the
- * source {@link ModelBuilder} is asked to build the model.
+ * {@link ModelBuilder} which loads the model from a file if a model with the same name as a source {@link ModelBuilder}
+ * is found in the given directory. If not found, the source {@link ModelBuilder} is asked to build the model.
  *
  * @author Christian Skärby
  */
@@ -20,7 +20,6 @@ public class DeserializingModelBuilder implements ModelBuilder {
     private static final Logger log = LoggerFactory.getLogger(DeserializingModelBuilder.class);
 
     private final ModelBuilder sourceBuilder;
-
     private final File modelFile;
 
     /**

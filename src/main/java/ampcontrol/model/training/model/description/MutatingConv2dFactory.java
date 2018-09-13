@@ -79,7 +79,6 @@ public final class MutatingConv2dFactory {
         private double calcFitness(Evaluation evaluation) {
             return 1d / (Math.round(evaluation.accuracy() * 100) / 100d + paramScore) - 1;
         }
-
     }
 
     public MutatingConv2dFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
@@ -99,7 +98,7 @@ public final class MutatingConv2dFactory {
 
         final int schedPeriod = 50;
         final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
-                new SawTooth(schedPeriod, 1e-6, 0.001));
+                new SawTooth(schedPeriod, 1e-6, 0.05));
         final ISchedule momSched = new Offset(schedPeriod / 2,
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
