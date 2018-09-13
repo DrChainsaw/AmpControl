@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model;
+package ampcontrol.model.training.model.builder;
 
 import ampcontrol.model.training.model.layerblocks.AggBlock;
 import ampcontrol.model.training.model.layerblocks.BlockStack;

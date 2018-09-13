@@ -10,6 +10,8 @@ import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.description.MutatingConv2dFactory;
+import ampcontrol.model.training.model.naming.AddPrefix;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
 import org.jetbrains.annotations.NotNull;
@@ -18,7 +20,6 @@ import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,7 +39,7 @@ public class TrainingDescription {
     private final static int clipLengthMs = 1000;
     private final static int clipSamplingRate = 44100;
     private final static Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
-    private final static Path modelDir = Paths.get("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models");
+    private final static FileNamePolicy modelPolicy = new AddPrefix("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\").compose(FileNamePolicy.toHashCode);
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10;
     private final static int trainBatchSize = 64;
@@ -85,8 +86,8 @@ public class TrainingDescription {
         createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
 
         TrainingHarness harness = new TrainingHarness(modelData,
-                modelDir.toAbsolutePath().toString(),
-                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
+                modelPolicy,
+                title -> new RealTimePlot<>(title, modelPolicy.toFileName("plots")),
                 BufferedTextWriter.defaultFactory);
         harness.startTraining(100000);
     }
@@ -178,7 +179,7 @@ public class TrainingDescription {
         // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
     }
 
     private static void mapFilesToDataSets(DataProviderBuilder train, DataProviderBuilder eval) {

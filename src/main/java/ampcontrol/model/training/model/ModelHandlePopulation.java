@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model;
 
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.CachingValidationFactory;
 import ampcontrol.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
@@ -7,9 +8,9 @@ import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.optimize.api.TrainingListener;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * A population of {@link ModelHandle}s fronted as a single {@link ModelHandle}. Typically used for architecture search.
@@ -21,11 +22,13 @@ public class ModelHandlePopulation implements ModelHandle {
     private ModelHandle bestModel;
     private final List<ModelHandle> population;
     private final Set<Validation.Factory<? extends IEvaluation>> validationFactories = new LinkedHashSet<>();
+    private final Function<Integer, FileNamePolicy> candidateFileNamePolicy;
     private final String name;
 
-    public ModelHandlePopulation(List<ModelHandle> population, String name) {
+    public ModelHandlePopulation(List<ModelHandle> population, String name, Function<Integer, FileNamePolicy> candidateFileNamePolicy) {
         this.population = population;
         this.name = name;
+        this.candidateFileNamePolicy = candidateFileNamePolicy;
         bestModel = population.get(0);
     }
 
@@ -71,7 +74,7 @@ public class ModelHandlePopulation implements ModelHandle {
     @Override
     public void saveModel(String fileName) throws IOException {
         for (int i = 0; i < population.size(); i++) {
-            population.get(i).saveModel(fileName + File.separator + i);
+            population.get(i).saveModel(candidateFileNamePolicy.apply(i).toFileName(fileName ));
         }
     }
 

@@ -5,6 +5,7 @@ import ampcontrol.model.training.listen.TimeMeasurement;
 import ampcontrol.model.training.listen.TrainEvaluator;
 import ampcontrol.model.training.listen.TrainScoreListener;
 import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.*;
 import ampcontrol.model.training.model.validation.listen.*;
 import ampcontrol.model.visualize.Plot;
@@ -49,17 +50,17 @@ class TrainingHarness {
     private static final String bestEvalPrefix = "BestEval";
 
     private final List<ModelHandle> modelsToTrain;
-    private final String modelSaveDir;
+    private final FileNamePolicy baseFileNamePolicy;
     private final Plot.Factory<Integer, Double> plotFactory;
     private final TextWriter.Factory writerFactory;
 
     TrainingHarness(
             List<ModelHandle> modelsToTrain,
-            String modelSaveDir,
+            FileNamePolicy baseFileNamePolicy,
             Plot.Factory<Integer, Double> plotFactory,
             TextWriter.Factory writerFactory) {
         this.modelsToTrain = modelsToTrain;
-        this.modelSaveDir = modelSaveDir;
+        this.baseFileNamePolicy = baseFileNamePolicy;
         this.plotFactory = plotFactory;
         this.writerFactory = writerFactory;
     }
@@ -77,7 +78,7 @@ class TrainingHarness {
             this.model = model;
             this.evalPlot = evalPlot;
             this.scorePlot = scorePlot;
-            this.fileBaseName = modelSaveDir + File.separator + model.name().hashCode();
+            this.fileBaseName = baseFileNamePolicy.toFileName(model.name());
         }
 
         @Override

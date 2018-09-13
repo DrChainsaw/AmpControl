@@ -1,9 +1,15 @@
 package ampcontrol.model.training.model.description;
 
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
-import ampcontrol.model.training.model.*;
+import ampcontrol.model.training.model.GenericModelHandle;
+import ampcontrol.model.training.model.GraphModelAdapter;
+import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.builder.BlockBuilder;
+import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
+import ampcontrol.model.training.model.builder.ModelBuilder;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.schedule.MinLim;
 import ampcontrol.model.training.schedule.Mul;
 import ampcontrol.model.training.schedule.epoch.Exponential;
@@ -14,7 +20,6 @@ import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ISchedule;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -31,14 +36,14 @@ public class DenseNetFactory {
     private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
-    private final Path modelDir;
+    private final FileNamePolicy modelFileNamePolicy;
 
-    public DenseNetFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public DenseNetFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, FileNamePolicy modelFileNamePolicy) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;
         this.namePrefix = namePrefix;
-        this.modelDir = modelDir;
+        this.modelFileNamePolicy = modelFileNamePolicy;
     }
 
     /**
@@ -56,7 +61,7 @@ public class DenseNetFactory {
         
         IntStream.of(2, 8).forEach(denseStackSize -> {
             Stream.of(new IdBlock(), new SeBlock()).forEach(seOrId -> {
-                ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                ModelBuilder builder = new DeserializingModelBuilder(modelFileNamePolicy,
                         new BlockBuilder()
                                 .setNamePrefix(namePrefix)
                                 .setUpdater(new Nesterovs(lrSched, momSched))

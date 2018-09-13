@@ -4,6 +4,9 @@ import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.iterators.WorkSpaceWrappingIterator;
 import ampcontrol.model.training.model.*;
+import ampcontrol.model.training.model.builder.BlockBuilder;
+import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
+import ampcontrol.model.training.model.builder.ModelBuilder;
 import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
@@ -14,6 +17,8 @@ import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
+import ampcontrol.model.training.model.naming.AddSuffix;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.EvalValidation;
 import ampcontrol.model.training.model.validation.Skipping;
 import ampcontrol.model.training.model.validation.Validation;
@@ -34,9 +39,10 @@ import org.nd4j.linalg.schedule.ISchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Path;
+import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 /**
@@ -52,7 +58,7 @@ public final class MutatingConv2dFactory {
     private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
-    private final Path modelDir;
+    private final FileNamePolicy modelFileNamePolicy;
 
 
     private static final class ModelFitness implements Validation.Factory<Evaluation> {
@@ -81,12 +87,12 @@ public final class MutatingConv2dFactory {
         }
     }
 
-    public MutatingConv2dFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public MutatingConv2dFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, FileNamePolicy modelFileNamePolicy) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;
         this.namePrefix = namePrefix;
-        this.modelDir = modelDir;
+        this.modelFileNamePolicy = modelFileNamePolicy;
     }
 
     /**
@@ -103,19 +109,24 @@ public final class MutatingConv2dFactory {
                 new SawTooth(schedPeriod, 0.85, 0.95));
 
         final List<EvolvingGraphAdapter> population = new ArrayList<>();
+
+        final Set<String> mutationLayers = new LinkedHashSet<>();
+        final GraphSpyAdapter.LayerSpy spy = (layerName, layer, layerInputs) -> {
+            if (layer instanceof ConvolutionLayer) {
+                mutationLayers.add(layerName);
+            } else if (layer instanceof DenseLayer) {
+                // Doesn't work yet...
+                // mutationLayers.add(layerName);
+            }
+        };
+
+        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, spy);
+        final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
+        final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving");
         IntStream.range(0, 20).forEach(candInd -> {
 
-            final Set<String> mutationLayers = new LinkedHashSet<>();
-            final GraphSpyAdapter.LayerSpy spy = (layerName, layer, layerInputs) -> {
-                if (layer instanceof ConvolutionLayer) {
-                    mutationLayers.add(layerName);
-                } else if (layer instanceof DenseLayer) {
-                    // Doesn't work yet...
-                    // mutationLayers.add(layerName);
-                }
-            };
-
-            final ModelBuilder builder = createModelBuilder(lrSched, momSched, spy);
+            final ModelBuilder builder = new DeserializingModelBuilder(
+                    modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);
 
             final Mutation mutation = createMutation(mutationLayers, candInd);
             final ComputationGraph graph = builder.buildGraph();
@@ -154,10 +165,13 @@ public final class MutatingConv2dFactory {
                         .build()
         ).initEvolvingPopulation();
 
+        final FileNamePolicy referenceSuffix = new AddSuffix("_reference");
         modelData.add(new GenericModelHandle(trainIter, evalIter,
-                new GraphModelAdapter(createModelBuilder(lrSched, momSched, (a,b,c) -> {/*ignore*/}).buildGraph()),
-                "reference"));
-        modelData.add(new ModelHandlePopulation(evolvingPopulation, "mutationPop"));
+                new GraphModelAdapter(
+                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
+                                baseBuilder).buildGraph()),
+                referenceSuffix.toFileName(baseBuilder.name())));
+        modelData.add(new ModelHandlePopulation(evolvingPopulation, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
     }
 
     private Mutation createMutation(final Set<String> mutationLayers, int seed) {

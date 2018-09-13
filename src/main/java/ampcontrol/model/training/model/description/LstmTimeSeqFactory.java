@@ -2,17 +2,23 @@ package ampcontrol.model.training.model.description;
 
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.iterators.preprocs.CnnToRnnToLastStepToFfPreProcessor;
-import ampcontrol.model.training.model.*;
+import ampcontrol.model.training.model.GenericModelHandle;
+import ampcontrol.model.training.model.GraphModelAdapter;
+import ampcontrol.model.training.model.ModelAdapterWithPreProc;
+import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.builder.BlockBuilder;
+import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
+import ampcontrol.model.training.model.builder.ModelBuilder;
 import ampcontrol.model.training.model.layerblocks.Dense;
 import ampcontrol.model.training.model.layerblocks.LstmBlock;
 import ampcontrol.model.training.model.layerblocks.Output;
 import ampcontrol.model.training.model.layerblocks.RnnType;
 import ampcontrol.model.training.model.layerblocks.graph.LastStep;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ScheduleType;
 import org.nd4j.linalg.schedule.StepSchedule;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -26,14 +32,14 @@ public class LstmTimeSeqFactory {
     private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
-    private final Path modelDir;
+    private final FileNamePolicy modelFileNamePolicy;
 
-    public LstmTimeSeqFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public LstmTimeSeqFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, FileNamePolicy modelFileNamePolicy) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;
         this.namePrefix = namePrefix;
-        this.modelDir = modelDir;
+        this.modelFileNamePolicy = modelFileNamePolicy;
     }
 
     /**
@@ -43,7 +49,7 @@ public class LstmTimeSeqFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
         IntStream.of(1, 2, 4).forEach(nrofLstmLayers -> {
-            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+            ModelBuilder builder = new DeserializingModelBuilder(modelFileNamePolicy,
                     new BlockBuilder()
                             .setUpdater(new Nesterovs(new StepSchedule(ScheduleType.ITERATION, 0.05, 0.1, 40000)))
                             .setNamePrefix(namePrefix)

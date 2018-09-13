@@ -40,10 +40,10 @@ public class GenericModelHandle implements ModelHandle {
     /**
      * Constructor
      *
-     * @param trainingIter  Provides training samples.
-     * @param evalIter      Provides evaluation samples.
-     * @param model         Model to fit/evaluate
-     * @param name          Name of the model
+     * @param trainingIter Provides training samples.
+     * @param evalIter     Provides evaluation samples.
+     * @param model        Model to fit/evaluate
+     * @param name         Name of the model
      */
     public GenericModelHandle(MiniEpochDataSetIterator trainingIter, MiniEpochDataSetIterator evalIter, ModelAdapter model, String name) {
         this.trainingIter = trainingIter;
@@ -66,7 +66,10 @@ public class GenericModelHandle implements ModelHandle {
     @Override
     public void saveModel(String fileName) throws IOException {
         log.info("Saving model: " + name() + " as " + fileName);
-        ModelSerializer.writeModel(model.asModel(), new File(fileName), true);
+        final File file = new File(fileName);
+        file.getParentFile().mkdirs();
+        ModelSerializer.writeModel(model.asModel(), file, true);
+
     }
 
     @Override

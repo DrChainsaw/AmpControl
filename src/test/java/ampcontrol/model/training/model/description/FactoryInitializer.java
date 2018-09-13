@@ -3,9 +3,7 @@ package ampcontrol.model.training.model.description;
 import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.iterators.MockDataSetIterator;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 
 /**
  * Test class for avoid some overhead when creating the factories which reside in this package.
@@ -24,14 +22,14 @@ class FactoryInitializer {
     private MiniEpochDataSetIterator eval = new CachingDataSetIterator(new MockDataSetIterator());
     private int[] inputSize = {128,128,2};
     private String namePrefix = "testDummy_";
-    private Path modelSaveDir = Paths.get(".");
+    private FileNamePolicy modelFileNamePolicy = FileNamePolicy.identity;
 
     interface FactoryFactory {
-        void init(MiniEpochDataSetIterator tr, MiniEpochDataSetIterator ev, int[] is, String np, Path md);
+        void init(MiniEpochDataSetIterator tr, MiniEpochDataSetIterator ev, int[] is, String np, FileNamePolicy md);
     }
 
     void initialize(FactoryFactory ff) {
-        ff.init(train,eval,inputSize, namePrefix, modelSaveDir);
+        ff.init(train,eval,inputSize, namePrefix, modelFileNamePolicy);
     }
 
     FactoryInitializer setInputSize(int[] inputSize) {

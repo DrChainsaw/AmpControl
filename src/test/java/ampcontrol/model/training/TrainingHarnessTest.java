@@ -2,6 +2,7 @@ package ampcontrol.model.training;
 
 import ampcontrol.model.training.listen.MockModel;
 import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.naming.AddPrefix;
 import ampcontrol.model.training.model.validation.Validation;
 import ampcontrol.model.visualize.Plot;
 import org.deeplearning4j.eval.IEvaluation;
@@ -32,7 +33,7 @@ public class TrainingHarnessTest {
                 .collect(Collectors.toList());
         final Plot.Factory<Integer, Double> plotFac = title -> new MockPlot();
 
-        final TrainingHarness harness = new TrainingHarness(new ArrayList<>(models), "dummy", plotFac, path -> str -> {/* ignore */});
+        final TrainingHarness harness = new TrainingHarness(new ArrayList<>(models), new AddPrefix("dummy_"), plotFac, path -> str -> {/* ignore */});
         final int nrofTrainingSteps = 300;
         harness.startTraining(nrofTrainingSteps);
 
