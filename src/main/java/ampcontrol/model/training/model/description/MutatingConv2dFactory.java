@@ -75,7 +75,7 @@ public final class MutatingConv2dFactory {
         @Override
         public Validation<Evaluation> create(List<String> labels) {
             final Consumer<Evaluation> listener = eval -> fitnessConsumer.accept(calcFitness(eval));
-            return new Skipping<>(dummy -> 20, 20,
+            return new Skipping<>(dummy -> 30, 30,
                     new EvalValidation(
                             new Evaluation(labels),
                             listener
@@ -156,6 +156,7 @@ public final class MutatingConv2dFactory {
                         handle.registerValidation(new ModelFitness(fitness -> fitnessConsumer.accept(fitness, adapter), handle.getModel().numParams()));
                         evolvingPopulation.add(handle);
                     }
+                    log.info("Best candidate: " + adapters.get(0));
                 },
                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                         .andThen(2, new EliteSelection<>())
@@ -177,13 +178,11 @@ public final class MutatingConv2dFactory {
     private Mutation createMutation(final Set<String> mutationLayers, int seed) {
         final Random rng = new Random(seed);
         return new MutateNout(
-                //() -> Stream.empty(),
                 () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.3),
                 nOut -> (int) Math.max(4, nOut + 16 * (rng.nextDouble() - 0.5)));
     }
 
     private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy spy) {
-        // TODO Deserialize all models
         final LayerBlockConfig pool = new Pool2D().setSize(2).setStride(2);
         return new BlockBuilder()
                 .setUpdater(new Nesterovs(lrSched, momSched))

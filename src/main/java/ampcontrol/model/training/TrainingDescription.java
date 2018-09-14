@@ -11,6 +11,7 @@ import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.description.MutatingConv2dFactory;
 import ampcontrol.model.training.model.naming.AddPrefix;
+import ampcontrol.model.training.model.naming.CharThreshold;
 import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
@@ -39,7 +40,8 @@ public class TrainingDescription {
     private final static int clipLengthMs = 1000;
     private final static int clipSamplingRate = 44100;
     private final static Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
-    private final static FileNamePolicy modelPolicy = new AddPrefix("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\").compose(FileNamePolicy.toHashCode);
+    private final static FileNamePolicy modelPolicy = new AddPrefix("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\")
+            .compose(new CharThreshold(100, FileNamePolicy.toHashCode));
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10;
     private final static int trainBatchSize = 64;

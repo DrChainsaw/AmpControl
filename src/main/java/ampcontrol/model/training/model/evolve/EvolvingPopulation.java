@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve;
 
 import ampcontrol.model.training.model.evolve.selection.Selection;
+import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +11,9 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
- * Representation of a population of {@link Evolving} items. Will perform selection based on the given {@link Selection}
- * whenever fitness is obtained for the whole population.
+ * Representation of an evolving population of items. Will perform selection based on the given {@link Selection}
+ * whenever fitness is obtained for the whole population. What is usually called EvolutionEngine in more
+ * sophisticated genetic algorithm frameworks.
  * @param <T>
  *
  * @author Christian Skärby
@@ -66,8 +68,12 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
                 .collect(Collectors.toList()));
         evalCands.clear();
         initEvolvingPopulation();
-        // Needed to get free memory
-        Nd4j.getMemoryManager().purgeCaches();
+
+        // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
+        if(Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
+            // Needed to free memory?
+            Nd4j.getMemoryManager().purgeCaches();
+        }
         return this;
     }
 
