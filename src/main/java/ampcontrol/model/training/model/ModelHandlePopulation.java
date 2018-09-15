@@ -34,15 +34,16 @@ public class ModelHandlePopulation implements ModelHandle {
 
     @Override
     public void fit() {
-        if (bestModel != population.get(0)) {
-            bestModel = population.get(0);
-            validationFactories.forEach(validationFactory -> bestModel.registerValidation(validationFactory));
-        }
         population.forEach(ModelHandle::fit);
     }
 
     @Override
     public void eval() {
+        if (bestModel != population.get(0)) {
+            bestModel = population.get(0);
+            validationFactories.forEach(validationFactory -> bestModel.registerValidation(validationFactory));
+        }
+
         // TODO: Real solution. Maybe getModel return ModelFacade and spy decorator here as well?
         final Collection<TrainingListener> listeners = new ArrayList<>(((ComputationGraph) population.get(0).getModel()).getListeners());
         ((ComputationGraph) population.get(0).getModel()).getListeners().clear();
@@ -68,7 +69,9 @@ public class ModelHandlePopulation implements ModelHandle {
 
     @Override
     public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
-        validationFactories.add(new CachingValidationFactory<>(validationFactory));
+        final Validation.Factory<? extends IEvaluation> cachingFactory = new CachingValidationFactory<>(validationFactory);
+        validationFactories.add(cachingFactory);
+        bestModel.registerValidation(cachingFactory);
     }
 
     @Override

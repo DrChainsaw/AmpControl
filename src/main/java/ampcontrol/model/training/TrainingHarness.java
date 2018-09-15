@@ -39,8 +39,8 @@ class TrainingHarness {
     private static final Logger log = LoggerFactory.getLogger(TrainingHarness.class);
 
     private static final boolean doStatsLogging = false;
-    private static final int evalEveryNrofSteps = 50;
-    private static final int nrofStepsBeforeFirstEval = 100;
+    private static final int evalEveryNrofSteps = 100;
+    private static final int nrofStepsBeforeFirstEval = 200;
     private static final String bestSuffix = "_best";
     private static final String scoreSuffix = ".score";
     private static final double saveThreshold = 0.9;
@@ -185,6 +185,7 @@ class TrainingHarness {
                     log.info("Begin eval of " + model.name());
                 }
             };
+
             final Consumer<Boolean> logAccuracy = willEval -> log.info("Current best " + bestEvalSupplier.get() + " for model: " + model.name());
             return new TimeMeasuring(
                     new Listening<>(logAccuracy.andThen(logEval),
