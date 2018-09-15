@@ -115,8 +115,7 @@ public final class MutatingConv2dFactory {
             if (layer instanceof ConvolutionLayer) {
                 mutationLayers.add(layerName);
             } else if (layer instanceof DenseLayer) {
-                // Doesn't work yet...
-                // mutationLayers.add(layerName);
+                mutationLayers.add(layerName);
             }
         };
 
@@ -179,7 +178,7 @@ public final class MutatingConv2dFactory {
         final Random rng = new Random(seed);
         return new MutateNout(
                 () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.3),
-                nOut -> (int) Math.max(4, nOut + 16 * (rng.nextDouble() - 0.5)));
+                nOut -> (int) Math.max(4, nOut + nOut * 0.1*(rng.nextDouble() - 0.5)));
     }
 
     private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy spy) {
