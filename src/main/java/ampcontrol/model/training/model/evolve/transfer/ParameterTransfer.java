@@ -112,11 +112,11 @@ public class ParameterTransfer {
                 .addDependentTask(SingleTransferTask.builder()
                         .source(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(sourceParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_source_b"))
-                                .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : 1)
+                                .dimensionMapper(dim -> 1) // Always 1 for bias!
                                 .build())
                         .target(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(targetParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_target_b"))
-                                .dimensionMapper(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim)
+                                .dimensionMapper(dim -> 1) // Always 1 for bias!
                                 .build())
                 );
     }
@@ -217,7 +217,7 @@ public class ParameterTransfer {
         switch (paramName) {
             case (DefaultParamInitializer.WEIGHT_KEY):
                 switch (rank) {
-                    case 2: return Optional.of(IntUnaryOperator.identity());
+                    case 2: return Optional.of(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim);
                     case 4: return Optional.of(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim);
                     default: throw new UnsupportedOperationException("Not supported yet: " + rank);
                 }

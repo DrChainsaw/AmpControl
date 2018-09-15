@@ -29,31 +29,31 @@ public class GraphUtils {
     /**
      * Returns a CNN graph with pooling and batchnorm layers
      *
-     * @param cnn1Name Name of first conv layer
-     * @param cnn2Name Name of first conv layer
-     * @param cnn3Name Name of first conv layer
+     * @param conv1Name Name of first conv layer
+     * @param conv2Name Name of second conv layer
+     * @param conv3Name Name of third conv layer
      * @return a CNN graph
      */
     @NotNull
-    public static ComputationGraph getCnnGraph(String cnn1Name, String cnn2Name, String cnn3Name) {
+    public static ComputationGraph getCnnGraph(String conv1Name, String conv2Name, String conv3Name) {
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .weightInit(new ConstantDistribution(666))
                 .graphBuilder()
                 .addInputs(inputName)
                 .setOutputs(outputName)
                 .setInputTypes(InputType.convolutional(33, 33, 3))
-                .addLayer(cnn1Name, new Convolution2D.Builder(3, 3)
+                .addLayer(conv1Name, new Convolution2D.Builder(3, 3)
                         .nOut(10)
                         .build(), inputName)
-                .addLayer(batchNormName, new BatchNormalization.Builder().build(), cnn1Name)
-                .addLayer(cnn2Name, new Convolution2D.Builder(1, 1)
+                .addLayer(batchNormName, new BatchNormalization.Builder().build(), conv1Name)
+                .addLayer(conv2Name, new Convolution2D.Builder(1, 1)
                         .nOut(5)
                         .build(), batchNormName)
-                .addLayer(poolName, new SubsamplingLayer.Builder().build(), cnn2Name)
-                .addLayer(cnn3Name, new Convolution2D.Builder(2, 2)
+                .addLayer(poolName, new SubsamplingLayer.Builder().build(), conv2Name)
+                .addLayer(conv3Name, new Convolution2D.Builder(2, 2)
                         .nOut(7)
                         .build(), poolName)
-                .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), cnn3Name)
+                .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), conv3Name)
                 .addLayer(denseName, new DenseLayer.Builder()
                         .nOut(9)
                         .build(), globPoolName)
@@ -63,17 +63,56 @@ public class GraphUtils {
                 .build());
         graph.init();
 
-        setToLinspace(graph.getLayer(cnn1Name).getParam(W), true);
-        setToLinspace(graph.getLayer(cnn2Name).getParam(W), false);
-        setToLinspace(graph.getLayer(cnn3Name).getParam(W), true);
-        setToLinspace(graph.getLayer(cnn1Name).getParam(B), false);
-        setToLinspace(graph.getLayer(cnn2Name).getParam(B), true);
+        setToLinspace(graph.getLayer(conv1Name).getParam(W), true);
+        setToLinspace(graph.getLayer(conv2Name).getParam(W), false);
+        setToLinspace(graph.getLayer(conv3Name).getParam(W), true);
+        setToLinspace(graph.getLayer(conv1Name).getParam(B), false);
+        setToLinspace(graph.getLayer(conv2Name).getParam(B), true);
+        setToLinspace(graph.getLayer(conv3Name).getParam(B), false);
         graph.getLayer(batchNormName).getParam(BatchNormalizationParamInitializer.BETA).addi(2);
         graph.getLayer(batchNormName).getParam(BatchNormalizationParamInitializer.GAMMA).addi(5);
         graph.getLayer(batchNormName).getParam(BatchNormalizationParamInitializer.GLOBAL_MEAN).addi(7);
         graph.getLayer(batchNormName).getParam(BatchNormalizationParamInitializer.GLOBAL_VAR).muli(9);
         return graph;
     }
+
+
+    /**
+     *  Returns a graph with only dense layers
+     * @param name1 name of first dense layer
+     * @param name2 name of second dense layer
+     * @return a graph
+     */
+    @NotNull
+    public static ComputationGraph getGraph(String name1, String name2, String name3) {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .weightInit(new ConstantDistribution(666))
+                .graphBuilder()
+                .addInputs(inputName)
+                .setOutputs(outputName)
+                .setInputTypes(InputType.feedForward(33))
+                .addLayer(name1, new DenseLayer.Builder()
+                        .nOut(10)
+                        .build(), inputName)
+                .addLayer(name2, new DenseLayer.Builder()
+                        .nOut(5)
+                        .build(), name1)
+                .addLayer(name3, new DenseLayer.Builder()
+                        .nOut(7)
+                        .build(), name2)
+                .addLayer(outputName, new OutputLayer.Builder()
+                        .nOut(2)
+                        .build(), name3)
+                .build());
+        graph.init();
+
+        setToLinspace(graph.getLayer(name1).getParam(W), true);
+        setToLinspace(graph.getLayer(name1).getParam(B), false);
+        setToLinspace(graph.getLayer(name2).getParam(W), false);
+        setToLinspace(graph.getLayer(name2).getParam(B), true);
+        return graph;
+    }
+
 
     private static void setToLinspace(INDArray array, boolean reverse) {
         final long nrofElemsSource = Arrays.stream(array.shape()).reduce((i1, i2) -> i1 * i2).orElseThrow(() -> new IllegalArgumentException("No elements!"));
