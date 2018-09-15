@@ -49,15 +49,16 @@ public class ParameterTransferTest {
      * Test one layer increases while the other one increases and see that weights are transferred.
      */
     @Test
-    public void IncreaseDecreaseNoutCnnToCnn() {
+    public void increaseDecreaseNoutCnnToCnn() {
         final String mutationName = "toMutate";
         final String nextMutationName = "toMutateToo";
         final String afterName = "afterMutate";
         final ComputationGraph graph = GraphUtils.getCnnGraph(mutationName, nextMutationName, afterName);
         final int outputDim = 0;
+        final int outputDimNext = outputDim;
         final int inputDim = 1;
 
-        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
+        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
 
         mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
@@ -82,16 +83,50 @@ public class ParameterTransferTest {
      * Test one layer increases while the other one increases and see that weights are transferred.
      */
     @Test
-    public void IncreaseDecreaseNoutDenseToDense() {
+    public void increaseDecreaseNoutDenseToDense() {
         final String mutationName = "toMutate";
         final String nextMutationName = "toMutateToo";
         final String afterName = "afterMutate";
         final ComputationGraph graph = GraphUtils.getGraph(mutationName, nextMutationName, afterName);
         final int outputDim = 1;
+        final int outputDimNext = outputDim;
         final int inputDim = 0;
 
-        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
+        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
         mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
+    }
+
+    /**
+     * Test to decrease nOut in a dense layer which is input to another dense layer and see that weights get transferred.
+     */
+    @Test
+    public void decreaseNoutConvToDense() {
+        final String mutationName = "toMutate";
+        final String nextMutationName = "toMutateToo";
+        final String afterName = "afterMutate";
+        final ComputationGraph graph = GraphUtils.getConvToDenseGraph(mutationName, nextMutationName, afterName);
+        final int outputDim = 0;
+        final int inputDim = 0;
+
+        final ComputationGraph mutatedGraph = decreaseDecreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 9, 9}));
+    }
+
+    /**
+     * Test one layer increases while the other one increases and see that weights are transferred.
+     */
+    @Test
+    public void increaseDecreaseNoutConvToDense() {
+        final String mutationName = "toMutate";
+        final String nextMutationName = "toMutateToo";
+        final String afterName = "afterMutate";
+        final ComputationGraph graph = GraphUtils.getConvToDenseGraph(mutationName, nextMutationName, afterName);
+        final int outputDim = 0;
+        final int outputDimNext = 1;
+        final int inputDim = 0;
+
+        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 9, 9}));
     }
 
     @NotNull
@@ -133,7 +168,14 @@ public class ParameterTransferTest {
     }
 
     @NotNull
-    ComputationGraph decreaseIncreaseNout(String mutationName, String nextMutationName, String afterName, ComputationGraph graph, int outputDim, int inputDim) {
+    ComputationGraph decreaseIncreaseNout(
+            String mutationName,
+            String nextMutationName,
+            String afterName,
+            ComputationGraph graph,
+            int outputDim,
+            int outputDimNext,
+            int inputDim) {
         final int[] orderToKeepFirst = {0, 1, 4, 6, 7, 5, 2, 3, 8, 9};
         final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
@@ -164,7 +206,7 @@ public class ParameterTransferTest {
         final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(GraphUtils.W);
         final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.W);
         assertDoubleDims(IntStream.range(0, nextMutationNewNout).toArray(), orderToKeepFirst, sourceNext, targetNext);
-        assertScalar(outputDim, nextMutationPrevNout, nextMutationNewVal, targetNext);
+        assertScalar(outputDimNext, nextMutationPrevNout, nextMutationNewVal, targetNext);
 
         final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(GraphUtils.B);
         final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.B);

@@ -155,7 +155,7 @@ public final class MutatingConv2dFactory {
                         handle.registerValidation(new ModelFitness(fitness -> fitnessConsumer.accept(fitness, adapter), handle.getModel().numParams()));
                         evolvingPopulation.add(handle);
                     }
-                    log.info("Best candidate: " + adapters.get(0));
+                    log.info("Best candidate: " + adapters.get(0) + " numParameters: " + adapters.get(0).asModel().numParams());
                 },
                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                         .andThen(2, new EliteSelection<>())
@@ -203,10 +203,12 @@ public final class MutatingConv2dFactory {
                 .andThen(pool)
 
                 .andThen(new GlobPool())
-                .andThenStack(2)
-                .of(new SpyBlock(new Dense()
+                .andThen(new SpyBlock(new Dense()
                         .setHiddenWidth(128)
                         .setActivation(new ActivationReLU()), spy))
+                .andThen(new Dense()
+                        .setHiddenWidth(128)
+                        .setActivation(new ActivationReLU()))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
                         .setLambda(0.004));

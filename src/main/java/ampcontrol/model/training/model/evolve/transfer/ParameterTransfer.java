@@ -201,7 +201,7 @@ public class ParameterTransfer {
                                 .build())
                         .target(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(targetParam, layerName + "_target_" + parKey))
-                                .dimensionMapper(dimMapper) // flip dim 0 and 1
+                                .dimensionMapper(dimMapper)
                                 .build()));
             });
         }
@@ -217,7 +217,7 @@ public class ParameterTransfer {
         switch (paramName) {
             case (DefaultParamInitializer.WEIGHT_KEY):
                 switch (rank) {
-                    case 2: return Optional.of(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim);
+                    case 2: return Optional.of(dim -> 0);
                     case 4: return Optional.of(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim);
                     default: throw new UnsupportedOperationException("Not supported yet: " + rank);
                 }

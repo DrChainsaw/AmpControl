@@ -113,6 +113,44 @@ public class GraphUtils {
         return graph;
     }
 
+    /**
+     *  Returns a graph with only dense layers
+     * @param name1 name of first (conv) layer
+     * @param name2 name of second (dense) layer
+     * @param name3 name of third (dense) layer
+     * @return a graph
+     */
+    @NotNull
+    public static ComputationGraph getConvToDenseGraph(String name1, String name2, String name3) {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .weightInit(new ConstantDistribution(666))
+                .graphBuilder()
+                .addInputs(inputName)
+                .setOutputs(outputName)
+                .setInputTypes(InputType.convolutional(9, 9, 3))
+                .addLayer(name1, new ConvolutionLayer.Builder(3,3)
+                        .nOut(10)
+                        .build(), inputName)
+                .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), name1)
+                .addLayer(name2, new DenseLayer.Builder()
+                        .nOut(5)
+                        .build(), globPoolName)
+                .addLayer(name3, new DenseLayer.Builder()
+                        .nOut(7)
+                        .build(), name2)
+                .addLayer(outputName, new OutputLayer.Builder()
+                        .nOut(2)
+                        .build(), name3)
+                .build());
+        graph.init();
+
+        setToLinspace(graph.getLayer(name1).getParam(W), true);
+        setToLinspace(graph.getLayer(name1).getParam(B), false);
+        setToLinspace(graph.getLayer(name2).getParam(W), false);
+        setToLinspace(graph.getLayer(name2).getParam(B), true);
+        return graph;
+    }
+
 
     private static void setToLinspace(INDArray array, boolean reverse) {
         final long nrofElemsSource = Arrays.stream(array.shape()).reduce((i1, i2) -> i1 * i2).orElseThrow(() -> new IllegalArgumentException("No elements!"));

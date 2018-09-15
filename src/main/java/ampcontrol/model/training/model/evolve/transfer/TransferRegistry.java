@@ -54,12 +54,12 @@ class TransferRegistry {
         }
 
         private void put(INDArray anotherArray) {
-            // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
-            if (indexMap.isEmpty()) {
-                array.assign(anotherArray);
-            }
-
             try {
+                // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
+                if (indexMap.isEmpty()) {
+                    array.assign(anotherArray);
+                }
+
                 array.put(asIndArray(), anotherArray);
             } catch (ND4JIllegalStateException e) {
                 throw new ND4JIllegalStateException("Could not set array " + debugName + "! Tried to put array of shape "
@@ -70,12 +70,16 @@ class TransferRegistry {
         }
 
         private INDArray get() {
-            // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
-            if (indexMap.isEmpty()) {
-                return array.dup();
+            try {
+                // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
+                if (indexMap.isEmpty()) {
+                    return array.dup();
+                }
+                return addBackSingletonDimensions(array.get(asIndArray()));
+            } catch (ND4JIllegalStateException e) {
+                throw new ND4JIllegalStateException("Could not get array " + debugName + "! Target array of shape "
+                        + Arrays.toString(array.shape()) + ". Wanted indexes " + Arrays.toString(asIndArray()), e);
             }
-
-            return addBackSingletonDimensions(array.get(asIndArray()));
         }
 
         // Workaround for dl4j issue #6341
