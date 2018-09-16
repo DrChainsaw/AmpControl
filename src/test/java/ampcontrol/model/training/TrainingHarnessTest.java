@@ -1,12 +1,11 @@
 package ampcontrol.model.training;
 
-import ampcontrol.model.training.listen.MockModel;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.naming.AddPrefix;
 import ampcontrol.model.training.model.validation.Validation;
 import ampcontrol.model.visualize.Plot;
 import org.deeplearning4j.eval.IEvaluation;
-import org.deeplearning4j.nn.api.Model;
+import org.deeplearning4j.optimize.api.TrainingListener;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -57,7 +56,6 @@ public class TrainingHarnessTest {
         private int nrofEvalCalls = 0;
         private final String name;
 
-        private final Model model = new MockModel();
         private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
         private final List<String> labels = Arrays.asList("greg", "grgrhh");
         private final Set<String> savedModelNames = new LinkedHashSet<>();
@@ -104,14 +102,15 @@ public class TrainingHarnessTest {
             return name;
         }
 
-        @Override
-        public Model getModel() {
-            return model;
-        }
 
         @Override
         public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
             validations.add(validationFactory.create(labels));
+        }
+
+        @Override
+        public void addListener(TrainingListener listener) {
+            //Ignore
         }
 
         @Override

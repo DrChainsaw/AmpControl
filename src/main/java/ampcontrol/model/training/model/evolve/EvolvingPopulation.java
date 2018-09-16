@@ -1,14 +1,18 @@
 package ampcontrol.model.training.model.evolve;
 
+import ampcontrol.model.training.model.evolve.fitness.FitnessPolicy;
 import ampcontrol.model.training.model.evolve.selection.Selection;
 import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.function.BiConsumer;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Representation of an evolving population of items. Will perform selection based on the given {@link Selection}
@@ -18,24 +22,24 @@ import java.util.stream.Collectors;
  *
  * @author Christian Skärby
  */
-public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<T>> {
+public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<T>>, Population<T> {
 
     private static final Logger log = LoggerFactory.getLogger(EvolvingPopulation.class);
 
     private final List<T> population;
     private final List<Map.Entry<Double, T>> evalCands = new ArrayList<>();
-    private final EvolutionCallback<T> callback;
+    private final FitnessPolicy<T> fitnessPolicy;
     private final Selection<T> selection;
-
-    public interface EvolutionCallback<T> extends BiConsumer<List<T>, BiConsumer<Double, T>> {/* Just a an alias */
-    }
+    private final List<Runnable> onChangeCallback = new ArrayList<>();
 
     public EvolvingPopulation(
             List<T> population,
-            EvolutionCallback<T> callback,
+            FitnessPolicy<T> fitnessPolicy,
             Selection<T> selection) {
-        this.population = population;
-        this.callback = callback;
+        this.population = population.stream()
+                .map(cand -> fitnessPolicy.apply(cand, fitness -> reportFitness(fitness, cand)))
+                .collect(Collectors.toList());
+        this.fitnessPolicy = fitnessPolicy;
         this.selection = selection;
     }
 
@@ -50,9 +54,9 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
 
         log.info("got fitness " + fitness + " for cand " + population.indexOf(item) + " size: " + evalCands.size());
         evalCands.add(new AbstractMap.SimpleEntry<>(fitness, item));
-
         if (evalCands.size() == population.size()) {
-            evolve();
+            log.info("Callback! " + onChangeCallback);
+            onChangeCallback.forEach(Runnable::run);
         }
     }
 
@@ -65,9 +69,9 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
         population.clear();
 
         population.addAll(selection.selectCandiates(evalCands)
+                .map(cand -> fitnessPolicy.apply(cand, fitness -> reportFitness(fitness, cand)))
                 .collect(Collectors.toList()));
         evalCands.clear();
-        initEvolvingPopulation();
 
         // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
         if(Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
@@ -77,7 +81,17 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
         return this;
     }
 
-    public void initEvolvingPopulation() {
-        callback.accept(Collections.unmodifiableList(population), this::reportFitness);
+    @Override
+    public Stream<T> streamPopulation() {
+        if (evalCands.size() == population.size()) {
+            evolve();
+        }
+        return population.stream();
     }
+
+    @Override
+    public void onChangeCallback(Runnable callback) {
+        onChangeCallback.add(callback);
+    }
+
 }

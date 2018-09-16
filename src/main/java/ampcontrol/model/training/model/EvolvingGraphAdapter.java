@@ -50,9 +50,8 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
      * @return the evolved adapter
      */
     @Override
-    public synchronized EvolvingGraphAdapter evolve() {
+    public EvolvingGraphAdapter evolve() {
         log.info("Evolve " + this);
-        graph.getListeners().clear();
         final TransferLearning.GraphBuilder mutated = mutation.mutate(new TransferLearning.GraphBuilder(graph), graph);
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph);
         final ComputationGraph newGraph = mutated.build();

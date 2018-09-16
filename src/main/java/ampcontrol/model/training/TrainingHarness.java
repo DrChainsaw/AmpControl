@@ -87,13 +87,15 @@ class TrainingHarness {
             try {
                 final BestEvalScore bestEvalScore = new BestEvalScore(fileBaseName + bestSuffix + scoreSuffix);
                 log.info("Accuracy for model " + model.name() + ": " + bestEvalScore.get());
-                IterationSupplier iterListener = new IterationSupplier();
-                model.getModel().addListeners(iterListener);
+                final IterationSupplier iterListener = new IterationSupplier();
+                model.addListener(iterListener);
+                final TrainScoreListener.TrainScoreSupplier scoreSupplier = new TrainScoreListener.TrainScoreSupplier();
+                model.addListener(new TrainScoreListener(scoreSupplier));
 
                 final Consumer<Evaluation> listener =
-                        createEvalConsumer(bestEvalScore, iterListener)
+                        createEvalConsumer(bestEvalScore,scoreSupplier, iterListener)
                                 .andThen(createLastCheckPoint(bestEvalScore))
-                                .andThen(createBestCheckPoint(bestEvalScore, iterListener))
+                                .andThen(createBestCheckPoint(bestEvalScore, scoreSupplier, iterListener))
                                 .andThen(bestEvalScore);
 
                 return decorate(new EvalValidation(new Evaluation(labels), listener), bestEvalScore);
@@ -103,10 +105,13 @@ class TrainingHarness {
             }
         }
 
-        private Consumer<Evaluation> createEvalConsumer(final Supplier<Double> bestEvalSupplier, final Supplier<Integer> iterationSupplier) {
+        private Consumer<Evaluation> createEvalConsumer(
+                final Supplier<Double> bestEvalSupplier,
+                final Supplier<Double> scoreSupplier,
+                final Supplier<Integer> iterationSupplier) {
             final String lastEvalLabel = lastEvalName(model.name());
             final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(lastEvalLabel, iterationSupplier.get(), eval.accuracy());
-            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(lastEvalLabel, iterationSupplier.get(), model.getModel().score());
+            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(lastEvalLabel, iterationSupplier.get(), scoreSupplier.get());
 
             final Consumer<Evaluation> storePlots =
                     eval -> {
@@ -141,12 +146,13 @@ class TrainingHarness {
         }
 
         private Consumer<Evaluation> createBestCheckPoint(final Supplier<Double> bestEvalSupplier,
+                                                          final Supplier<Double> scoreSupplier,
                                                           final Supplier<Integer> iterationSupplier) {
             final Consumer<Evaluation> saveCheckPoint = createCheckPoint(fileBaseName + bestSuffix);
 
             final String bestEvalLabel = bestEvalName(model.name());
             final Consumer<Evaluation> plotEval = eval -> evalPlot.plotData(bestEvalLabel, iterationSupplier.get(), eval.accuracy());
-            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(bestEvalLabel, iterationSupplier.get(), model.getModel().score());
+            final Consumer<Evaluation> plotScore = eval -> scorePlot.plotData(bestEvalLabel, iterationSupplier.get(), scoreSupplier.get());
 
             final Consumer<Evaluation> storePlots =
                     eval -> {
@@ -207,10 +213,10 @@ class TrainingHarness {
                 //Alternative: new FileStatsStorage(File) - see UIStorageExample
                 final StatsStorage statsStorage = new FileStatsStorage(new File(mh.name() + "_stats"));
                 uiServer.attach(statsStorage);
-                mh.getModel().addListeners(new StatsListener(statsStorage, 20));
+                mh.addListener(new StatsListener(statsStorage, 20));
             }
-            mh.getModel().addListeners(new TimeMeasurement());
-            mh.getModel().addListeners(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
+            mh.addListener(new TimeMeasurement());
+            mh.addListener(new TrainScoreListener((i, s) -> log.info("Score at iter " + i + ": " + s)));
             // mh.getModel().addListeners(new SeBlockInspection());
         }
     }
@@ -221,8 +227,8 @@ class TrainingHarness {
 
         for (ModelHandle mh : models) {
             final String trainName = trainEvalName(mh.name());
-            mh.getModel().addListeners(new TrainScoreListener((i, s) -> scorePlot.plotData(trainName, i, s)));
-            mh.getModel().addListeners(new TrainEvaluator((i, e) -> evalPlot.plotData(trainName, i, e)));
+            mh.addListener(new TrainScoreListener((i, s) -> scorePlot.plotData(trainName, i, s)));
+            mh.addListener(new TrainEvaluator((i, e) -> evalPlot.plotData(trainName, i, e)));
             mh.registerValidation(new EvalValidationFactory(mh, evalPlot, scorePlot));
         }
     }

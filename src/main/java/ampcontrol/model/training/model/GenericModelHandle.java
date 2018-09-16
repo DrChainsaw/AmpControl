@@ -5,7 +5,7 @@ import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
-import org.deeplearning4j.nn.api.Model;
+import org.deeplearning4j.optimize.api.TrainingListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,14 +53,15 @@ public class GenericModelHandle implements ModelHandle {
         model.asModel().addListeners(new NanScoreWatcher(() -> nanTimeOutTimer = 0));
     }
 
-    @Override
-    public Model getModel() {
-        return model.asModel();
-    }
 
     @Override
     public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
         validations.add(validationFactory.create(evalIter.getLabels()));
+    }
+
+    @Override
+    public void addListener(TrainingListener listener) {
+        model.asModel().addListeners(listener);
     }
 
     @Override
