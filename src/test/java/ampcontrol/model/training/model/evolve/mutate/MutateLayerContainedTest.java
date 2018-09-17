@@ -34,12 +34,12 @@ public class MutateLayerContainedTest {
         final Mutation mutatation = new MutateLayerContained(() -> Stream.of(
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(mut1)
-                        .layerSupplier(() -> new Convolution2D.Builder(5, 5).nOut(graph.layerSize(mut1)))
+                        .layerSupplier(() -> new Convolution2D.Builder(5, 5))
                         .inputLayers(getInputs(graph, mut1))
                         .build(),
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(mut2)
-                        .layerSupplier(() -> new Convolution2D.Builder(7, 7).nOut(graph.layerSize(mut2)))
+                        .layerSupplier(() -> new Convolution2D.Builder(7, 7))
                         .inputLayers(getInputs(graph, mut2))
                         .build()));
         final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph), graph).build();
@@ -71,7 +71,7 @@ public class MutateLayerContainedTest {
         final Mutation mutatation = new MutateLayerContained(() -> Stream.of(
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(toInsert)
-                        .layerSupplier(() -> new Convolution2D.Builder(5, 5).nOut(graph.layerInputSize(mut2)))
+                        .layerSupplier(() -> new Convolution2D.Builder(5, 5))
                         .inputLayers(new String[] {mut1})
                         .build()));
         final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph), graph).build();

@@ -11,6 +11,7 @@ import org.deeplearning4j.nn.transferlearning.TransferLearning;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -46,6 +47,16 @@ public class MutateLayerContained implements Mutation {
                                 () -> Stream.of(getInputLayers())
                                         .mapToInt(graph::layerSize)
                                         .sum());
+        private final Function<ComputationGraph, Integer> outputSizeMapping = graph ->
+                Optional.ofNullable(graph.getVertex(getLayerName()))
+                        .filter(GraphVertex::hasLayer)
+                        .map(graphVertex -> graph.layerSize(graphVertex.getVertexName()))
+                        .orElseGet(
+                                () -> graph.getConfiguration().getVertexInputs().entrySet().stream()
+                                        .filter(entry -> entry.getValue().contains(getLayerName()))
+                                        .map(Map.Entry::getKey)
+                                        .mapToInt(graph::layerInputSize)
+                                        .sum());
     }
 
 
@@ -57,15 +68,17 @@ public class MutateLayerContained implements Mutation {
 
     private void replaceOrAddVertex(LayerMutation mutation, TransferLearning.GraphBuilder builder, ComputationGraph prevGraph) {
 
-        if(Optional.ofNullable(prevGraph.getVertex(mutation.getLayerName())).isPresent())  {
+        int nOut = 0;
+        if (Optional.ofNullable(prevGraph.getVertex(mutation.getLayerName())).isPresent()) {
             // Simple case, we can replace an existing vertex
             builder.removeVertexKeepConnections(mutation.getLayerName());
+            nOut = mutation.getOutputSizeMapping().apply(prevGraph);
         } else {
             // Trickier case: Insert a vertex between two other vertices
             // vertexN -> vertexN+1 need to become vertexN -> newlayer -> vertexN+1
             // Thus, layerN+1 must be removed and added back with newLayer as input
-            for(String inputName: mutation.getInputLayers()) {
-                for(VertexIndices vertexIndices: prevGraph.getVertex(inputName).getOutputVertices()) {
+            for (String inputName : mutation.getInputLayers()) {
+                for (VertexIndices vertexIndices : prevGraph.getVertex(inputName).getOutputVertices()) {
                     // this is a vertex which shall have the new layer as input
                     final GraphVertex outputVertex = prevGraph.getVertices()[vertexIndices.getVertexIndex()];
                     final String outputName = outputVertex.getVertexName();
@@ -83,14 +96,20 @@ public class MutateLayerContained implements Mutation {
                     builder.removeVertexKeepConnections(outputVertex.getVertexName())
                             .addVertex(outputName,
                                     vertexConf,
-                                    allInputsToOutput.toArray(new String[] {}));
+                                    allInputsToOutput.toArray(new String[]{}));
+
+                    // Assumes merge of inputs. Not much else to do without access to TransferLearning builder internals
+                    // Note: Will fail in case of a non-layer vertex. Needs fixing...
+                    nOut += prevGraph.layerSize(inputName);
                 }
             }
         }
 
         final Layer.Builder layerBuilder = mutation.getLayerSupplier().get();
         if (layerBuilder instanceof FeedForwardLayer.Builder) {
-            ((FeedForwardLayer.Builder) layerBuilder).nIn(mutation.inputSizeMapping.apply(prevGraph));
+            FeedForwardLayer.Builder ffBuilder = ((FeedForwardLayer.Builder) layerBuilder);
+            ffBuilder.nIn(mutation.getInputSizeMapping().apply(prevGraph));
+            ffBuilder.nOut(nOut);
         }
 
         builder.addLayer(mutation.getLayerName(), layerBuilder.build(), mutation.getInputLayers());
