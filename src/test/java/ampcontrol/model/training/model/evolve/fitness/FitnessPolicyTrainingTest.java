@@ -70,7 +70,7 @@ public class FitnessPolicyTrainingTest {
             }
         }, fitness -> measuredScore[0] = fitness);
 
-        assertEquals("Incorrect number of training listeners", 1, listeners.size());
+        assertEquals("Incorrect number of training listeners", 2, listeners.size());
 
         // Bleh! Hardcoded knowledge of TraininListener implementation!
         listeners.forEach(listener -> listener.iterationDone(model, 0, 0));
