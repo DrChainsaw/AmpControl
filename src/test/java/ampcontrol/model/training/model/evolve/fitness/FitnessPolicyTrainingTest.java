@@ -31,8 +31,9 @@ public class FitnessPolicyTrainingTest {
         final List<TrainingListener> listeners = new ArrayList<>();
         final MockModel model = new MockModel() {
             @Override
-            public void setListeners(Collection<TrainingListener> listeners) {
-                listeners = new ArrayList<>(listeners);
+            public void setListeners(Collection<TrainingListener> listenersToSet) {
+                listeners.clear();
+                listeners.addAll(listenersToSet);
             }
 
             @Override
@@ -72,7 +73,7 @@ public class FitnessPolicyTrainingTest {
 
         assertEquals("Incorrect number of training listeners", 2, listeners.size());
 
-        // Bleh! Hardcoded knowledge of TraininListener implementation!
+        // Bleh! Hardcoded knowledge of TrainingListener implementation!
         listeners.forEach(listener -> listener.iterationDone(model, 0, 0));
         listeners.forEach(listener -> listener.onEpochEnd(model));
         assertEquals("No fitness shall have been reported!", -1d, measuredScore[0], 1e-10);
