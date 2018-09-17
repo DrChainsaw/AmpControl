@@ -16,7 +16,7 @@ import java.util.stream.Stream;
  * @author Christian Skärby
  */
 public class CachedPopulation<T> implements Population<T> {
-    private static final Logger log = LoggerFactory.getLogger(EvolvingPopulation.class);
+    private static final Logger log = LoggerFactory.getLogger(CachedPopulation.class);
 
     private final Population<T> sourcePopulation;
     private Collection<T> cachedPopulation;

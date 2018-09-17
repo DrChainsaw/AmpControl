@@ -40,7 +40,8 @@ public class ParameterTransferTest {
         final int outputDim = 0;
         final int inputDim = 1;
 
-        final ComputationGraph mutatedGraph = decreaseDecreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
+        final ComputationGraph mutatedGraph = decreaseDecreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
 
         mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
@@ -58,7 +59,8 @@ public class ParameterTransferTest {
         final int outputDimNext = outputDim;
         final int inputDim = 1;
 
-        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
+        final ComputationGraph mutatedGraph = decreaseIncreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
 
         mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
@@ -75,7 +77,8 @@ public class ParameterTransferTest {
         final int outputDim = 1;
         final int inputDim = 0;
 
-        final ComputationGraph mutatedGraph = decreaseDecreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
+        final ComputationGraph mutatedGraph = decreaseDecreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
         mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
     }
 
@@ -92,7 +95,8 @@ public class ParameterTransferTest {
         final int outputDimNext = outputDim;
         final int inputDim = 0;
 
-        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
+        final ComputationGraph mutatedGraph = decreaseIncreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
         mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
     }
 
@@ -108,7 +112,8 @@ public class ParameterTransferTest {
         final int outputDim = 0;
         final int inputDim = 0;
 
-        final ComputationGraph mutatedGraph = decreaseDecreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
+        final ComputationGraph mutatedGraph = decreaseDecreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
         mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 9, 9}));
     }
 
@@ -125,12 +130,49 @@ public class ParameterTransferTest {
         final int outputDimNext = 1;
         final int inputDim = 0;
 
-        final ComputationGraph mutatedGraph = decreaseIncreaseNout(mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
+        final ComputationGraph mutatedGraph = decreaseIncreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
         mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 9, 9}));
     }
 
+    /**
+     * Test to decrease nOut in a graph where a mutated dense layer is input to the output layer
+     */
+    @Test
+    public void decreaseNoutDenseToOut() {
+        final String mutationName = "toMutate";
+        final String nextMutationName = "toMutateToo";
+        final String afterName = "afterMutate";
+        final ComputationGraph graph = GraphUtils.getGraphNearOut(mutationName, nextMutationName, afterName);
+        final int outputDim = 1;
+        final int inputDim = 0;
+
+        final ComputationGraph mutatedGraph = decreaseDecreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, inputDim);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
+    }
+
+    /**
+     * Test one layer decreases while the other one increases and where the increased one is input to the output layer
+     */
+    @Test
+    public void increaseDecreaseNoutDenseToOut() {
+        final String mutationName = "toMutate";
+        final String nextMutationName = "toMutateToo";
+        final String afterName = "afterMutate";
+        final ComputationGraph graph = GraphUtils.getGraphNearOut(mutationName, nextMutationName, afterName);
+        final int outputDim = 1;
+        final int outputDimNext = outputDim;
+        final int inputDim = 0;
+
+        final ComputationGraph mutatedGraph = decreaseIncreaseNout(
+                mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
+    }
+
     @NotNull
-    ComputationGraph decreaseDecreaseNout(String mutationName, String nextMutationName, String afterName, ComputationGraph graph, int outputDim, int inputDim) {
+    ComputationGraph decreaseDecreaseNout(
+            String mutationName, String nextMutationName, String afterName, ComputationGraph graph, int outputDim, int inputDim) {
         final int[] orderToKeepFirst = {1, 3, 5, 6, 7, 9, 2, 4, 8, 0};
         final int[] orderToKeepSecond = {0, 3, 4, 2, 1};
         final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();

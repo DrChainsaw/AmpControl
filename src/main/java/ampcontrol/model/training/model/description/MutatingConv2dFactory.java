@@ -171,10 +171,10 @@ public final class MutatingConv2dFactory {
         final Random rng = new Random(seed);
         return new MutateNout(
                 () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.3),
-                nOut -> (int) Math.max(4, nOut + nOut * 0.1 * (rng.nextDouble() - 0.5)));
+                nOut -> (int) Math.max(4, nOut + Math.max(nOut, 10) * 0.5 * (rng.nextDouble() - 0.5)));
     }
 
-    private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy spy) {
+    private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy nOutSpy) {
         final LayerBlockConfig pool = new Pool2D().setSize(2).setStride(2);
         return new BlockBuilder()
                 .setUpdater(new Nesterovs(lrSched, momSched))
@@ -182,26 +182,24 @@ public final class MutatingConv2dFactory {
                 .first(new ConvType(inputShape))
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(32), spy))
+                        .setNrofKernels(32), nOutSpy))
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(64), spy))
+                        .setNrofKernels(64), nOutSpy))
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(128), spy))
+                        .setNrofKernels(128), nOutSpy))
                 .andThen(pool)
 
                 .andThen(new GlobPool())
-                .andThen(new SpyBlock(new Dense()
+                .andThenStack(2)
+                .of(new SpyBlock(new Dense()
                         .setHiddenWidth(128)
-                        .setActivation(new ActivationReLU()), spy))
-                .andThen(new Dense()
-                        .setHiddenWidth(128)
-                        .setActivation(new ActivationReLU()))
+                        .setActivation(new ActivationReLU()), nOutSpy))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
                         .setLambda(0.004));

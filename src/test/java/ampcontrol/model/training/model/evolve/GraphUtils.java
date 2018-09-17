@@ -81,6 +81,7 @@ public class GraphUtils {
      *  Returns a graph with only dense layers
      * @param name1 name of first dense layer
      * @param name2 name of second dense layer
+     * @param name3 name of third dense layer
      * @return a graph
      */
     @NotNull
@@ -103,6 +104,40 @@ public class GraphUtils {
                 .addLayer(outputName, new OutputLayer.Builder()
                         .nOut(2)
                         .build(), name3)
+                .build());
+        graph.init();
+
+        setToLinspace(graph.getLayer(name1).getParam(W), true);
+        setToLinspace(graph.getLayer(name1).getParam(B), false);
+        setToLinspace(graph.getLayer(name2).getParam(W), false);
+        setToLinspace(graph.getLayer(name2).getParam(B), true);
+        return graph;
+    }
+
+    /**
+     *  Returns a graph with only dense layers where the last named layer is a {@link CenterLossOutputLayer}.
+     * @param name1 name of first dense layer
+     * @param name2 name of second dense layer
+     * @param name3 name of the output layer
+     * @return a graph
+     */
+    @NotNull
+    public static ComputationGraph getGraphNearOut(String name1, String name2, String name3) {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .weightInit(new ConstantDistribution(666))
+                .graphBuilder()
+                .addInputs(inputName)
+                .setOutputs(name3)
+                .setInputTypes(InputType.feedForward(33))
+                .addLayer(name1, new DenseLayer.Builder()
+                        .nOut(10)
+                        .build(), inputName)
+                .addLayer(name2, new DenseLayer.Builder()
+                        .nOut(5)
+                        .build(), name1)
+                .addLayer(name3, new CenterLossOutputLayer.Builder()
+                        .nOut(7)
+                        .build(), name2)
                 .build());
         graph.init();
 

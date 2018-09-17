@@ -217,12 +217,12 @@ public class ParameterTransfer {
         switch (paramName) {
             case (DefaultParamInitializer.WEIGHT_KEY):
                 switch (rank) {
-                    case 2: return Optional.of(dim -> 0);
-                    case 4: return Optional.of(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim);
+                    case 2: return Optional.of(dim -> 0); // dim 0 is input to dense layers
+                    case 4: return Optional.of(dim -> 1); // dim 1 is input to conv layers
                     default: throw new UnsupportedOperationException("Not supported yet: " + rank);
                 }
             case(CenterLossParamInitializer.CENTER_KEY):
-                return Optional.of(dim -> dim == 0 ? 1 : dim == 1 ? 0 : dim);
+                return Optional.of(dim -> 1); // dim 1 is input to center loss
             case (DefaultParamInitializer.BIAS_KEY):
             case (BatchNormalizationParamInitializer.BETA):
             case (BatchNormalizationParamInitializer.GAMMA):

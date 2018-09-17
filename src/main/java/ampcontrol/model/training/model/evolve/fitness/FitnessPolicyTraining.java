@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve.fitness;
 
+import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.listen.TrainScoreListener;
 import ampcontrol.model.training.model.ModelAdapter;
 
@@ -42,6 +43,7 @@ public class FitnessPolicyTraining<T extends ModelAdapter> implements FitnessPol
         // Clear all listeners as we might have gotten an untouched handle (which has listeners since before
         candidate.asModel().setListeners(Collections.emptyList());
         candidate.asModel().addListeners(new TrainScoreListener(fitnessCalculation));
+        candidate.asModel().addListeners(new NanScoreWatcher(() -> fitnessListener.accept(Double.MAX_VALUE)));
         return candidate;
     }
 }
