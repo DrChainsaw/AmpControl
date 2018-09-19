@@ -58,6 +58,7 @@ class TransferRegistry {
                 // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
                 if (indexMap.isEmpty()) {
                     array.assign(anotherArray);
+                    return;
                 }
 
                 array.put(asIndArray(), anotherArray);

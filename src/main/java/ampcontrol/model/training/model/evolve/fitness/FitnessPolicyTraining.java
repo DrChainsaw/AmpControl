@@ -3,6 +3,9 @@ package ampcontrol.model.training.model.evolve.fitness;
 import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.listen.TrainScoreListener;
 import ampcontrol.model.training.model.ModelAdapter;
+import ampcontrol.model.training.model.description.MutatingConv2dFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.function.BiConsumer;
@@ -14,6 +17,8 @@ import java.util.function.Consumer;
  * @author Christian Skärby
  */
 public class FitnessPolicyTraining<T extends ModelAdapter> implements FitnessPolicy<T> {
+
+    private static final Logger log = LoggerFactory.getLogger(MutatingConv2dFactory.class);
 
     private final int nrofItersToAccumulate;
 
@@ -34,8 +39,13 @@ public class FitnessPolicyTraining<T extends ModelAdapter> implements FitnessPol
                 scoreSum += score;
                 cnt++;
                 if (cnt == nrofItersToAccumulate) {
+                    final double scoreContrib = Math.round(scoreSum * 1e5 / cnt) / 1e5;
+                    final double paramContrib = candidate.asModel().numParams() / 1e10;
+                    log.info("score: " + (scoreSum / cnt) + " contrib: " + scoreContrib);
+                    log.info("params: " + candidate.asModel().numParams() + " contrib: " + paramContrib);
+
                     fitnessListener.accept(
-                            Math.round(scoreSum * 1e2 / cnt) / 1e2 + candidate.asModel().numParams() / 1e10);
+                            scoreContrib + paramContrib);
                     cnt = 0;
                 }
             }

@@ -45,6 +45,7 @@ import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -129,6 +130,7 @@ public final class MutatingConv2dFactory {
             final ModelBuilder builder = new DeserializingModelBuilder(
                     modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);
 
+            baseBuilder.buildGraph(); // Just to populate mutationLayers...
             final Mutation mutation = createMutation(mutationLayers, candInd);
             final ComputationGraph graph = builder.buildGraph();
             log.info("Mutation layers: " + mutationLayers);
@@ -139,7 +141,6 @@ public final class MutatingConv2dFactory {
             initialPopulation.add(adapter);
         });
 
-        //final MiniEpochDataSetIterator evolveIter = new WorkSpaceWrappingIterator(new CachingDataSetIterator(evalIter, 20));
         final Random rng = new Random(666);
         final Population<ModelHandle> population = new CachedPopulation<>(
                 new TransformPopulation<>(adapter -> new GenericModelHandle(
@@ -169,9 +170,14 @@ public final class MutatingConv2dFactory {
 
     private Mutation createMutation(final Set<String> mutationLayers, int seed) {
         final Random rng = new Random(seed);
+        final Set<MutateNout.NoutMutation> nOutMutationSet = mutationLayers.stream()
+                .map(str -> MutateNout.NoutMutation.builder()
+                        .layerName(str)
+                        .mutateNout(nOut -> (long) Math.max(4, nOut + Math.max(nOut, 10) * 0.5 * (rng.nextDouble() - 0.5)))
+                        .build())
+                .collect(Collectors.toSet());
         return new MutateNout(
-                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.3),
-                nOut -> (int) Math.max(4, nOut + Math.max(nOut, 10) * 0.5 * (rng.nextDouble() - 0.5)));
+                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.3));
     }
 
     private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy nOutSpy) {

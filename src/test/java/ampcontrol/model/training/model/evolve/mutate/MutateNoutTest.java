@@ -27,7 +27,9 @@ public class MutateNoutTest {
         final String noMut = "noMut";
         final ComputationGraph graph = GraphUtils.getCnnGraph(mut1, mut2, noMut);
 
-        final MutateNout mutateNout = new MutateNout(() -> Stream.of(mut1, mut2), i -> 2 * i);
+        final MutateNout mutateNout = new MutateNout(() -> Stream.of(
+                MutateNout.NoutMutation.builder().layerName(mut1).mutateNout(nOut -> 2 * nOut).build(),
+                MutateNout.NoutMutation.builder().layerName(mut2).mutateNout(nOut -> 2 * nOut).build()));
         final ComputationGraph newGraph = mutateNout.mutate(new TransferLearning.GraphBuilder(graph), graph).build();
         newGraph.init();
 
@@ -38,4 +40,4 @@ public class MutateNoutTest {
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
-}
+    }

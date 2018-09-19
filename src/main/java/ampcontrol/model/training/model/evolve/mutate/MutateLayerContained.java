@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -27,9 +26,9 @@ import java.util.stream.Stream;
  */
 public class MutateLayerContained implements Mutation {
 
-    private final Supplier<Stream<LayerMutation>> mutationSupplier;
+    private final Supplier<LayerMutation> mutationSupplier;
 
-    public MutateLayerContained(Supplier<Stream<LayerMutation>> mutationSupplier) {
+    public MutateLayerContained(Supplier<LayerMutation> mutationSupplier) {
         this.mutationSupplier = mutationSupplier;
     }
 
@@ -37,7 +36,7 @@ public class MutateLayerContained implements Mutation {
     @Getter
     public static class LayerMutation {
         private final String layerName;
-        private final Supplier<Layer.Builder> layerSupplier;
+        private final java.util.function.Supplier<Layer.Builder> layerSupplier;
         private final String[] inputLayers;
         private final Function<ComputationGraph, Integer> inputSizeMapping = graph ->
                 Optional.ofNullable(graph.getVertex(getLayerName()))
@@ -62,7 +61,7 @@ public class MutateLayerContained implements Mutation {
 
     @Override
     public TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder, ComputationGraph prevGraph) {
-        mutationSupplier.get().forEach(mutation -> replaceOrAddVertex(mutation, builder, prevGraph));
+        mutationSupplier.stream().forEach(mutation -> replaceOrAddVertex(mutation, builder, prevGraph));
         return builder;
     }
 

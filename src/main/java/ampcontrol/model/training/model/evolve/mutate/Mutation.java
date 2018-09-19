@@ -4,6 +4,8 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
 
+import java.util.stream.Stream;
+
 /**
  * Interface for mutation operation.
  * <br><br>
@@ -13,17 +15,28 @@ import org.deeplearning4j.nn.transferlearning.TransferLearning;
  * @author Christian Skärby
  */
 public interface Mutation {
+
+    /**
+     * Interface for supplying mutations. Motivation is to allow for serialization of mutation info as it might not
+     * always be possible to create it from scratch.
+     *
+     * @param <T>
+     */
+    interface Supplier<T> {
+        Stream<T> stream();
+    }
+
     /**
      * Applies mutation to the provided {@link TransferLearning.GraphBuilder}.
-     * @param builder The builder to mutate
+     *
+     * @param builder   The builder to mutate
      * @param prevGraph The previous graph
-     * @return The mutated builder
+     * @return The mutated builder. Note: might not be same instance as input!
      */
     TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder, ComputationGraph prevGraph);
 
-
     static boolean doesNinPropagateToNext(GraphVertex vertex) {
-        if(!vertex.hasLayer()) {
+        if (!vertex.hasLayer()) {
             return false;
         }
         // Is there any parameter which can tell this instead of hardcoding it to types like this?
@@ -46,7 +59,7 @@ public interface Mutation {
     }
 
     static boolean changeNinMeansChangeNout(GraphVertex vertex) {
-        if(!vertex.hasLayer()) {
+        if (!vertex.hasLayer()) {
             return false;
         }
         // Is there any parameter which can tell this instead of hardcoding it to types like this?

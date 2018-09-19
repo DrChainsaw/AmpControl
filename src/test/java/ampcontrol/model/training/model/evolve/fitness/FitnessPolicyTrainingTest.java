@@ -43,12 +43,12 @@ public class FitnessPolicyTrainingTest {
 
             @Override
             public int numParams() {
-                return (int) (3* 1e7);
+                return (int) (5* 1e4);
             }
 
             @Override
             public double score() {
-                return 1.2345678;
+                return 1.23451234;
             }
         };
         final FitnessPolicy<ModelAdapter> policy = new FitnessPolicyTraining<>(3);
@@ -84,6 +84,6 @@ public class FitnessPolicyTrainingTest {
 
         listeners.forEach(listener -> listener.iterationDone(model, 2, 0));
         listeners.forEach(listener -> listener.onEpochEnd(model));
-        assertEquals("No fitness shall have been reported!", 1.233, measuredScore[0], 1e-10);
+        assertEquals("No fitness shall have been reported!", 1.234515, measuredScore[0], 1e-10);
     }
 }

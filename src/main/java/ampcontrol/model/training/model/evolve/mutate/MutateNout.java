@@ -1,5 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
+import lombok.Builder;
+import lombok.Getter;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
@@ -11,8 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.IntUnaryOperator;
-import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**
@@ -24,18 +25,26 @@ public class MutateNout implements Mutation {
 
     private static final Logger log = LoggerFactory.getLogger(MutateNout.class);
 
-    private final Supplier<Stream<String>> mutationLayerSupplier;
-    private final IntUnaryOperator mutationFunction;
+    private final Supplier<NoutMutation> mutationLayerSupplier;
 
-    public MutateNout(Supplier<Stream<String>> mutationLayerSupplier, IntUnaryOperator mutationFunction) {
+    /**
+     * Interface for mutating Nout
+     */
+    @Builder @Getter
+    public static class NoutMutation {
+        private final String layerName;
+        private final UnaryOperator<Long> mutateNout;
+    }
+
+
+    public MutateNout(Supplier<NoutMutation> mutationLayerSupplier) {
         this.mutationLayerSupplier = mutationLayerSupplier;
-        this.mutationFunction = mutationFunction;
     }
 
     @Override
     public GraphBuilder mutate(GraphBuilder builder, ComputationGraph prevGraph) {
         final Map<String, FeedForwardLayer> changedLayers = new HashMap<>(); // To be filled in
-        mutationLayerSupplier.get().forEach(layerName -> updateNoutOfLayer(changedLayers, builder, prevGraph, layerName));
+        mutationLayerSupplier.stream().forEach(mutation -> updateNoutOfLayer(changedLayers, builder, prevGraph, mutation));
         return builder;
     }
 
@@ -43,10 +52,11 @@ public class MutateNout implements Mutation {
             Map<String, FeedForwardLayer> changedLayers,
             GraphBuilder builder,
             ComputationGraph prevGraph,
-            String layerName) {
+            NoutMutation mutation) {
+        final String layerName = mutation.getLayerName();
         final FeedForwardLayer newLayerConf = changedLayers.computeIfAbsent(layerName,
                 key -> (FeedForwardLayer) prevGraph.getLayer(layerName).conf().getLayer().clone());
-        newLayerConf.setNOut(mutationFunction.applyAsInt((int) newLayerConf.getNOut()));
+        newLayerConf.setNOut(mutation.getMutateNout().apply(newLayerConf.getNOut()));
         log.info("Mutating nOut of layer " + layerName + " from " + prevGraph.layerSize(layerName) + " to " + newLayerConf.getNOut());
         final List<String> inputs = prevGraph.getConfiguration().getVertexInputs().get(layerName);
         builder.removeVertexKeepConnections(layerName)
@@ -90,5 +100,4 @@ public class MutateNout implements Mutation {
                     }
                 });
     }
-
 }

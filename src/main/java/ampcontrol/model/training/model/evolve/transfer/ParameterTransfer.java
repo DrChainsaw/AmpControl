@@ -110,6 +110,9 @@ public class ParameterTransfer {
 
         return firstTaskBuilder
                 .addDependentTask(SingleTransferTask.builder()
+                        .maskDim(2)
+                        .maskDim(3)
+                        .maskDim(4)
                         .source(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(sourceParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_source_b"))
                                 .dimensionMapper(dim -> 1) // Always 1 for bias!
@@ -195,6 +198,9 @@ public class ParameterTransfer {
                 final INDArray targetParam = targetParams.get(parKey);
 
                 taskListBuilder.addDependentTask(SingleTransferTask.builder()
+                        .maskDim(2) // Always things like kernel size which does not transfer
+                        .maskDim(3) // Always things like kernel size which does not transfer
+                        .maskDim(4) // Always things like kernel size which does not transfer
                         .source(SingleTransferTask.IndMapping.builder()
                                 .entry(registry.register(sourceParam, layerName + "_source_" + parKey))
                                 .dimensionMapper(dimMapper)

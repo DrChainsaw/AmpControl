@@ -183,7 +183,16 @@ public class ParameterTransferTest {
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
-        final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName), prevNout -> (int) Math.ceil(prevNout / 2d))
+        final ComputationGraph newGraph = new MutateNout(
+                () -> Stream.of(
+                        MutateNout.NoutMutation.builder()
+                                .layerName(mutationName)
+                                .mutateNout(nOut -> nOut / 2)
+                                .build(),
+                        MutateNout.NoutMutation.builder()
+                                .layerName(nextMutationName)
+                                .mutateNout(nOut -> nOut / 2)
+                                .build()))
                 .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
@@ -225,14 +234,20 @@ public class ParameterTransferTest {
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
-        final int mutationNewNout = 5;
-        final int mutationPrevNout = graph.layerSize(mutationName);
-        final int nextMutationNewNout = 9;
+        final long mutationNewNout = 5;
+        final long nextMutationNewNout = 9;
         final int nextMutationPrevNout = graph.layerSize(nextMutationName);
         final double nextMutationNewVal = 666d; // Is this obtainable somehow?
 
-        final ComputationGraph newGraph = new MutateNout(() -> Stream.of(mutationName, nextMutationName),
-                prevNout -> prevNout == mutationPrevNout ? mutationNewNout : prevNout == nextMutationPrevNout ? nextMutationNewNout : -1)
+        final ComputationGraph newGraph = new MutateNout(
+                () -> Stream.of(MutateNout.NoutMutation.builder()
+                                .layerName(mutationName)
+                                .mutateNout(nOut -> mutationNewNout)
+                                .build(),
+                        MutateNout.NoutMutation.builder()
+                                .layerName(nextMutationName)
+                                .mutateNout(nOut -> nextMutationNewNout)
+                                .build()))
                 .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
 
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
@@ -247,17 +262,17 @@ public class ParameterTransferTest {
 
         final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(GraphUtils.W);
         final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.W);
-        assertDoubleDims(IntStream.range(0, nextMutationNewNout).toArray(), orderToKeepFirst, sourceNext, targetNext);
+        assertDoubleDims(IntStream.range(0, (int) nextMutationNewNout).toArray(), orderToKeepFirst, sourceNext, targetNext);
         assertScalar(outputDimNext, nextMutationPrevNout, nextMutationNewVal, targetNext);
 
         final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(GraphUtils.B);
         final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.B);
-        assertDims(1, IntStream.range(0, nextMutationNewNout).toArray(), sourceNextBias, targetNextBias);
+        assertDims(1, IntStream.range(0, (int) nextMutationNewNout).toArray(), sourceNextBias, targetNextBias);
         assertScalar(1, nextMutationPrevNout, 0, targetNextBias);
 
         final INDArray sourceOutput = graph.getLayer(afterName).getParam(GraphUtils.W);
         final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
-        assertDims(inputDim, IntStream.range(0, nextMutationNewNout).toArray(), sourceOutput, targetOutput);
+        assertDims(inputDim, IntStream.range(0, (int) nextMutationNewNout).toArray(), sourceOutput, targetOutput);
         return mutatedGraph;
     }
 
@@ -325,8 +340,8 @@ public class ParameterTransferTest {
             outputDim = 0;
             inputDim = 1;
         } else {
-            firstTensorDims = new int[] {0};
-            secondTensorDims = new int[] {0};
+            firstTensorDims = new int[]{0};
+            secondTensorDims = new int[]{0};
             outputDim = 1;
             inputDim = 0;
         }

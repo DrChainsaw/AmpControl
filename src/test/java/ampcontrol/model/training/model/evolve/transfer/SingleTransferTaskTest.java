@@ -152,6 +152,63 @@ public class SingleTransferTaskTest {
     }
 
     /**
+     * Test pruning of one array which is coupled to another array.
+     */
+    @Test
+    public void applyMaskCoupled() {
+        final long[] shapeSource = {5, 6}; // dim 0 is coupled to dim 0
+        final long[] shapeTarget = {2, 4};
+        final long[] shapeSourceOutput = {5, 5}; // dim 1 is not coupled
+        final long[] shapeTargetOutput = {2, 5};
+
+        // Reduce the number of outputs from 6 to 4, which in turn means that dim 0 in
+        // sourceOutput shall be reduced as well.
+        // Furthermore, the same element indexes removed from source dim 1 shall be removed from sourceOutput dim 0
+        final int[] orderToKeep = {1, 3, 4, 5, 0, 2}; // Note: first 4 indexes must be in order for testcase to pass
+        final INDArray source = createLinspace(shapeSource);
+        final INDArray sourceOutput = createLinspace(shapeSourceOutput);
+
+        final INDArray target = Nd4j.create(shapeTarget);
+        final INDArray targetOutput = Nd4j.create(shapeTargetOutput);
+
+        final TransferRegistry registry = new TransferRegistry();
+        SingleTransferTask.builder()
+                .compFactory(fixedOrderComp(orderToKeep))
+                .target(SingleTransferTask.IndMapping.builder()
+                        .entry(registry.register(target, "target"))
+                        .build())
+                .source(SingleTransferTask.IndMapping.builder()
+                        .entry(registry.register(source, "source"))
+                        .build())
+                .addDependentTask(SingleTransferTask.builder()
+                        .maskDim(1)
+                        .target(SingleTransferTask.IndMapping.builder()
+                                .entry(registry.register(targetOutput, "targetOutput"))
+                                .build())
+                        .source(SingleTransferTask.IndMapping.builder()
+                                .entry(registry.register(sourceOutput, "sourceOutput"))
+                                .build()))
+                .build()
+                .execute();
+
+        registry.commit();
+        for (int elemInd0 = 0; elemInd0 < shapeTarget[0]; elemInd0++) {
+            for (int elemInd1 = 0; elemInd1 < shapeTarget[1]; elemInd1++) {
+                assertEquals("Incorrect target for element index " + elemInd0 + "," + elemInd1 + "!",
+                        source.tensorAlongDimension(orderToKeep[elemInd0], 1).tensorAlongDimension(orderToKeep[elemInd1], 0),
+                        target.tensorAlongDimension(elemInd0, 1).tensorAlongDimension(elemInd1, 0));
+            }
+        }
+
+        for (int elemInd = 0; elemInd < shapeTarget[0]; elemInd++) {
+            assertEquals("Incorrect target output for element index " + elemInd + "!",
+                    sourceOutput.tensorAlongDimension(orderToKeep[elemInd], 1),
+                    targetOutput.tensorAlongDimension(elemInd, 1));
+
+        }
+    }
+
+    /**
      * Test increasing the size of one array which is coupled to another array.
      */
     @Test
