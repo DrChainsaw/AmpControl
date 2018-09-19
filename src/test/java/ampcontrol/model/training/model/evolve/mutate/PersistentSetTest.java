@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -32,8 +33,8 @@ public class PersistentSetTest {
             expected.save();
             final PersistentSet<String> actual = new PersistentSet<>(fileName, Collections.emptySet());
             assertEquals("Set did not persist!", expected.get(), actual.get());
-            new File(fileName).deleteOnExit();
-            new File(baseDir.toString()).deleteOnExit();
+            new File(fileName).delete();
+            Files.delete(baseDir);
         } catch (IOException e) {
             throw new IllegalStateException();
         }
