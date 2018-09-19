@@ -5,8 +5,9 @@ import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +23,9 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
     private static final Logger log = LoggerFactory.getLogger(EvolvingGraphAdapter.class);
 
     private final ComputationGraph graph;
-    private final Mutation<TransferLearning.GraphBuilder> mutation;
+    private final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation;
 
-    public EvolvingGraphAdapter(ComputationGraph graph, Mutation<TransferLearning.GraphBuilder> mutation) {
+    public EvolvingGraphAdapter(ComputationGraph graph, Mutation<ComputationGraphConfiguration.GraphBuilder> mutation) {
         this.graph = graph;
         this.mutation = mutation;
     }
@@ -52,9 +53,11 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
     @Override
     public EvolvingGraphAdapter evolve() {
         log.info("Evolve " + this);
-        final TransferLearning.GraphBuilder mutated = mutation.mutate(new TransferLearning.GraphBuilder(graph));
+        final ComputationGraphConfiguration.GraphBuilder mutated = mutation.mutate(
+                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
+                new NeuralNetConfiguration.Builder(graph.conf().clone())));
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph);
-        final ComputationGraph newGraph = mutated.build();
+        final ComputationGraph newGraph = new ComputationGraph(mutated.build());
         newGraph.init();
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());
         newGraph.getConfiguration().setEpochCount(graph.getEpochCount());

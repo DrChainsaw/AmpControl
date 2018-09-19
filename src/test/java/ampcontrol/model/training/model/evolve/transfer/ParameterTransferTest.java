@@ -2,8 +2,9 @@ package ampcontrol.model.training.model.evolve.transfer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.MutateNout;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -183,7 +184,7 @@ public class ParameterTransferTest {
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
-        final ComputationGraph newGraph = new MutateNout(
+        final ComputationGraph newGraph = new ComputationGraph(new MutateNout(
                 () -> Stream.of(
                         MutateNout.NoutMutation.builder()
                                 .layerName(mutationName)
@@ -193,7 +194,12 @@ public class ParameterTransferTest {
                                 .layerName(nextMutationName)
                                 .mutateNout(nOut -> nOut / 2)
                                 .build()))
-                .mutate(new TransferLearning.GraphBuilder(graph)).build();
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
 
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
         final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
@@ -239,7 +245,7 @@ public class ParameterTransferTest {
         final int nextMutationPrevNout = graph.layerSize(nextMutationName);
         final double nextMutationNewVal = 666d; // Is this obtainable somehow?
 
-        final ComputationGraph newGraph = new MutateNout(
+        final ComputationGraph newGraph = new ComputationGraph(new MutateNout(
                 () -> Stream.of(MutateNout.NoutMutation.builder()
                                 .layerName(mutationName)
                                 .mutateNout(nOut -> mutationNewNout)
@@ -248,7 +254,11 @@ public class ParameterTransferTest {
                                 .layerName(nextMutationName)
                                 .mutateNout(nOut -> nextMutationNewNout)
                                 .build()))
-                .mutate(new TransferLearning.GraphBuilder(graph)).build();
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
 
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
 

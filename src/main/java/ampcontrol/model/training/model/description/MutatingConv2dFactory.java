@@ -31,9 +31,11 @@ import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
 import org.deeplearning4j.eval.Evaluation;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ISchedule;
@@ -135,12 +137,12 @@ public final class MutatingConv2dFactory {
                     modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);
 
             baseBuilder.buildGraph(); // Just to populate mutationLayers...
-            final Mutation<TransferLearning.GraphBuilder> mutation = createMutation(mutateNoutLayers, candInd);
+            final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation = createMutation(mutateNoutLayers, candInd);
             final ComputationGraph graph = builder.buildGraph();
             log.info("Mutation layers: " + mutateNoutLayers);
             final EvolvingGraphAdapter adapter = candInd == 0 ?
-                    new EvolvingGraphAdapter(graph, mutation) :
-                    new EvolvingGraphAdapter(mutation.mutate(new TransferLearning.GraphBuilder(graph)).build(), mutation);
+                    new EvolvingGraphAdapter(graph, mutation) : new EvolvingGraphAdapter(graph, mutation);
+            new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation);
 
             initialPopulation.add(adapter);
         });
@@ -172,7 +174,7 @@ public final class MutatingConv2dFactory {
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
     }
 
-    private Mutation<TransferLearning.GraphBuilder>  createMutation(final Set<String> mutationLayers, int seed) {
+    private Mutation<ComputationGraphConfiguration.GraphBuilder> createMutation(final Set<String> mutationLayers, int seed) {
         final Random rng = new Random(seed);
         final Set<MutateNout.NoutMutation> nOutMutationSet = mutationLayers.stream()
                 .map(str -> MutateNout.NoutMutation.builder()
@@ -214,4 +216,15 @@ public final class MutatingConv2dFactory {
                         .setAlpha(0.6)
                         .setLambda(0.004));
     }
+
+    @NotNull
+    private static ComputationGraph mutateGraph(Mutation<ComputationGraphConfiguration.GraphBuilder> mutation, ComputationGraph graph) {
+        final ComputationGraph mutated = new ComputationGraph(mutation.mutate(
+                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
+                        new NeuralNetConfiguration.Builder(graph.conf().clone())))
+                .build());
+        mutated.init();
+        return mutated;
+    }
+
 }

@@ -1,8 +1,9 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -30,7 +31,9 @@ public class MutateNoutTest {
         final MutateNout mutateNout = new MutateNout(() -> Stream.of(
                 MutateNout.NoutMutation.builder().layerName(mut1).mutateNout(nOut -> 2 * nOut).build(),
                 MutateNout.NoutMutation.builder().layerName(mut2).mutateNout(nOut -> 2 * nOut).build()));
-        final ComputationGraph newGraph = mutateNout.mutate(new TransferLearning.GraphBuilder(graph)).build();
+        final ComputationGraph newGraph = new ComputationGraph(mutateNout.mutate(
+                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
         newGraph.init();
 
         assertEquals("Incorrect nOut!", 2 * graph.layerSize(mut1), newGraph.layerSize(mut1));
