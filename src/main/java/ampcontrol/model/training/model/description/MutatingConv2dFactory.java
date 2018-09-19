@@ -31,8 +31,7 @@ import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
 import org.deeplearning4j.eval.Evaluation;
-import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
-import org.deeplearning4j.nn.conf.layers.DenseLayer;
+import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
@@ -113,16 +112,21 @@ public final class MutatingConv2dFactory {
 
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
 
-        final Set<String> mutationLayers = new LinkedHashSet<>();
-        final GraphSpyAdapter.LayerSpy spy = (layerName, layer, layerInputs) -> {
-            if (layer instanceof ConvolutionLayer) {
-                mutationLayers.add(layerName);
-            } else if (layer instanceof DenseLayer) {
-                mutationLayers.add(layerName);
+        final Set<String> mutateNoutLayers = new LinkedHashSet<>();
+        final GraphSpyAdapter.LayerSpy NoutSpy = (layerName, layer, layerInputs) -> {
+            if (layer instanceof FeedForwardLayer) {
+                mutateNoutLayers.add(layerName);
             }
         };
 
-        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, spy);
+        final Set<String> mutateKernelSizeLayers = new LinkedHashSet<>();
+        final GraphSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
+            if (layer instanceof FeedForwardLayer) {
+                mutateKernelSizeLayers.add(layerName);
+            }
+        };
+
+        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, NoutSpy);
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         IntStream.range(0, 20).forEach(candInd -> {
@@ -131,12 +135,12 @@ public final class MutatingConv2dFactory {
                     modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);
 
             baseBuilder.buildGraph(); // Just to populate mutationLayers...
-            final Mutation mutation = createMutation(mutationLayers, candInd);
+            final Mutation<TransferLearning.GraphBuilder> mutation = createMutation(mutateNoutLayers, candInd);
             final ComputationGraph graph = builder.buildGraph();
-            log.info("Mutation layers: " + mutationLayers);
+            log.info("Mutation layers: " + mutateNoutLayers);
             final EvolvingGraphAdapter adapter = candInd == 0 ?
                     new EvolvingGraphAdapter(graph, mutation) :
-                    new EvolvingGraphAdapter(mutation.mutate(new TransferLearning.GraphBuilder(graph), graph).build(), mutation);
+                    new EvolvingGraphAdapter(mutation.mutate(new TransferLearning.GraphBuilder(graph)).build(), mutation);
 
             initialPopulation.add(adapter);
         });
@@ -168,7 +172,7 @@ public final class MutatingConv2dFactory {
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
     }
 
-    private Mutation createMutation(final Set<String> mutationLayers, int seed) {
+    private Mutation<TransferLearning.GraphBuilder>  createMutation(final Set<String> mutationLayers, int seed) {
         final Random rng = new Random(seed);
         final Set<MutateNout.NoutMutation> nOutMutationSet = mutationLayers.stream()
                 .map(str -> MutateNout.NoutMutation.builder()

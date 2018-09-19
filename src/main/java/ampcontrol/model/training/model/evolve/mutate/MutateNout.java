@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
+import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.deeplearning4j.nn.transferlearning.TransferLearning.GraphBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class MutateNout implements Mutation {
+public class MutateNout implements Mutation<TransferLearning.GraphBuilder> {
 
     private static final Logger log = LoggerFactory.getLogger(MutateNout.class);
 
@@ -42,9 +43,9 @@ public class MutateNout implements Mutation {
     }
 
     @Override
-    public GraphBuilder mutate(GraphBuilder builder, ComputationGraph prevGraph) {
+    public GraphBuilder mutate(GraphBuilder builder) {
         final Map<String, FeedForwardLayer> changedLayers = new HashMap<>(); // To be filled in
-        mutationLayerSupplier.stream().forEach(mutation -> updateNoutOfLayer(changedLayers, builder, prevGraph, mutation));
+        mutationLayerSupplier.stream().forEach(mutation -> updateNoutOfLayer(changedLayers, builder, builder.build(), mutation));
         return builder;
     }
 
@@ -56,13 +57,14 @@ public class MutateNout implements Mutation {
         final String layerName = mutation.getLayerName();
         final FeedForwardLayer newLayerConf = changedLayers.computeIfAbsent(layerName,
                 key -> (FeedForwardLayer) prevGraph.getLayer(layerName).conf().getLayer().clone());
-        newLayerConf.setNOut(mutation.getMutateNout().apply(newLayerConf.getNOut()));
+        final long oldNout = newLayerConf.getNOut();
+        newLayerConf.setNOut(mutation.getMutateNout().apply(oldNout));
         log.info("Mutating nOut of layer " + layerName + " from " + prevGraph.layerSize(layerName) + " to " + newLayerConf.getNOut());
         final List<String> inputs = prevGraph.getConfiguration().getVertexInputs().get(layerName);
         builder.removeVertexKeepConnections(layerName)
                 .addLayer(layerName, newLayerConf, inputs.toArray(new String[0]));
 
-        updateNinOfOutputLayer(changedLayers, builder, prevGraph, layerName, prevGraph.layerSize(layerName) - newLayerConf.getNOut());
+        updateNinOfOutputLayer(changedLayers, builder, prevGraph, layerName, oldNout - newLayerConf.getNOut());
         return builder;
     }
 

@@ -22,9 +22,9 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
     private static final Logger log = LoggerFactory.getLogger(EvolvingGraphAdapter.class);
 
     private final ComputationGraph graph;
-    private final Mutation mutation;
+    private final Mutation<TransferLearning.GraphBuilder> mutation;
 
-    public EvolvingGraphAdapter(ComputationGraph graph, Mutation mutation) {
+    public EvolvingGraphAdapter(ComputationGraph graph, Mutation<TransferLearning.GraphBuilder> mutation) {
         this.graph = graph;
         this.mutation = mutation;
     }
@@ -52,7 +52,7 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
     @Override
     public EvolvingGraphAdapter evolve() {
         log.info("Evolve " + this);
-        final TransferLearning.GraphBuilder mutated = mutation.mutate(new TransferLearning.GraphBuilder(graph), graph);
+        final TransferLearning.GraphBuilder mutated = mutation.mutate(new TransferLearning.GraphBuilder(graph));
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph);
         final ComputationGraph newGraph = mutated.build();
         newGraph.init();

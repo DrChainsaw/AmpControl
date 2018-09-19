@@ -1,20 +1,16 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
-import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
 
 import java.util.stream.Stream;
 
 /**
  * Interface for mutation operation.
- * <br><br>
- * Note, the {@link TransferLearning.GraphBuilder} creates new INDArrays. Make sure to call the final build method as
- * as well as {@link #mutate} within scope of a {@link org.nd4j.linalg.api.memory.MemoryWorkspace} to avoid memory leaks.
  *
+ * @param <T> Type to mutate
  * @author Christian Skärby
  */
-public interface Mutation {
+public interface Mutation<T> {
 
     /**
      * Interface for supplying mutations. Motivation is to allow for serialization of mutation info as it might not
@@ -27,13 +23,12 @@ public interface Mutation {
     }
 
     /**
-     * Applies mutation to the provided {@link TransferLearning.GraphBuilder}.
+     * Applies mutation to the provided input
      *
-     * @param builder   The builder to mutate
-     * @param prevGraph The previous graph
+     * @param toMutate   The builder to mutate
      * @return The mutated builder. Note: might not be same instance as input!
      */
-    TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder, ComputationGraph prevGraph);
+    T mutate(T toMutate);
 
     static boolean doesNinPropagateToNext(GraphVertex vertex) {
         if (!vertex.hasLayer()) {

@@ -31,7 +31,7 @@ public class MutateLayerContainedTest {
         final String noMut = "noMut";
         final ComputationGraph graph = GraphUtils.getCnnGraph(mut1, mut2, noMut);
 
-        final Mutation mutatation = new MutateLayerContained(() -> Stream.of(
+        final Mutation<TransferLearning.GraphBuilder>  mutatation = new MutateLayerContained(() -> Stream.of(
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(mut1)
                         .layerSupplier(() -> new Convolution2D.Builder(5, 5))
@@ -42,7 +42,7 @@ public class MutateLayerContainedTest {
                         .layerSupplier(() -> new Convolution2D.Builder(7, 7))
                         .inputLayers(getInputs(graph, mut2))
                         .build()));
-        final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+        final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph)).build();
         newGraph.init();
 
         assertEquals("Incorrect kernel size!", 5,
@@ -68,13 +68,13 @@ public class MutateLayerContainedTest {
         final ComputationGraph graph = GraphUtils.getCnnGraph(mut1, mut2, noMut);
 
         final String toInsert = "between_" + mut1 + "_and_" + mut2;
-        final Mutation mutatation = new MutateLayerContained(() -> Stream.of(
+        final Mutation<TransferLearning.GraphBuilder>  mutatation = new MutateLayerContained(() -> Stream.of(
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(toInsert)
                         .layerSupplier(() -> new Convolution2D.Builder(5, 5))
                         .inputLayers(new String[] {mut1})
                         .build()));
-        final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+        final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph)).build();
         newGraph.init();
 
         assertTrue("Vertex not added!", Optional.ofNullable(newGraph.getVertex(toInsert)).isPresent());

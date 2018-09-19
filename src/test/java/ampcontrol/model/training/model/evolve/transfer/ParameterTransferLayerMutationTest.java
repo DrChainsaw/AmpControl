@@ -57,7 +57,7 @@ public class ParameterTransferLayerMutationTest {
                         .layerName(mutateTooName)
                         .layerSupplier(() -> new Convolution2D.Builder(4, 4).weightInit(new ConstantDistribution(nextMutationNewVal)))
                         .build()))
-                .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+                .mutate(new TransferLearning.GraphBuilder(graph)).build();
 
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
 

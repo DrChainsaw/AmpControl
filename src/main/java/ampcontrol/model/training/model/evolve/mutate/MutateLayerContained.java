@@ -24,7 +24,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class MutateLayerContained implements Mutation {
+public class MutateLayerContained implements Mutation<TransferLearning.GraphBuilder> {
 
     private final Supplier<LayerMutation> mutationSupplier;
 
@@ -60,8 +60,8 @@ public class MutateLayerContained implements Mutation {
 
 
     @Override
-    public TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder, ComputationGraph prevGraph) {
-        mutationSupplier.stream().forEach(mutation -> replaceOrAddVertex(mutation, builder, prevGraph));
+    public TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder) {
+        mutationSupplier.stream().forEach(mutation -> replaceOrAddVertex(mutation, builder, builder.build()));
         return builder;
     }
 

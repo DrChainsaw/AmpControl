@@ -193,7 +193,7 @@ public class ParameterTransferTest {
                                 .layerName(nextMutationName)
                                 .mutateNout(nOut -> nOut / 2)
                                 .build()))
-                .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+                .mutate(new TransferLearning.GraphBuilder(graph)).build();
 
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
         final INDArray source = graph.getLayer(mutationName).getParam(GraphUtils.W);
@@ -248,7 +248,7 @@ public class ParameterTransferTest {
                                 .layerName(nextMutationName)
                                 .mutateNout(nOut -> nextMutationNewNout)
                                 .build()))
-                .mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+                .mutate(new TransferLearning.GraphBuilder(graph)).build();
 
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
 

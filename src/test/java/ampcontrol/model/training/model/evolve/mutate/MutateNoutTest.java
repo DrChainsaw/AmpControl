@@ -30,7 +30,7 @@ public class MutateNoutTest {
         final MutateNout mutateNout = new MutateNout(() -> Stream.of(
                 MutateNout.NoutMutation.builder().layerName(mut1).mutateNout(nOut -> 2 * nOut).build(),
                 MutateNout.NoutMutation.builder().layerName(mut2).mutateNout(nOut -> 2 * nOut).build()));
-        final ComputationGraph newGraph = mutateNout.mutate(new TransferLearning.GraphBuilder(graph), graph).build();
+        final ComputationGraph newGraph = mutateNout.mutate(new TransferLearning.GraphBuilder(graph)).build();
         newGraph.init();
 
         assertEquals("Incorrect nOut!", 2 * graph.layerSize(mut1), newGraph.layerSize(mut1));
