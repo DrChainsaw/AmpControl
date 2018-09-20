@@ -2,19 +2,23 @@ package ampcontrol.model.training.model.evolve.mutate;
 
 import lombok.Builder;
 import lombok.Getter;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.graph.GraphVertex;
+import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
-import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.graph.vertex.GraphVertex;
-import org.deeplearning4j.nn.graph.vertex.VertexIndices;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 /**
  * Inserts a layer in the graph. If a layer with the same name exists already it will be replaced. Note that for this
@@ -24,9 +28,31 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class MutateLayerContained implements Mutation<TransferLearning.GraphBuilder> {
+public class MutateLayerContained implements Mutation<ComputationGraphConfiguration.GraphBuilder> {
+
+    private static final Logger log = LoggerFactory.getLogger(MutateLayerContained.class);
 
     private final Supplier<LayerMutation> mutationSupplier;
+
+    /**
+     * Returns a {@link LayerVertex} with the given name if one exists in the {@link GraphBuilder}.
+     * Would very much prefer to do this some other way, but the API does not seem allow for it
+     */
+    private static BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Optional<LayerVertex>> vertexAsLayerVertex =
+            (layerName, graphBuilder) -> Optional.ofNullable(graphBuilder.getVertices().get(layerName))
+                    .filter(gv -> gv instanceof LayerVertex)
+                    .map(gv -> ((LayerVertex) gv));
+
+    /**
+     * Returns a {@link FeedForwardLayer} of a given {@link LayerVertex} if that is the type of layer it encapsulates
+     * Would very much prefer to do this some other way, but the API does not seem allow for it
+     */
+    private static BiFunction<String, Optional<LayerVertex>, Optional<FeedForwardLayer>> layerVertexAsFeedForward =
+            (layerName, layerVertexOptional) -> layerVertexOptional
+                    .map(LayerVertex::getLayerConf)
+                    .map(NeuralNetConfiguration::getLayer)
+                    .filter(layer -> layer instanceof FeedForwardLayer)
+                    .map(layer -> (FeedForwardLayer) layer);
 
     public MutateLayerContained(Supplier<LayerMutation> mutationSupplier) {
         this.mutationSupplier = mutationSupplier;
@@ -36,82 +62,102 @@ public class MutateLayerContained implements Mutation<TransferLearning.GraphBuil
     @Getter
     public static class LayerMutation {
         private final String layerName;
-        private final java.util.function.Supplier<Layer.Builder> layerSupplier;
+        private final Function<Optional<Layer>, Layer> mutation;
         private final String[] inputLayers;
-        private final Function<ComputationGraph, Integer> inputSizeMapping = graph ->
-                Optional.ofNullable(graph.getVertex(getLayerName()))
-                        .filter(GraphVertex::hasLayer)
-                        .map(graphVertex -> graph.layerInputSize(graphVertex.getVertexName()))
-                        .orElseGet(
-                                () -> Stream.of(getInputLayers())
-                                        .mapToInt(graph::layerSize)
-                                        .sum());
-        private final Function<ComputationGraph, Integer> outputSizeMapping = graph ->
-                Optional.ofNullable(graph.getVertex(getLayerName()))
-                        .filter(GraphVertex::hasLayer)
-                        .map(graphVertex -> graph.layerSize(graphVertex.getVertexName()))
-                        .orElseGet(
-                                () -> graph.getConfiguration().getVertexInputs().entrySet().stream()
-                                        .filter(entry -> entry.getValue().contains(getLayerName()))
-                                        .map(Map.Entry::getKey)
-                                        .mapToInt(graph::layerInputSize)
-                                        .sum());
+
+        private final BiFunction<String, GraphBuilder, Long> outputSizeMapping =
+                (layerName, graphBuilder) -> vertexAsLayerVertex
+                        .andThen(layerVertex -> layerVertexAsFeedForward.apply(layerName, layerVertex))
+                        .apply(layerName, graphBuilder)
+                        .map(FeedForwardLayer::getNOut)
+                        .orElseGet(() -> graphBuilder.getVertexInputs().entrySet().stream()
+                                .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(layerName))
+                                .map(Map.Entry::getKey)
+                                .mapToLong(inputLayerName -> getOutputSizeMapping().apply(inputLayerName, graphBuilder))
+                                .sum());
+
+        final BiFunction<String, GraphBuilder, Long> inputSizeMapping =
+                (layerName, graphBuilder) -> vertexAsLayerVertex
+                        .andThen(layerVertex -> layerVertexAsFeedForward.apply(layerName, layerVertex))
+                        .apply(layerName, graphBuilder)
+                        .map(FeedForwardLayer::getNIn)
+                        .orElseGet(() -> Optional.ofNullable(graphBuilder.getVertexInputs().get(layerName))
+                                .map(inputNames -> inputNames.stream()
+                                        .mapToLong(inputLayerName -> getInputSizeMapping().apply(inputLayerName, graphBuilder))
+                                        .sum())
+                                .orElseThrow(() -> new IllegalStateException("No inputs found for " + layerName)));
     }
 
 
     @Override
-    public TransferLearning.GraphBuilder mutate(TransferLearning.GraphBuilder builder) {
-        mutationSupplier.stream().forEach(mutation -> replaceOrAddVertex(mutation, builder, builder.build()));
+    public GraphBuilder mutate(GraphBuilder builder) {
+        mutationSupplier.stream().forEach(mutation -> replaceOrAddVertex(mutation, builder));
         return builder;
     }
 
-    private void replaceOrAddVertex(LayerMutation mutation, TransferLearning.GraphBuilder builder, ComputationGraph prevGraph) {
+    private void replaceOrAddVertex(LayerMutation mutation, GraphBuilder builder) {
 
-        int nOut = 0;
-        if (Optional.ofNullable(prevGraph.getVertex(mutation.getLayerName())).isPresent()) {
+        long nOut = 0;
+        long nIn = 0;
+        final Optional<Layer> toMutate;
+        if (Optional.ofNullable(builder.getVertices().get(mutation.getLayerName())).isPresent()) {
             // Simple case, we can replace an existing vertex
-            builder.removeVertexKeepConnections(mutation.getLayerName());
-            nOut = mutation.getOutputSizeMapping().apply(prevGraph);
+            toMutate = Optional.of(((LayerVertex) builder.getVertices().get(mutation.getLayerName())).getLayerConf().getLayer());
+
+            nOut = mutation.getOutputSizeMapping().apply(mutation.getLayerName(), builder);
+            nIn = mutation.getInputSizeMapping().apply(mutation.getLayerName(), builder);
+            builder.removeVertex(mutation.getLayerName(), false);
         } else {
+            toMutate = Optional.empty();
             // Trickier case: Insert a vertex between two other vertices
             // vertexN -> vertexN+1 need to become vertexN -> newlayer -> vertexN+1
             // Thus, layerN+1 must be removed and added back with newLayer as input
             for (String inputName : mutation.getInputLayers()) {
-                for (VertexIndices vertexIndices : prevGraph.getVertex(inputName).getOutputVertices()) {
-                    // this is a vertex which shall have the new layer as input
-                    final GraphVertex outputVertex = prevGraph.getVertices()[vertexIndices.getVertexIndex()];
-                    final String outputName = outputVertex.getVertexName();
-                    final org.deeplearning4j.nn.conf.graph.GraphVertex vertexConf = prevGraph.getConfiguration().getVertices().get(outputName);
+
+                // Find all layers to which vertex of inputName is output
+                final List<String> allOutputLayers = builder.getVertexInputs().entrySet().stream()
+                        .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(inputName))
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toList());
+
+                for (String outputName : allOutputLayers) {
+
+                    final GraphVertex vertexConf = builder.getVertices().get(outputName);
 
                     // Handle case of multiple inputs, like this:
                     // {vertex0,..., vertexN} -> outputVertex shall become vertexi -> newlayer and then {vertex0,...,newlayer,...,vertexN}-> outputVertex
                     // Must add back all other vertices as input to outputVertex.
-                    final List<String> allInputsToOutput = new ArrayList<>(prevGraph.getConfiguration().getVertexInputs().get(outputName));
+                    final List<String> allInputsToOutput = new ArrayList<>(builder.getVertexInputs().get(outputName));
                     // Better insert new layer in the same place as the one which is removed...
                     final int index = allInputsToOutput.indexOf(inputName);
                     allInputsToOutput.remove(index);
                     allInputsToOutput.add(index, mutation.layerName);
 
-                    builder.removeVertexKeepConnections(outputVertex.getVertexName())
+                    // Assumes merge of inputs.
+                    // Note: Will fail in case of a non-layer vertex. Needs fixing then...
+                    nOut += mutation.getOutputSizeMapping().apply(outputName, builder);
+                    nIn += mutation.getInputSizeMapping().apply(outputName, builder);
+
+                    builder.removeVertex(outputName, false)
                             .addVertex(outputName,
                                     vertexConf,
                                     allInputsToOutput.toArray(new String[]{}));
 
-                    // Assumes merge of inputs. Not much else to do without access to TransferLearning builder internals
-                    // Note: Will fail in case of a non-layer vertex. Needs fixing...
-                    nOut += prevGraph.layerSize(inputName);
+
                 }
             }
         }
 
-        final Layer.Builder layerBuilder = mutation.getLayerSupplier().get();
-        if (layerBuilder instanceof FeedForwardLayer.Builder) {
-            FeedForwardLayer.Builder ffBuilder = ((FeedForwardLayer.Builder) layerBuilder);
-            ffBuilder.nIn(mutation.getInputSizeMapping().apply(prevGraph));
-            ffBuilder.nOut(nOut);
+        final Layer mutatedLayer= mutation.getMutation().apply(toMutate);
+        if (mutatedLayer instanceof FeedForwardLayer) {
+            FeedForwardLayer ffLayer = ((FeedForwardLayer) mutatedLayer);
+            ffLayer.setNIn(nIn);
+            ffLayer.setNOut(nOut);
         }
 
-        builder.addLayer(mutation.getLayerName(), layerBuilder.build(), mutation.getInputLayers());
+        log.info("Mutated layer " + mutation.getLayerName() + " to " + mutatedLayer);
+
+        builder.addLayer(mutation.getLayerName(), mutatedLayer, mutation.getInputLayers());
     }
 
 

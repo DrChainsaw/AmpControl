@@ -25,7 +25,7 @@ public interface Mutation<T> {
     /**
      * Applies mutation to the provided input
      *
-     * @param toMutate   The builder to mutate
+     * @param toMutate The builder to mutate
      * @return The mutated builder. Note: might not be same instance as input!
      */
     T mutate(T toMutate);

@@ -10,6 +10,8 @@ import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.Population;
 import ampcontrol.model.training.model.evolve.TransformPopulation;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
+import ampcontrol.model.training.model.evolve.mutate.AggMutation;
+import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
 import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.selection.CompoundFixedSelection;
@@ -33,7 +35,9 @@ import ampcontrol.model.training.schedule.epoch.Step;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
+import org.deeplearning4j.nn.conf.layers.DenseLayer;
+import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
@@ -115,20 +119,37 @@ public final class MutatingConv2dFactory {
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
 
         final Set<String> mutateNoutLayers = new LinkedHashSet<>();
-        final GraphSpyAdapter.LayerSpy NoutSpy = (layerName, layer, layerInputs) -> {
-            if (layer instanceof FeedForwardLayer) {
+        final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
+            if (layer instanceof ConvolutionLayer) {
+                mutateNoutLayers.add(layerName);
+            } else if (layer instanceof DenseLayer) {
                 mutateNoutLayers.add(layerName);
             }
         };
 
-        final Set<String> mutateKernelSizeLayers = new LinkedHashSet<>();
+        final Set<MutateLayerContained.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
         final GraphSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
-            if (layer instanceof FeedForwardLayer) {
-                mutateKernelSizeLayers.add(layerName);
+            final Random rng = new Random(666);
+            if (layer instanceof ConvolutionLayer) {
+                mutateKernelSizeLayers.add(MutateLayerContained.LayerMutation.builder()
+                        .layerName(layerName)
+                        .inputLayers(layerInputs)
+                        .mutation(layerConfOpt -> layerConfOpt
+                                .map(Layer::clone)
+                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                .map(layerConf -> (ConvolutionLayer) layerConf)
+                                .map(convConf -> {
+                                    convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
+                                            .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
+                                            .toArray());
+                                    return convConf;
+                                })
+                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer " + layerName + " from " + layerConfOpt)))
+                        .build());
             }
         };
 
-        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, NoutSpy);
+        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, nOutSpy, kernelSizeSpy);
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         IntStream.range(0, 20).forEach(candInd -> {
@@ -137,7 +158,12 @@ public final class MutatingConv2dFactory {
                     modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);
 
             baseBuilder.buildGraph(); // Just to populate mutationLayers...
-            final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation = createMutation(mutateNoutLayers, candInd);
+            final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation =
+                    AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
+                            .first(createNoutMutation(mutateNoutLayers, candInd))
+                            .second(createKernelSizeMutation(mutateKernelSizeLayers, -candInd))
+                            .build();
+
             final ComputationGraph graph = builder.buildGraph();
             log.info("Mutation layers: " + mutateNoutLayers);
             final EvolvingGraphAdapter adapter = candInd == 0 ?
@@ -156,7 +182,7 @@ public final class MutatingConv2dFactory {
                         "cand"), // Do something about the name...
                         new EvolvingPopulation<>(
                                 initialPopulation,
-                                new FitnessPolicyTraining<>(30),
+                                new FitnessPolicyTraining<>(51),
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
@@ -174,7 +200,7 @@ public final class MutatingConv2dFactory {
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
     }
 
-    private Mutation<ComputationGraphConfiguration.GraphBuilder> createMutation(final Set<String> mutationLayers, int seed) {
+    private Mutation<ComputationGraphConfiguration.GraphBuilder> createNoutMutation(final Set<String> mutationLayers, int seed) {
         final Random rng = new Random(seed);
         final Set<MutateNout.NoutMutation> nOutMutationSet = mutationLayers.stream()
                 .map(str -> MutateNout.NoutMutation.builder()
@@ -183,28 +209,40 @@ public final class MutatingConv2dFactory {
                         .build())
                 .collect(Collectors.toSet());
         return new MutateNout(
-                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.3));
+                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.1));
     }
 
-    private ModelBuilder createModelBuilder(ISchedule lrSched, ISchedule momSched, GraphSpyAdapter.LayerSpy nOutSpy) {
+    private Mutation<ComputationGraphConfiguration.GraphBuilder> createKernelSizeMutation(
+            final Set<MutateLayerContained.LayerMutation> mutationLayers,
+            int seed) {
+        final Random rng = new Random(seed);
+        return new MutateLayerContained(
+                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.1));
+    }
+
+    private ModelBuilder createModelBuilder(
+            ISchedule lrSched,
+            ISchedule momSched,
+            GraphSpyAdapter.LayerSpy nOutSpy,
+            GraphSpyAdapter.LayerSpy kernelSizeSpy) {
         final LayerBlockConfig pool = new Pool2D().setSize(2).setStride(2);
         return new BlockBuilder()
                 .setUpdater(new Nesterovs(lrSched, momSched))
                 .setNamePrefix(namePrefix)
                 .first(new ConvType(inputShape))
-                .andThen(new SpyBlock(new Conv2DBatchNormAfter()
+                .andThen(new SpyBlock(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(32), nOutSpy))
+                        .setNrofKernels(32), nOutSpy), kernelSizeSpy))
                 .andThen(pool)
 
-                .andThen(new SpyBlock(new Conv2DBatchNormAfter()
+                .andThen(new SpyBlock(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(64), nOutSpy))
+                        .setNrofKernels(64), nOutSpy), kernelSizeSpy))
                 .andThen(pool)
 
-                .andThen(new SpyBlock(new Conv2DBatchNormAfter()
+                .andThen(new SpyBlock(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(128), nOutSpy))
+                        .setNrofKernels(128), nOutSpy), kernelSizeSpy))
                 .andThen(pool)
 
                 .andThen(new GlobPool())

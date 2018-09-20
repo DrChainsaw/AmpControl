@@ -2,10 +2,11 @@ package ampcontrol.model.training.model.evolve.transfer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
 import org.deeplearning4j.nn.conf.layers.Convolution2D;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -46,19 +47,21 @@ public class ParameterTransferLayerMutationTest {
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
         final double nextMutationNewVal = 666d;
-        final ComputationGraph newGraph = new MutateLayerContained(() -> Stream.of(
+        final ComputationGraph newGraph = new ComputationGraph(new MutateLayerContained(() -> Stream.of(
                 MutateLayerContained.LayerMutation.builder()
                         .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateName).toArray(new String[]{}))
                         .layerName(mutateName)
-                        .layerSupplier(() -> new Convolution2D.Builder(2, 2))
+                        .mutation(layer -> new Convolution2D.Builder(2, 2).build())
                         .build(),
                 MutateLayerContained.LayerMutation.builder()
                         .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateTooName).toArray(new String[]{}))
                         .layerName(mutateTooName)
-                        .layerSupplier(() -> new Convolution2D.Builder(4, 4).weightInit(new ConstantDistribution(nextMutationNewVal)))
+                        .mutation(layer -> new Convolution2D.Builder(4, 4).weightInit(new ConstantDistribution(nextMutationNewVal)).build())
                         .build()))
-                .mutate(new TransferLearning.GraphBuilder(graph)).build();
+                .mutate(new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
+                        new NeuralNetConfiguration.Builder(graph.conf()))).build());
 
+        newGraph.init();
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
 
         final INDArray source = graph.getLayer(mutateName).getParam(GraphUtils.W);

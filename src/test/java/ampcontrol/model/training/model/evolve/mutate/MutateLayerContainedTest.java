@@ -1,10 +1,11 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.Convolution2D;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
-import org.deeplearning4j.nn.transferlearning.TransferLearning;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -31,18 +32,21 @@ public class MutateLayerContainedTest {
         final String noMut = "noMut";
         final ComputationGraph graph = GraphUtils.getCnnGraph(mut1, mut2, noMut);
 
-        final Mutation<TransferLearning.GraphBuilder>  mutatation = new MutateLayerContained(() -> Stream.of(
+        final Mutation<ComputationGraphConfiguration.GraphBuilder>  mutatation = new MutateLayerContained(() -> Stream.of(
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(mut1)
-                        .layerSupplier(() -> new Convolution2D.Builder(5, 5))
+                        .mutation(layer -> new Convolution2D.Builder(5, 5).build())
                         .inputLayers(getInputs(graph, mut1))
                         .build(),
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(mut2)
-                        .layerSupplier(() -> new Convolution2D.Builder(7, 7))
+                        .mutation(layer -> new Convolution2D.Builder(7, 7).build())
                         .inputLayers(getInputs(graph, mut2))
                         .build()));
-        final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph)).build();
+        final ComputationGraph newGraph = new ComputationGraph(mutatation.mutate(
+                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
+                        new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
         newGraph.init();
 
         assertEquals("Incorrect kernel size!", 5,
@@ -68,13 +72,14 @@ public class MutateLayerContainedTest {
         final ComputationGraph graph = GraphUtils.getCnnGraph(mut1, mut2, noMut);
 
         final String toInsert = "between_" + mut1 + "_and_" + mut2;
-        final Mutation<TransferLearning.GraphBuilder>  mutatation = new MutateLayerContained(() -> Stream.of(
+        final Mutation<ComputationGraphConfiguration.GraphBuilder>  mutatation = new MutateLayerContained(() -> Stream.of(
                 MutateLayerContained.LayerMutation.builder()
                         .layerName(toInsert)
-                        .layerSupplier(() -> new Convolution2D.Builder(5, 5))
+                        .mutation(layer -> new Convolution2D.Builder(5, 5).build())
                         .inputLayers(new String[] {mut1})
                         .build()));
-        final ComputationGraph newGraph = mutatation.mutate(new TransferLearning.GraphBuilder(graph)).build();
+        final ComputationGraph newGraph = new ComputationGraph(mutatation.mutate(
+                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf()))).build());
         newGraph.init();
 
         assertTrue("Vertex not added!", Optional.ofNullable(newGraph.getVertex(toInsert)).isPresent());
