@@ -113,10 +113,7 @@ public class MutateNout implements Mutation<ComputationGraphConfiguration.GraphB
     private static boolean changeNinMeansChangeNout(FeedForwardLayer layer) {
 
         // Is there any parameter which can tell this instead of hardcoding it to types like this?
-        if (layer instanceof BatchNormalization) {
-            return true;
-        }
-        return false;
+        return layer instanceof BatchNormalization;
     }
 
     private static boolean doesNinPropagateToNext(GraphVertex vertex) {

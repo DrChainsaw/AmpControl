@@ -128,26 +128,7 @@ public final class MutatingConv2dFactory {
         };
 
         final Set<MutateLayerContained.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
-        final GraphSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
-            final Random rng = new Random(666);
-            if (layer instanceof ConvolutionLayer) {
-                mutateKernelSizeLayers.add(MutateLayerContained.LayerMutation.builder()
-                        .layerName(layerName)
-                        .inputLayers(layerInputs)
-                        .mutation(layerConfOpt -> layerConfOpt
-                                .map(Layer::clone)
-                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
-                                .map(layerConf -> (ConvolutionLayer) layerConf)
-                                .map(convConf -> {
-                                    convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
-                                            .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
-                                            .toArray());
-                                    return convConf;
-                                })
-                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer " + layerName + " from " + layerConfOpt)))
-                        .build());
-            }
-        };
+        final GraphSpyAdapter.LayerSpy kernelSizeSpy = createKernelSizeSpy(mutateKernelSizeLayers);
 
         final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, nOutSpy, kernelSizeSpy);
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
@@ -198,6 +179,35 @@ public final class MutatingConv2dFactory {
                                 baseBuilder).buildGraph()),
                 referenceSuffix.toFileName(baseBuilder.name())));
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
+    }
+
+    @NotNull
+    GraphSpyAdapter.LayerSpy createKernelSizeSpy(Set<MutateLayerContained.LayerMutation> mutateKernelSizeLayers) {
+        final Random rng = new Random(666);
+        final Set<String> layerNames = new HashSet<>();
+        return (layerName, layer, layerInputs) -> {
+            if(!layerNames.add(layerName)) {
+                return;
+            }
+
+            if (layer instanceof ConvolutionLayer) {
+                mutateKernelSizeLayers.add(MutateLayerContained.LayerMutation.builder()
+                        .layerName(layerName)
+                        .inputLayers(layerInputs)
+                        .mutation(layerConfOpt -> layerConfOpt
+                                .map(Layer::clone)
+                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                .map(layerConf -> (ConvolutionLayer) layerConf)
+                                .map(convConf -> {
+                                    convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
+                                            .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
+                                            .toArray());
+                                    return convConf;
+                                })
+                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer " + layerName + " from " + layerConfOpt)))
+                        .build());
+            }
+        };
     }
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createNoutMutation(final Set<String> mutationLayers, int seed) {
@@ -252,7 +262,7 @@ public final class MutatingConv2dFactory {
                         .setActivation(new ActivationReLU()), nOutSpy))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
-                        .setLambda(0.004));
+                        .setLambda(0.003));
     }
 
     @NotNull
