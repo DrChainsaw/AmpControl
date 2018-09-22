@@ -30,7 +30,9 @@ public class AutoFromSizeTest {
                 .build();
 
         final int expectedNrofCache = 11;
-        final AutoFromSize<Void> factory = new AutoFromSize<>(2*3*5*7*(expectedNrofCache) * 11, 10);
+        final int dataTypeSize = 10;
+        final int marginFactor = dataTypeSize + 4;
+        final AutoFromSize<Void> factory = new AutoFromSize<>(2*3*5*7*(expectedNrofCache) * marginFactor, dataTypeSize);
 
         IntStream.range(0, expectedNrofCache).forEach(i ->
                 assertEquals("Incorrect type returned after " + i + " calls!", WorkSpaceWrappingIterator.class, factory.create(input).getClass()));

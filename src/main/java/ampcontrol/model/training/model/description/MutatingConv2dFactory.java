@@ -163,7 +163,7 @@ public final class MutatingConv2dFactory {
                         "cand"), // Do something about the name...
                         new EvolvingPopulation<>(
                                 initialPopulation,
-                                new FitnessPolicyTraining<>(51),
+                                new FitnessPolicyTraining<>(151),
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,

@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
 public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetIterator, AutoFromSize.Input<V>> {
 
     private static final Logger log = LoggerFactory.getLogger(AutoFromSize.class);
-    private static final double margin = 1.2; // How much margin to use when calculating memory size of data sets
+    private static final double margin = 5.2; // How much margin to use when calculating memory size of data sets
 
     private long memoryAllowance;
     private final long dataTypeSize;

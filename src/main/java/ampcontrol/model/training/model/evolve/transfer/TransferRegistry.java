@@ -8,6 +8,8 @@ import org.nd4j.linalg.indexing.NDArrayIndex;
 import java.util.*;
 import java.util.stream.IntStream;
 
+import static org.nd4j.linalg.ops.transforms.Transforms.abs;
+
 /**
  * Registry for {@link INDArray}s for which one or more elements are to be transferred to another array. Allows for
  * decisions on how and why to transfer an array to be done as separate activities.
@@ -49,8 +51,8 @@ class TransferRegistry {
         // Temporary until a good way to create these exists
         Comparator<Integer> defaultComparatorFactory(int[] tensorDimensions) {
             return (e1, e2) -> -Double.compare(
-                    array.tensorAlongDimension(e1, tensorDimensions).sumNumber().doubleValue(),
-                    array.tensorAlongDimension(e2, tensorDimensions).sumNumber().doubleValue());
+                    abs(array.tensorAlongDimension(e1, tensorDimensions)).sumNumber().doubleValue(),
+                    abs(array.tensorAlongDimension(e2, tensorDimensions)).sumNumber().doubleValue());
         }
 
         private void put(INDArray anotherArray) {

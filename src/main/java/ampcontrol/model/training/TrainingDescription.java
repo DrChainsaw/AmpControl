@@ -8,24 +8,39 @@ import ampcontrol.model.training.data.iterators.factory.AutoFromSize;
 import ampcontrol.model.training.data.iterators.factory.Cnn2D;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
+import ampcontrol.model.training.model.EvolvingGraphAdapter;
+import ampcontrol.model.training.model.GraphModelAdapter;
+import ampcontrol.model.training.model.ModelAdapter;
 import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.description.MutatingConv2dFactory;
+import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
+import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import ampcontrol.model.training.model.naming.AddPrefix;
 import ampcontrol.model.training.model.naming.CharThreshold;
 import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
+import ch.qos.logback.classic.Level;
+import org.deeplearning4j.eval.Evaluation;
+import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
+import org.deeplearning4j.nn.conf.layers.Layer;
+import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.util.ModelSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Main "app" for training. Describes what models to use and how they shall be trained.
@@ -75,6 +90,9 @@ public class TrainingDescription {
     }
 
     public static void main(String[] args) {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        root.setLevel(Level.INFO);
+
         DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
 
         List<ModelHandle> modelData = new ArrayList<>();
@@ -148,7 +166,7 @@ public class TrainingDescription {
         log.info("Input shape: " + Arrays.toString(inputShape));
 
         // TODO: Figure out why amount of memory that can actually be used differs so much from what seems to be available
-        final AutoFromSize<DataProvider> dataSetIteratorFactory = new AutoFromSize<>(5L*1024L*1024L*1024L);
+        final AutoFromSize<DataProvider> dataSetIteratorFactory = new AutoFromSize<>(5L * 1024L * 1024L * 1024L);
         final MiniEpochDataSetIterator trainIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
                 .sourceInput(train.createProvider())
                 .sourceFactory(new Cnn2D(trainBatchSize, labels))
@@ -167,7 +185,7 @@ public class TrainingDescription {
                 .dataSetShape(inputShape)
                 .dataSetSize(evalSize)
                 .resetableState(evalStateFactory)
-        .build());
+                .build());
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
@@ -181,7 +199,88 @@ public class TrainingDescription {
         // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+
         new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
+
+
+        if(false) {
+            try {
+                final int layer = 3;
+
+                final ComputationGraph best = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("-1332796625_best\\0")), true);
+                final ModelAdapter baseline = new GraphModelAdapter(best);
+                final Evaluation evaluation = new Evaluation(labels);
+                baseline.eval(evalIter, evaluation);
+                System.out.println("baseline: " + evaluation.accuracy());
+                evaluation.reset();
+                evalIter.restartMiniEpoch();
+
+                final ModelAdapter increaseNout = new EvolvingGraphAdapter(best, new MutateNout(() -> Stream.of(MutateNout.NoutMutation.builder()
+                        .layerName("" + layer)
+                        .mutateNout(nOut -> nOut + 1)
+                        .build())
+                )).evolve();
+                increaseNout.eval(evalIter, evaluation);
+                System.out.println("increaseNout: " + evaluation.accuracy());
+                evaluation.reset();
+                evalIter.restartMiniEpoch();
+
+                final ModelAdapter decreaseNout = new EvolvingGraphAdapter(best, new MutateNout(() -> Stream.of(MutateNout.NoutMutation.builder()
+                        .layerName("" + layer)
+                        .mutateNout(nOut -> nOut - 1)
+                        .build())
+                )).evolve();
+                decreaseNout.eval(evalIter, evaluation);
+                System.out.println("decreaseNout: " + evaluation.accuracy());
+                evaluation.reset();
+                evalIter.restartMiniEpoch();
+
+                final ModelAdapter increaseKs = new EvolvingGraphAdapter(best, new MutateLayerContained(() -> Stream.of(MutateLayerContained.LayerMutation.builder()
+                        .layerName("" + layer)
+                        .inputLayers(new String[]{"" + (layer - 1)})
+                        .mutation(layerConfOpt -> layerConfOpt
+                                .map(Layer::clone)
+                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                .map(layerConf -> (ConvolutionLayer) layerConf)
+                                .map(convConf -> {
+                                    convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] + 1, convConf.getKernelSize()[1]});
+                                    convConf.setWeightInit(WeightInit.DISTRIBUTION);
+                                    convConf.setDist(new ConstantDistribution(0));
+                                    return convConf;
+                                })
+                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfOpt)))
+                        .build())
+                )).evolve();
+                increaseKs.eval(evalIter, evaluation);
+                System.out.println("increaseKs: " + evaluation.accuracy() + ", score : " + increaseKs.asModel().score());
+                evaluation.reset();
+                evalIter.restartMiniEpoch();
+
+                final ModelAdapter decreaseKs = new EvolvingGraphAdapter(best, new MutateLayerContained(() -> Stream.of(MutateLayerContained.LayerMutation.builder()
+                        .layerName("" + layer)
+                        .inputLayers(new String[]{"" + (layer - 1)})
+                        .mutation(layerConfOpt -> layerConfOpt
+                                .map(Layer::clone)
+                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                .map(layerConf -> (ConvolutionLayer) layerConf)
+                                .map(convConf -> {
+                                    convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] - 1, convConf.getKernelSize()[1]});
+                                    convConf.setWeightInit(WeightInit.DISTRIBUTION);
+                                    convConf.setDist(new ConstantDistribution(0));
+                                    return convConf;
+                                })
+                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfOpt)))
+                        .build())
+                )).evolve();
+                decreaseKs.eval(evalIter, evaluation);
+                System.out.println("decreaseKs: " + evaluation.accuracy());
+                evaluation.reset();
+                evalIter.restartMiniEpoch();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private static void mapFilesToDataSets(DataProviderBuilder train, DataProviderBuilder eval) {

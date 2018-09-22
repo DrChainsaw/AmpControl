@@ -55,7 +55,7 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
         log.info("got fitness " + fitness + " for cand " + population.indexOf(item) + " size: " + evalCands.size());
         evalCands.add(new AbstractMap.SimpleEntry<>(fitness, item));
         if (evalCands.size() == population.size()) {
-            log.info("Callback! " + onChangeCallback);
+            log.debug("Callback to: " + onChangeCallback);
             onChangeCallback.forEach(Runnable::run);
         }
     }
