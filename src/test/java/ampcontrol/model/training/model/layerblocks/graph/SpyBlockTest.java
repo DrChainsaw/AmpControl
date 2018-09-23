@@ -2,6 +2,7 @@ package ampcontrol.model.training.model.layerblocks.graph;
 
 import ampcontrol.model.training.model.layerblocks.Dense;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
+import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapterTest;
 import org.junit.Test;
 
@@ -22,7 +23,8 @@ public class SpyBlockTest {
     public void addLayers() {
         final GraphSpyAdapterTest.ProbeAdapter probeAdapter = new GraphSpyAdapterTest.ProbeAdapter();
         final GraphSpyAdapterTest.ProbeSpy probeSpy = new GraphSpyAdapterTest.ProbeSpy();
-        new SpyBlock(new Dense(), probeSpy)
+        new SpyBlock(new Dense())
+                .setFactory(graphBuilderAdapter -> new GraphSpyAdapter(graphBuilderAdapter,probeSpy))
                 .addLayers(probeAdapter, new LayerBlockConfig.SimpleBlockInfo.Builder()
                         .setInputs(new String[]{"666", "addLayer2"})
                         .setPrevLayerInd(666)

@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
@@ -9,6 +10,7 @@ import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +56,6 @@ public class MutateLayerContained implements Mutation<ComputationGraphConfigurat
                     .filter(layer -> layer instanceof FeedForwardLayer)
                     .map(layer -> (FeedForwardLayer) layer);
 
-    public MutateLayerContained(Supplier<LayerMutation> mutationSupplier) {
-        this.mutationSupplier = mutationSupplier;
-    }
-
     @Builder
     @Getter
     public static class LayerMutation {
@@ -88,6 +86,15 @@ public class MutateLayerContained implements Mutation<ComputationGraphConfigurat
                                 .orElseThrow(() -> new IllegalStateException("No inputs found for " + layerName)));
     }
 
+    @AllArgsConstructor @Getter
+    public static class NoutNin {
+        private final long nOut;
+        private final long nIn;
+    }
+
+    public MutateLayerContained(Supplier<LayerMutation> mutationSupplier) {
+        this.mutationSupplier = mutationSupplier;
+    }
 
     @Override
     public GraphBuilder mutate(GraphBuilder builder) {
@@ -97,67 +104,89 @@ public class MutateLayerContained implements Mutation<ComputationGraphConfigurat
 
     private void replaceOrAddVertex(LayerMutation mutation, GraphBuilder builder) {
 
-        long nOut = 0;
-        long nIn = 0;
+        final NoutNin noutNin;
         final Optional<Layer> toMutate;
         if (Optional.ofNullable(builder.getVertices().get(mutation.getLayerName())).isPresent()) {
             // Simple case, we can replace an existing vertex
             toMutate = Optional.of(((LayerVertex) builder.getVertices().get(mutation.getLayerName())).getLayerConf().getLayer());
 
-            nOut = mutation.getOutputSizeMapping().apply(mutation.getLayerName(), builder);
-            nIn = mutation.getInputSizeMapping().apply(mutation.getLayerName(), builder);
+            final long nOut = mutation.getOutputSizeMapping().apply(mutation.getLayerName(), builder);
+            final long nIn = mutation.getInputSizeMapping().apply(mutation.getLayerName(), builder);
+            noutNin = new NoutNin(nOut, nIn);
             builder.removeVertex(mutation.getLayerName(), false);
         } else {
             toMutate = Optional.empty();
-            // Trickier case: Insert a vertex between two other vertices
-            // vertexN -> vertexN+1 need to become vertexN -> newlayer -> vertexN+1
-            // Thus, layerN+1 must be removed and added back with newLayer as input
-            for (String inputName : mutation.getInputLayers()) {
-
-                // Find all layers to which vertex of inputName is output
-                final List<String> allOutputLayers = builder.getVertexInputs().entrySet().stream()
-                        .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(inputName))
-                        .map(Map.Entry::getKey)
-                        .collect(Collectors.toList());
-
-                for (String outputName : allOutputLayers) {
-
-                    final GraphVertex vertexConf = builder.getVertices().get(outputName);
-
-                    // Handle case of multiple inputs, like this:
-                    // {vertex0,..., vertexN} -> outputVertex shall become vertexi -> newlayer and then {vertex0,...,newlayer,...,vertexN}-> outputVertex
-                    // Must add back all other vertices as input to outputVertex.
-                    final List<String> allInputsToOutput = new ArrayList<>(builder.getVertexInputs().get(outputName));
-                    // Better insert new layer in the same place as the one which is removed...
-                    final int index = allInputsToOutput.indexOf(inputName);
-                    allInputsToOutput.remove(index);
-                    allInputsToOutput.add(index, mutation.layerName);
-
-                    // Assumes merge of inputs.
-                    // Note: Will fail in case of a non-layer vertex. Needs fixing then...
-                    nOut += mutation.getOutputSizeMapping().apply(outputName, builder);
-                    nIn += mutation.getInputSizeMapping().apply(outputName, builder);
-
-                    builder.removeVertex(outputName, false)
-                            .addVertex(outputName,
-                                    vertexConf,
-                                    allInputsToOutput.toArray(new String[]{}));
-
-
-                }
-            }
+            noutNin = makeRoomFor(mutation, builder);
         }
 
         final Layer mutatedLayer= mutation.getMutation().apply(toMutate);
         if (mutatedLayer instanceof FeedForwardLayer) {
             FeedForwardLayer ffLayer = ((FeedForwardLayer) mutatedLayer);
-            ffLayer.setNIn(nIn);
-            ffLayer.setNOut(nOut);
+            ffLayer.setNIn(noutNin.getNIn());
+            ffLayer.setNOut(noutNin.getNOut());
         }
 
         log.info("Mutated layer " + mutation.getLayerName() + " to " + mutatedLayer);
 
         builder.addLayer(mutation.getLayerName(), mutatedLayer, mutation.getInputLayers());
+    }
+
+    /**
+     * Make room for inserting a vertex between two other vertices. Note that actual addition of "newLayer" in examples
+     * below does not happen in this function.
+     * vertexN -> vertexN+1 need to become vertexN -> newlayer -> vertexN+1 Thus, layerN+1 must be removed and added
+     * back with newLayer as input.
+     * <br><br>
+     * Also handles case of multiple inputs, like this: <br>
+     * {vertex0,..., vertexN} -> outputVertex shall become vertexi -> newlayer followed by
+     * {vertex0,...,newlayer,...,vertexN} -> outputVertex. Must remove outputVertex and then add back all other vertices
+     * as input to outputVertex along with newLayer.
+     *
+     * @param mutation Defines how to change the builder
+     * @param builder {@link GraphBuilder} to mutate
+     * @return
+     */
+    @NotNull
+    public static NoutNin makeRoomFor(LayerMutation mutation, GraphBuilder builder) {
+        NoutNin noutNin;
+        long nOut = 0;
+        long nIn = 0;
+        for (String inputName : mutation.getInputLayers()) {
+
+            // Find all layers to which vertex of inputName is output
+            final List<String> allOutputLayers = builder.getVertexInputs().entrySet().stream()
+                    .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(inputName))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+
+            for (String outputName : allOutputLayers) {
+
+                final GraphVertex vertexConf = builder.getVertices().get(outputName);
+
+                // Handle case of multiple inputs, like this:
+                // {vertex0,..., vertexN} -> outputVertex shall become vertexi -> newlayer and then {vertex0,...,newlayer,...,vertexN}-> outputVertex
+                // Must add back all other vertices as input to outputVertex.
+                final List<String> allInputsToOutput = new ArrayList<>(builder.getVertexInputs().get(outputName));
+                // Better insert new layer in the same place as the one which is removed...
+                final int index = allInputsToOutput.indexOf(inputName);
+                allInputsToOutput.remove(index);
+                allInputsToOutput.add(index, mutation.layerName);
+
+                // Assumes merge of inputs.
+                // Note: Will fail in case of a non-layer vertex. Needs fixing then...
+                nOut += mutation.getOutputSizeMapping().apply(outputName, builder);
+                nIn += mutation.getInputSizeMapping().apply(outputName, builder);
+
+                builder.removeVertex(outputName, false)
+                        .addVertex(outputName,
+                                vertexConf,
+                                allInputsToOutput.toArray(new String[]{}));
+
+
+            }
+        }
+        noutNin = new NoutNin(nOut, nIn);
+        return noutNin;
     }
 
 

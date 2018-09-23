@@ -176,7 +176,7 @@ public class ParameterTransferTest {
             String mutationName, String nextMutationName, String afterName, ComputationGraph graph, int outputDim, int inputDim) {
         final int[] orderToKeepFirst = {1, 3, 5, 6, 7, 9, 2, 4, 8, 0};
         final int[] orderToKeepSecond = {0, 3, 4, 2, 1};
-        final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
+        final Map<String, Function<Integer, Comparator<Integer>>> comparatorMap = new HashMap<>();
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
         comparatorMap.put(nextMutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepSecond));
 
@@ -234,7 +234,7 @@ public class ParameterTransferTest {
             int outputDimNext,
             int inputDim) {
         final int[] orderToKeepFirst = {0, 1, 4, 6, 7, 5, 2, 3, 8, 9};
-        final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
+        final Map<String, Function<Integer, Comparator<Integer>>> comparatorMap = new HashMap<>();
         comparatorMap.put(mutationName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
 
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,

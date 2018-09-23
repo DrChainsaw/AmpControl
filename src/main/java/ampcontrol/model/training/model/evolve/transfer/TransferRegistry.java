@@ -49,10 +49,21 @@ class TransferRegistry {
         }
 
         // Temporary until a good way to create these exists
-        Comparator<Integer> defaultComparatorFactory(int[] tensorDimensions) {
-            return (e1, e2) -> -Double.compare(
-                    abs(array.tensorAlongDimension(e1, tensorDimensions)).sumNumber().doubleValue(),
-                    abs(array.tensorAlongDimension(e2, tensorDimensions)).sumNumber().doubleValue());
+        Comparator<Integer> defaultComparatorFactory(Integer dimension) {
+            return new Comparator<Integer> () {
+
+                final int[] tensorDimensions = IntStream.range(0, array.rank())
+                        .filter(dim -> dimension != dim)
+                        .toArray();
+
+                @Override
+                public int compare(Integer e1, Integer e2) {
+                    return -Double.compare(
+                            abs(array.tensorAlongDimension(e1, tensorDimensions)).sumNumber().doubleValue(),
+                            abs(array.tensorAlongDimension(e2, tensorDimensions)).sumNumber().doubleValue());
+                }
+            };
+
         }
 
         private void put(INDArray anotherArray) {

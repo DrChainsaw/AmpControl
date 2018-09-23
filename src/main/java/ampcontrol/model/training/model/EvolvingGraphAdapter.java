@@ -12,6 +12,8 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.Function;
+
 
 /**
  * {@link ModelAdapter} which may evolve through a {@link Mutation}.
@@ -24,10 +26,21 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
 
     private final ComputationGraph graph;
     private final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation;
+    private final Function<ComputationGraph, ParameterTransfer> parameterTransferFactory;
 
-    public EvolvingGraphAdapter(ComputationGraph graph, Mutation<ComputationGraphConfiguration.GraphBuilder> mutation) {
+    public EvolvingGraphAdapter(
+            ComputationGraph graph,
+            Mutation<ComputationGraphConfiguration.GraphBuilder> mutation) {
+        this(graph, mutation, ParameterTransfer::new);
+    }
+
+    public EvolvingGraphAdapter(
+            ComputationGraph graph,
+            Mutation<ComputationGraphConfiguration.GraphBuilder> mutation,
+            Function<ComputationGraph, ParameterTransfer> parameterTransferFactory) {
         this.graph = graph;
         this.mutation = mutation;
+        this.parameterTransferFactory = parameterTransferFactory;
     }
 
     @Override
@@ -56,7 +69,7 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
         final ComputationGraphConfiguration.GraphBuilder mutated = mutation.mutate(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
                 new NeuralNetConfiguration.Builder(graph.conf().clone())));
-        final ParameterTransfer parameterTransfer = new ParameterTransfer(graph);
+        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph);
         final ComputationGraph newGraph = new ComputationGraph(mutated.build());
         newGraph.init();
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());

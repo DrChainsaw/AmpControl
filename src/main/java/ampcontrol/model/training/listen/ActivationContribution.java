@@ -37,7 +37,8 @@ public class ActivationContribution extends BaseTrainingListener {
     private Contribution lastContribution;
 
 
-    @Getter @Setter
+    @Getter
+    @Setter
     private abstract static class Contribution {
         private INDArray act;
         private INDArray eps;
@@ -96,7 +97,30 @@ public class ActivationContribution extends BaseTrainingListener {
 
     @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
-        if (lastContribution == null && model instanceof ComputationGraph) {
+        if (lastContribution == null) {
+            initEpsilonListener(model);
+        }
+        lastContribution.setAct(activations.get(layerName).detach());
+    }
+
+
+    @Override
+    public void onGradientCalculation(Model model) {
+        try {
+            lastContribution = lastContribution.calc();
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to calculate contribution for layer " + layerName, e);
+        }
+    }
+
+    @Override
+    public void onEpochEnd(Model model) {
+        listener.accept(lastContribution.getContrib());
+        lastContribution = new InitialContribution();
+    }
+
+    private void initEpsilonListener(Model model) {
+        if (model instanceof ComputationGraph) {
             ComputationGraph cg = ((ComputationGraph) model);
             if (cg.getVertex(layerName).getOutputVertices().length != 1) {
                 throw new UnsupportedOperationException("More than one output for " + layerName + "!");
@@ -112,43 +136,8 @@ public class ActivationContribution extends BaseTrainingListener {
                     .orElseThrow(() -> new UnsupportedOperationException("Must have " + EpsilonSpyVertexImpl.class +
                             " as output to " + layerName + "!"))
                     .addListener(epsilon -> lastContribution.setEps(epsilon.detach()));
-        } else {
+        } else { // I.e not a ComputationGraph instance
             throw new IllegalArgumentException("Can only work on ComputationGraph instances! Got " + model);
         }
-        lastContribution.setAct(activations.get(layerName).detach());
-    }
-
-
-    @Override
-    public void onGradientCalculation(Model model) {
-        try {
-            lastContribution = lastContribution.calc();
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to calculate contribution for layer " + layerName, e);
-        }
-
-
-        // Most likely not useable, but keep at least one version of it in history....
-//        final String weightName = layerName + "_" + DefaultParamInitializer.WEIGHT_KEY;
-//        final String biasName = layerName + "_" + DefaultParamInitializer.BIAS_KEY;
-//        final INDArray weightGrad = model.gradient().getGradientFor(weightName);
-//        final INDArray biasGrad = Optional.ofNullable(model.gradient().getGradientFor(biasName))
-//                .orElse(Nd4j.zeros(1, weightGrad.size(1)));
-//
-//        final long batchSize = lastActivation.size(0); // Assume 0 is batchdimension
-//
-//        if(weightGrad.rank() == 2) {
-//        final INDArray contribution = weightGrad.add(biasGrad.getColumn(0).broadcast(weightGrad.shape())).mul(lastActivation)
-//                .div(batchSize).mean(1);
-//        } else if(weightGrad.rank() == 4){
-//            final INDArray contribution = weightGrad.amean(1, 2, 3).swapAxes(0,1).add(biasGrad)
-//                    .mul(lastActivation.amean(0, 2, 3));
-//        }
-    }
-
-    @Override
-    public void onEpochEnd(Model model) {
-       listener.accept(lastContribution.getContrib());
-       lastContribution = new InitialContribution();
     }
 }

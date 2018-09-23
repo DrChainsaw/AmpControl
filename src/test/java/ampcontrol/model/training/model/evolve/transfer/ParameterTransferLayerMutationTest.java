@@ -40,7 +40,7 @@ public class ParameterTransferLayerMutationTest {
         final ComputationGraph graph = GraphUtils.getCnnGraph(mutateName, mutateTooName, "conv3");
 
         final int[] orderToKeepFirst = {0, 2 ,1};
-        final Map<String, Function<int[], Comparator<Integer>>> comparatorMap = new HashMap<>();
+        final Map<String, Function<Integer, Comparator<Integer>>> comparatorMap = new HashMap<>();
         comparatorMap.put(mutateName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
 
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,

@@ -19,6 +19,7 @@ import ampcontrol.model.training.model.evolve.selection.EliteSelection;
 import ampcontrol.model.training.model.evolve.selection.EvolveSelection;
 import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
 import ampcontrol.model.training.model.layerblocks.*;
+import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import ampcontrol.model.training.model.naming.AddSuffix;
@@ -50,6 +51,7 @@ import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -130,7 +132,8 @@ public final class MutatingConv2dFactory {
         final Set<MutateLayerContained.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
         final GraphSpyAdapter.LayerSpy kernelSizeSpy = createKernelSizeSpy(mutateKernelSizeLayers);
 
-        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, nOutSpy, kernelSizeSpy);
+        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, graphBuilderAdapter -> new GraphSpyAdapter(
+                new GraphSpyAdapter(graphBuilderAdapter, kernelSizeSpy), nOutSpy));
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         IntStream.range(0, 20).forEach(candInd -> {
@@ -233,33 +236,36 @@ public final class MutatingConv2dFactory {
     private ModelBuilder createModelBuilder(
             ISchedule lrSched,
             ISchedule momSched,
-            GraphSpyAdapter.LayerSpy nOutSpy,
-            GraphSpyAdapter.LayerSpy kernelSizeSpy) {
+            UnaryOperator<GraphBuilderAdapter> spyFactory) {
         final LayerBlockConfig pool = new Pool2D().setSize(2).setStride(2);
         return new BlockBuilder()
                 .setUpdater(new Nesterovs(lrSched, momSched))
                 .setNamePrefix(namePrefix)
                 .first(new ConvType(inputShape))
-                .andThen(new SpyBlock(new SpyBlock(new Conv2DBatchNormAfter()
+                .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(32), nOutSpy), kernelSizeSpy))
+                        .setNrofKernels(32))
+                        .setFactory(spyFactory))
                 .andThen(pool)
 
-                .andThen(new SpyBlock(new SpyBlock(new Conv2DBatchNormAfter()
+                .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(64), nOutSpy), kernelSizeSpy))
+                        .setNrofKernels(64))
+                        .setFactory(spyFactory))
                 .andThen(pool)
 
-                .andThen(new SpyBlock(new SpyBlock(new Conv2DBatchNormAfter()
+                .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(128), nOutSpy), kernelSizeSpy))
+                        .setNrofKernels(128))
+                        .setFactory(spyFactory))
                 .andThen(pool)
 
                 .andThen(new GlobPool())
                 .andThenStack(2)
                 .of(new SpyBlock(new Dense()
                         .setHiddenWidth(128)
-                        .setActivation(new ActivationReLU()), nOutSpy))
+                        .setActivation(new ActivationReLU()))
+                        .setFactory(spyFactory))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
                         .setLambda(0.003));

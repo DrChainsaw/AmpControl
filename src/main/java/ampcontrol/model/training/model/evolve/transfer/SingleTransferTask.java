@@ -27,7 +27,7 @@ public class SingleTransferTask implements TransferTask {
     private final IndMapping source = IndMapping.builder().build();
     @lombok.Builder.Default
     private final IndMapping target = IndMapping.builder().build();
-    private final Function<int[], Comparator<Integer>> compFactory;
+    private final Function<Integer, Comparator<Integer>> compFactory;
     @lombok.Singular("maskDim") private final Set<Integer> dimensionMask;
     @lombok.Builder.Default private final TransferTask dependentTask = new NoTransferTask();
 
@@ -83,11 +83,8 @@ public class SingleTransferTask implements TransferTask {
 
             if (targetShape[i] < sourceShape[i]) {
                 final int tensorDim = i;
-                final int[] tensorDimensions = IntStream.range(0, targetShape.length)
-                        .filter(dim -> tensorDim != dim)
-                        .toArray();
 
-                final Comparator<Integer> comparator = compFactory.apply(tensorDimensions);
+                final Comparator<Integer> comparator = compFactory.apply(tensorDim);
                 final int[] wantedElements = IntStream.range(0, (int) sourceShape[tensorDim])
                         .boxed()
                         .sorted(comparator)
@@ -109,7 +106,7 @@ public class SingleTransferTask implements TransferTask {
 
     public static class Builder implements ListBuilder {
         // Used through lombok
-        private Function<int[], Comparator<Integer>> compFactory = tensorDimensions -> source.getEntry().defaultComparatorFactory(tensorDimensions);
+        private Function<Integer, Comparator<Integer>> compFactory = dim -> source.getEntry().defaultComparatorFactory(dim);
 
         private Optional<ListBuilder> dependentTaskBuilder = Optional.empty();
 

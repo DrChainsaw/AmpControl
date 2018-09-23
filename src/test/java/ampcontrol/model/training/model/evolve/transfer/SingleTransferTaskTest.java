@@ -414,7 +414,7 @@ public class SingleTransferTaskTest {
      * @param order the desired order
      * @return a Comparator which will sort integers in the given order
      */
-    public static Function<int[], Comparator<Integer>> fixedOrderComp(int[] order) {
+    public static Function<Integer, Comparator<Integer>> fixedOrderComp(int[] order) {
         return dummy -> Comparator.comparingInt(i -> Ints.indexOf(order, i));
     }
 }

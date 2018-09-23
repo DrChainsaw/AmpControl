@@ -6,6 +6,8 @@ import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 
+import java.util.function.UnaryOperator;
+
 /**
  * Allows for spying on information about added layers through a {@link GraphSpyAdapter.LayerSpy}.
  *
@@ -14,11 +16,10 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 public class SpyBlock implements LayerBlockConfig {
 
     private final LayerBlockConfig blockConfig;
-    private final GraphSpyAdapter.LayerSpy spy;
+    private UnaryOperator<GraphBuilderAdapter> factory = UnaryOperator.identity();
 
-    public SpyBlock(LayerBlockConfig blockConfig, GraphSpyAdapter.LayerSpy spy) {
+    public SpyBlock(LayerBlockConfig blockConfig) {
         this.blockConfig = blockConfig;
-        this.spy = spy;
     }
 
     @Override
@@ -38,7 +39,12 @@ public class SpyBlock implements LayerBlockConfig {
 
     @Override
     public BlockInfo addLayers(GraphBuilderAdapter graphBuilder, BlockInfo info) {
-        final GraphSpyAdapter spyAdapter = new GraphSpyAdapter(graphBuilder, spy);
+        final GraphBuilderAdapter spyAdapter = factory.apply(graphBuilder);
         return blockConfig.addLayers(spyAdapter, info);
+    }
+
+    public SpyBlock setFactory(UnaryOperator<GraphBuilderAdapter> factory) {
+        this.factory = factory;
+        return this;
     }
 }

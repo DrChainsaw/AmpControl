@@ -27,13 +27,13 @@ public class ParameterTransfer {
    // private static final Logger log = LoggerFactory.getLogger(ParameterTransfer.class);
 
     private final ComputationGraph graph;
-    private final Function<String, Optional<Function<int[], Comparator<Integer>>>> compFactory;
+    private final Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory;
 
     public ParameterTransfer(ComputationGraph graph) {
         this(graph, str -> Optional.empty());
     }
 
-    ParameterTransfer(ComputationGraph graph, Function<String, Optional<Function<int[], Comparator<Integer>>>> compFactory) {
+    ParameterTransfer(ComputationGraph graph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
         this.graph = graph;
         this.compFactory = compFactory;
     }

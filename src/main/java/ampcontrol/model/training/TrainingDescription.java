@@ -8,20 +8,24 @@ import ampcontrol.model.training.data.iterators.factory.AutoFromSize;
 import ampcontrol.model.training.data.iterators.factory.Cnn2D;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
+import ampcontrol.model.training.listen.ActivationContribution;
 import ampcontrol.model.training.model.EvolvingGraphAdapter;
 import ampcontrol.model.training.model.GraphModelAdapter;
 import ampcontrol.model.training.model.ModelAdapter;
 import ampcontrol.model.training.model.ModelHandle;
-import ampcontrol.model.training.model.description.MutatingConv2dFactory;
 import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
 import ampcontrol.model.training.model.evolve.mutate.MutateNout;
+import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.naming.AddPrefix;
 import ampcontrol.model.training.model.naming.CharThreshold;
 import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
+import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import ampcontrol.model.visualize.RealTimePlot;
 import ch.qos.logback.classic.Level;
 import org.deeplearning4j.eval.Evaluation;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
@@ -90,7 +94,7 @@ public class TrainingDescription {
     }
 
     public static void main(String[] args) {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         root.setLevel(Level.INFO);
 
         DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
@@ -109,7 +113,7 @@ public class TrainingDescription {
                 modelPolicy,
                 title -> new RealTimePlot<>(title, modelPolicy.toFileName("plots")),
                 BufferedTextWriter.defaultFactory);
-        harness.startTraining(100000);
+        //harness.startTraining(100000);
     }
 
     @NotNull
@@ -200,22 +204,53 @@ public class TrainingDescription {
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-        new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
+        //  new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
 
 
-        if(false) {
+        if (true) {
             try {
                 final int layer = 3;
 
+
                 final ComputationGraph best = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("-1332796625_best\\0")), true);
-                final ModelAdapter baseline = new GraphModelAdapter(best);
+
+                final ComputationGraphConfiguration.GraphBuilder addEpsSpy = new ComputationGraphConfiguration.GraphBuilder(
+                        best.getConfiguration(),
+                        new NeuralNetConfiguration.Builder(best.conf())
+                );
+                final String epsSpyName = "EpsSpy_" + (layer + 1);
+                MutateLayerContained.makeRoomFor(
+                        MutateLayerContained.LayerMutation.builder()
+                                .layerName(epsSpyName)
+                                .inputLayers(new String[]{"" + layer})
+                                .mutation(optLayer -> {
+                                    throw new IllegalArgumentException("Not expected! Vertex will be added afterwards!");
+                                })
+                                .build(),
+                        addEpsSpy
+                );
+                addEpsSpy.addVertex(epsSpyName, new EpsilonSpyVertex(), "" + layer);
+
+                final ComputationGraph withEpsSpy = new ComputationGraph(addEpsSpy.build());
+                withEpsSpy.init();
+                new ParameterTransfer(best).transferWeightsTo(withEpsSpy);
+                withEpsSpy.addListeners(new ActivationContribution("" + layer, arr -> System.out.println("Contributions: " + arr)));
+
+
+                final ModelAdapter baseline = new GraphModelAdapter(withEpsSpy);
+                // Do a few training iterations to train the NoutMutation
+                for (int i = 0; i < 3; i++) {
+                    baseline.fit(trainIter);
+                    trainIter.reset();
+                }
+
                 final Evaluation evaluation = new Evaluation(labels);
                 baseline.eval(evalIter, evaluation);
                 System.out.println("baseline: " + evaluation.accuracy());
                 evaluation.reset();
                 evalIter.restartMiniEpoch();
 
-                final ModelAdapter increaseNout = new EvolvingGraphAdapter(best, new MutateNout(() -> Stream.of(MutateNout.NoutMutation.builder()
+                final ModelAdapter increaseNout = new EvolvingGraphAdapter(withEpsSpy, new MutateNout(() -> Stream.of(MutateNout.NoutMutation.builder()
                         .layerName("" + layer)
                         .mutateNout(nOut -> nOut + 1)
                         .build())
@@ -225,7 +260,7 @@ public class TrainingDescription {
                 evaluation.reset();
                 evalIter.restartMiniEpoch();
 
-                final ModelAdapter decreaseNout = new EvolvingGraphAdapter(best, new MutateNout(() -> Stream.of(MutateNout.NoutMutation.builder()
+                final ModelAdapter decreaseNout = new EvolvingGraphAdapter(withEpsSpy, new MutateNout(() -> Stream.of(MutateNout.NoutMutation.builder()
                         .layerName("" + layer)
                         .mutateNout(nOut -> nOut - 1)
                         .build())
@@ -235,7 +270,7 @@ public class TrainingDescription {
                 evaluation.reset();
                 evalIter.restartMiniEpoch();
 
-                final ModelAdapter increaseKs = new EvolvingGraphAdapter(best, new MutateLayerContained(() -> Stream.of(MutateLayerContained.LayerMutation.builder()
+                final ModelAdapter increaseKs = new EvolvingGraphAdapter(withEpsSpy, new MutateLayerContained(() -> Stream.of(MutateLayerContained.LayerMutation.builder()
                         .layerName("" + layer)
                         .inputLayers(new String[]{"" + (layer - 1)})
                         .mutation(layerConfOpt -> layerConfOpt
@@ -252,11 +287,11 @@ public class TrainingDescription {
                         .build())
                 )).evolve();
                 increaseKs.eval(evalIter, evaluation);
-                System.out.println("increaseKs: " + evaluation.accuracy() + ", score : " + increaseKs.asModel().score());
+                System.out.println("increaseKs: " + evaluation.accuracy());
                 evaluation.reset();
                 evalIter.restartMiniEpoch();
 
-                final ModelAdapter decreaseKs = new EvolvingGraphAdapter(best, new MutateLayerContained(() -> Stream.of(MutateLayerContained.LayerMutation.builder()
+                final ModelAdapter decreaseKs = new EvolvingGraphAdapter(withEpsSpy, new MutateLayerContained(() -> Stream.of(MutateLayerContained.LayerMutation.builder()
                         .layerName("" + layer)
                         .inputLayers(new String[]{"" + (layer - 1)})
                         .mutation(layerConfOpt -> layerConfOpt
