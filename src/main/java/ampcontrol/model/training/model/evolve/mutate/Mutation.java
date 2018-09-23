@@ -32,7 +32,7 @@ public interface Mutation<T> {
 
     static boolean doesNinPropagateToNext(GraphVertex vertex) {
         if (!vertex.hasLayer()) {
-            return false;
+            return true;
         }
         // Is there any parameter which can tell this instead of hardcoding it to types like this?
         switch (vertex.getLayer().type()) {

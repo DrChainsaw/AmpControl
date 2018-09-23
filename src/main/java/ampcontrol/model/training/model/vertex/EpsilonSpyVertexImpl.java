@@ -59,7 +59,7 @@ public class EpsilonSpyVertexImpl extends BaseGraphVertex {
 
     @Override
     public Pair<Gradient, INDArray[]> doBackward(boolean tbptt, LayerWorkspaceMgr workspaceMgr) {
-        listeners.forEach(listener -> listener.accept(getEpsilon().detach()));
+        listeners.forEach(listener -> listener.accept(getEpsilon()));
         return new Pair<>(null, new INDArray[]{workspaceMgr.leverageTo(ArrayType.ACTIVATION_GRAD, epsilon)});
     }
 

@@ -33,7 +33,7 @@ public class ParameterTransfer {
         this(graph, str -> Optional.empty());
     }
 
-    ParameterTransfer(ComputationGraph graph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
+    public ParameterTransfer(ComputationGraph graph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
         this.graph = graph;
         this.compFactory = compFactory;
     }
@@ -108,20 +108,23 @@ public class ParameterTransfer {
         compFactory.apply(layerName)
                 .ifPresent(firstTaskBuilder::compFactory);
 
-        return firstTaskBuilder
-                .addDependentTask(SingleTransferTask.builder()
-                        .maskDim(2)
-                        .maskDim(3)
-                        .maskDim(4)
-                        .source(SingleTransferTask.IndMapping.builder()
-                                .entry(registry.register(sourceParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_source_b"))
-                                .dimensionMapper(dim -> 1) // Always 1 for bias!
-                                .build())
-                        .target(SingleTransferTask.IndMapping.builder()
-                                .entry(registry.register(targetParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_target_b"))
-                                .dimensionMapper(dim -> 1) // Always 1 for bias!
-                                .build())
-                );
+        if(sourceParams.containsKey(DefaultParamInitializer.BIAS_KEY)) {
+            return firstTaskBuilder
+                    .addDependentTask(SingleTransferTask.builder()
+                            .maskDim(2)
+                            .maskDim(3)
+                            .maskDim(4)
+                            .source(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(sourceParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_source_b"))
+                                    .dimensionMapper(dim -> 1) // Always 1 for bias!
+                                    .build())
+                            .target(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(targetParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_target_b"))
+                                    .dimensionMapper(dim -> 1) // Always 1 for bias!
+                                    .build())
+                    );
+        }
+        return firstTaskBuilder;
     }
 
     private void transferAllParameters(TransferRegistry registry,
