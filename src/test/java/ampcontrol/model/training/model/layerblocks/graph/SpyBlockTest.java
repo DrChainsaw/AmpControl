@@ -4,6 +4,7 @@ import ampcontrol.model.training.model.layerblocks.Dense;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapterTest;
+import ampcontrol.model.training.model.layerblocks.adapters.ProbeAdapter;
 import org.junit.Test;
 
 import static junit.framework.TestCase.assertEquals;
@@ -21,7 +22,7 @@ public class SpyBlockTest {
      */
     @Test
     public void addLayers() {
-        final GraphSpyAdapterTest.ProbeAdapter probeAdapter = new GraphSpyAdapterTest.ProbeAdapter();
+        final ProbeAdapter probeAdapter = new ProbeAdapter();
         final GraphSpyAdapterTest.ProbeSpy probeSpy = new GraphSpyAdapterTest.ProbeSpy();
         new SpyBlock(new Dense())
                 .setFactory(graphBuilderAdapter -> new GraphSpyAdapter(graphBuilderAdapter,probeSpy))

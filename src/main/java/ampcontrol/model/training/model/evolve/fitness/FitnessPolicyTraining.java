@@ -7,7 +7,6 @@ import ampcontrol.model.training.model.description.MutatingConv2dFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -50,8 +49,6 @@ public class FitnessPolicyTraining<T extends ModelAdapter> implements FitnessPol
                 }
             }
         };
-        // Clear all listeners as we might have gotten an untouched handle (which has listeners since before
-        candidate.asModel().setListeners(Collections.emptyList());
         candidate.asModel().addListeners(new TrainScoreListener(fitnessCalculation));
         candidate.asModel().addListeners(new NanScoreWatcher(() -> fitnessListener.accept(Double.MAX_VALUE)));
         return candidate;

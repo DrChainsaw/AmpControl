@@ -9,6 +9,8 @@ import ampcontrol.model.training.model.evolve.CachedPopulation;
 import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.Population;
 import ampcontrol.model.training.model.evolve.TransformPopulation;
+import ampcontrol.model.training.model.evolve.fitness.AggPolicy;
+import ampcontrol.model.training.model.evolve.fitness.ClearListeners;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
 import ampcontrol.model.training.model.evolve.mutate.AggMutation;
 import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
@@ -21,19 +23,17 @@ import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
+import ampcontrol.model.training.model.layerblocks.adapters.VertexSpyGraphAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import ampcontrol.model.training.model.naming.AddSuffix;
 import ampcontrol.model.training.model.naming.FileNamePolicy;
-import ampcontrol.model.training.model.validation.EvalValidation;
-import ampcontrol.model.training.model.validation.Skipping;
-import ampcontrol.model.training.model.validation.Validation;
+import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import ampcontrol.model.training.schedule.MinLim;
 import ampcontrol.model.training.schedule.Mul;
 import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
-import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
@@ -42,6 +42,7 @@ import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
+import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ISchedule;
 import org.slf4j.Logger;
@@ -70,30 +71,23 @@ public final class MutatingConv2dFactory {
     private final String namePrefix;
     private final FileNamePolicy modelFileNamePolicy;
 
+    private final static class ActivationContributionComparator implements Consumer<INDArray>, Comparator<Integer> {
 
-    private static final class ModelFitness implements Validation.Factory<Evaluation> {
+        private INDArray activationContribution = null;
 
-        private final Consumer<Double> fitnessConsumer;
-        private final double paramScore;
-
-        public ModelFitness(Consumer<Double> fitnessConsumer, int nrofParameters) {
-            this.fitnessConsumer = fitnessConsumer;
-            this.paramScore = Math.max(0, (1e8 - nrofParameters) / 1e10);
-
+        @Override
+        public int compare(Integer elem1, Integer elem2) {
+            return -Double.compare(
+                    activationContribution.getDouble(elem1),
+                    activationContribution.getDouble(elem2));
         }
 
         @Override
-        public Validation<Evaluation> create(List<String> labels) {
-            final Consumer<Evaluation> listener = eval -> fitnessConsumer.accept(calcFitness(eval));
-            return new Skipping<>(dummy -> 30, 30,
-                    new EvalValidation(
-                            new Evaluation(labels),
-                            listener
-                    ));
-        }
-
-        private double calcFitness(Evaluation evaluation) {
-            return 1d / (Math.round(evaluation.accuracy() * 100) / 100d + paramScore) - 1;
+        public void accept(INDArray activationContribution) {
+            if (this.activationContribution == null) {
+                this.activationContribution = activationContribution;
+            }
+            this.activationContribution.addi(activationContribution);
         }
     }
 
@@ -132,8 +126,11 @@ public final class MutatingConv2dFactory {
         final Set<MutateLayerContained.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
         final GraphSpyAdapter.LayerSpy kernelSizeSpy = createKernelSizeSpy(mutateKernelSizeLayers);
 
-        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, graphBuilderAdapter -> new GraphSpyAdapter(
-                new GraphSpyAdapter(graphBuilderAdapter, kernelSizeSpy), nOutSpy));
+        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, graphBuilderAdapter -> new VertexSpyGraphAdapter(
+                new GraphSpyAdapter(
+                        new GraphSpyAdapter(graphBuilderAdapter, kernelSizeSpy), nOutSpy),
+                new EpsilonSpyVertex(),
+                mutateNoutLayers::contains));
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         IntStream.range(0, 20).forEach(candInd -> {
@@ -166,7 +163,10 @@ public final class MutatingConv2dFactory {
                         "cand"), // Do something about the name...
                         new EvolvingPopulation<>(
                                 initialPopulation,
-                                new FitnessPolicyTraining<>(151),
+                                AggPolicy.<EvolvingGraphAdapter>builder()
+                                .first(new ClearListeners<>())
+                                .second(new FitnessPolicyTraining<>(151))
+                                .build(),
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
@@ -189,7 +189,7 @@ public final class MutatingConv2dFactory {
         final Random rng = new Random(666);
         final Set<String> layerNames = new HashSet<>();
         return (layerName, layer, layerInputs) -> {
-            if(!layerNames.add(layerName)) {
+            if (!layerNames.add(layerName)) {
                 return;
             }
 
