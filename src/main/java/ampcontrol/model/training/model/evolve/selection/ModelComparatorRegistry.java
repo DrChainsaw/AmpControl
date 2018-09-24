@@ -82,7 +82,9 @@ public class ModelComparatorRegistry {
         registry.put(model, compMapping);
     }
 
-    public void clear() {
-        registry.clear();
+    public void clear(Model model) {
+        registry.remove(model);
     }
+
+
 }

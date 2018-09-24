@@ -87,7 +87,8 @@ public class SingleTransferTask implements TransferTask {
                 final int tensorDim = i;
 
                 // TODO: Null should be an error. Just CBA to do the plumbing for it right now...
-                final Comparator<Integer> comparator = Optional.ofNullable(compFactory.apply(tensorDim))
+                final Comparator<Integer> comparator = Optional.ofNullable(compFactory)
+                        .map(factory -> factory.apply(tensorDim))
                         .orElseGet(() -> source.getEntry().defaultComparatorFactory(tensorDim));
                 final int[] wantedElements = IntStream.range(0, (int) sourceShape[tensorDim])
                         .boxed()

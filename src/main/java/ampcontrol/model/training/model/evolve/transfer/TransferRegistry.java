@@ -50,19 +50,57 @@ class TransferRegistry {
 
         // Temporary until a good way to create these exists
         Comparator<Integer> defaultComparatorFactory(Integer dimension) {
-            return new Comparator<Integer> () {
+            if (dimension < 2) {
+                return new Comparator<Integer>() {
 
-                final int[] tensorDimensions = IntStream.range(0, array.rank())
-                        .filter(dim -> dimension != dim)
-                        .toArray();
+                    final int[] tensorDimensions = IntStream.range(0, array.rank())
+                            .filter(dim -> dimension != dim)
+                            .toArray();
 
-                @Override
-                public int compare(Integer e1, Integer e2) {
-                    return -Double.compare(
-                            abs(array.tensorAlongDimension(e1, tensorDimensions)).sumNumber().doubleValue(),
-                            abs(array.tensorAlongDimension(e2, tensorDimensions)).sumNumber().doubleValue());
-                }
-            };
+                    @Override
+                    public int compare(Integer e1, Integer e2) {
+                        if(e1.equals(e2)) {
+                            return 0;
+                        }
+
+                        return -Double.compare(
+                                abs(array.tensorAlongDimension(e1, tensorDimensions)).sumNumber().doubleValue(),
+                                abs(array.tensorAlongDimension(e2, tensorDimensions)).sumNumber().doubleValue());
+                    }
+                };
+            } else {
+                return new Comparator<Integer>() {
+
+                    final int[] tensorDimensions = IntStream.range(0, array.rank())
+                            .filter(dim -> dimension != dim)
+                            .toArray();
+
+                    @Override
+                    public int compare(Integer e1, Integer e2) {
+                        if(e1.equals(e2)){
+                            return 0;
+                        }
+                        if(!(e1 == 0 && e2 == array.size(dimension))
+                        || !(e2 == 0 && e1 == array.size(dimension))) {
+                            if (e1 == 0) {
+                                return 1;
+                            }
+                            if (e2 == 0) {
+                                return -1;
+                            }
+                            if(e1 == array.size(dimension)) {
+                                return 1;
+                            }
+                            if(e2 == array.size(dimension)) {
+                                return -1;
+                            }
+                        }
+                        return -Double.compare(
+                                abs(array.tensorAlongDimension(e1, tensorDimensions)).sumNumber().doubleValue(),
+                                abs(array.tensorAlongDimension(e2, tensorDimensions)).sumNumber().doubleValue());
+                    }
+                };
+            }
 
         }
 

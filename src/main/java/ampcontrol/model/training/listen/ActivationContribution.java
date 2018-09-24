@@ -37,14 +37,14 @@ public class ActivationContribution extends BaseTrainingListener {
     private final Consumer<INDArray> listener;
 
     private Contribution lastContribution;
+    final String wsName = "ContributionWs" + this.toString().split("@")[1];
 
-    
     @Getter
-    private abstract static class Contribution {
+    private abstract class Contribution {
         private INDArray act;
         private INDArray eps;
 
-        private final String wsName = "ContributionWs" + this.toString().split("@")[1];
+
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
                 .policyAllocation(AllocationPolicy.STRICT)
                 .policyLearning(LearningPolicy.FIRST_LOOP)
@@ -58,7 +58,7 @@ public class ActivationContribution extends BaseTrainingListener {
         abstract INDArray getContrib();
 
         abstract Contribution calc();
-        
+
         private void setAct(INDArray act) {
             final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
             try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
@@ -74,11 +74,11 @@ public class ActivationContribution extends BaseTrainingListener {
         }
 
         protected void destroy() {
-            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
+           Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
         }
     }
 
-    private static class InitialContribution extends Contribution {
+    private class InitialContribution extends Contribution {
 
         @Override
         public INDArray getContrib() {
@@ -87,15 +87,14 @@ public class ActivationContribution extends BaseTrainingListener {
 
         public Contribution calc() {
             int[] meanDims = IntStream.range(0, getAct().rank()).filter(dim -> dim != 1).toArray();
+
             final INDArray contribTemplate = Nd4j.zeros(1, getAct().size(1));
 
-            final Contribution toRet = new SumContribution(getAct(), getEps(), contribTemplate, meanDims);
-            destroy();
-            return toRet;
+            return new SumContribution(getAct(), getEps(), contribTemplate, meanDims);
         }
     }
 
-    private static class SumContribution extends Contribution {
+    private class SumContribution extends Contribution {
 
         private final INDArray contribution;
         private final int[] meanDims;
@@ -118,10 +117,7 @@ public class ActivationContribution extends BaseTrainingListener {
 
         @Override
         public Contribution calc() {
-
-            final Contribution toRet = new SumContribution(getAct(), getEps(), contribution, meanDims);
-            destroy();
-            return toRet;
+            return new SumContribution(getAct(), getEps(), contribution, meanDims);
         }
     }
 
@@ -132,10 +128,10 @@ public class ActivationContribution extends BaseTrainingListener {
 
     @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
-            if (lastContribution == null) {
-                initEpsilonListener(model);
-            }
-            lastContribution.setAct(activations.get(layerName));
+        if (lastContribution == null) {
+            initEpsilonListener(model);
+        }
+        lastContribution.setAct(activations.get(layerName));
     }
 
 
@@ -151,6 +147,7 @@ public class ActivationContribution extends BaseTrainingListener {
     @Override
     public void onEpochEnd(Model model) {
         listener.accept(lastContribution.getContrib());
+        lastContribution.destroy();
         lastContribution = new InitialContribution();
     }
 

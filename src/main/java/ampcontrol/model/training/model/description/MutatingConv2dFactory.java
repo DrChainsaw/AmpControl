@@ -99,11 +99,11 @@ public final class MutatingConv2dFactory {
 
         @Override
         public void accept(INDArray activationContribution) {
-            log.info("Got contrib: " + activationContribution);
+           // log.info("Got contrib: " + activationContribution);
             final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
             try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
                 if (this.activationContribution == null) {
-                    this.activationContribution = activationContribution.dup();
+                    this.activationContribution = activationContribution.migrate(false);
                 }
                 this.activationContribution.addi(activationContribution);
             }
@@ -159,7 +159,7 @@ public final class MutatingConv2dFactory {
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
-        IntStream.range(0, 20).forEach(candInd -> {
+        IntStream.range(0, 10).forEach(candInd -> {
 
             final ModelBuilder builder = new DeserializingModelBuilder(
                     modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);
@@ -199,11 +199,7 @@ public final class MutatingConv2dFactory {
                                 // Policy for computing fitness and as of now, do some cleanup and add some checks
                                 AggPolicy.<EvolvingGraphAdapter>builder()
                                         .first(new ClearListeners<>())
-                                        .second((a, c) -> {
-                                            comparatorRegistry.clear();
-                                            return a;
-                                        })
-                                        .andThen(new AddListener<>(fitnessConsumer -> new NanScoreWatcher(() -> fitnessConsumer.accept(Double.MAX_VALUE))))
+                                        .second(new AddListener<>(fitnessConsumer -> new NanScoreWatcher(() -> fitnessConsumer.accept(Double.MAX_VALUE))))
                                         .andThen((adapter, consumer) -> {
                                             for (String layerName : mutateNoutLayers) {
                                                 final ActivationContributionComparator comparator = new ActivationContributionComparator();
@@ -213,10 +209,11 @@ public final class MutatingConv2dFactory {
                                             }
                                             return adapter;
                                         })
-                                        .andThen(new FitnessPolicyTraining<>(2))
+                                        .andThen(new FitnessPolicyTraining<>(151))
                                         .build(),
 
                                 // Polícy for selecting candidates after fitness has been reported
+
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
