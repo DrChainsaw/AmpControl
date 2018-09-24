@@ -1,6 +1,5 @@
 package ampcontrol.model.training.model.evolve.fitness;
 
-import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.listen.TrainScoreListener;
 import ampcontrol.model.training.model.ModelAdapter;
 import ampcontrol.model.training.model.description.MutatingConv2dFactory;
@@ -50,7 +49,6 @@ public class FitnessPolicyTraining<T extends ModelAdapter> implements FitnessPol
             }
         };
         candidate.asModel().addListeners(new TrainScoreListener(fitnessCalculation));
-        candidate.asModel().addListeners(new NanScoreWatcher(() -> fitnessListener.accept(Double.MAX_VALUE)));
         return candidate;
     }
 }

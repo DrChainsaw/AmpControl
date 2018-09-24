@@ -9,21 +9,19 @@ import ampcontrol.model.training.data.iterators.factory.Cnn2D;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.description.MutatingConv2dFactory;
 import ampcontrol.model.training.model.naming.AddPrefix;
 import ampcontrol.model.training.model.naming.CharThreshold;
 import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
 import ch.qos.logback.classic.Level;
-import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.util.ModelSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -188,14 +186,14 @@ public class TrainingDescription {
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-        //new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
+        new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
 
-        try {
-            final ComputationGraph graph = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("-1332796625_best\\0")), true);
-            new ModelEvaluationWorkBench(trainIter, evalIter).evalute(graph, "3");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            final ComputationGraph graph = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("-1332796625_best\\0")), true);
+//            new ModelEvaluationWorkBench(trainIter, evalIter).evalute(graph, "3");
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     private static void mapFilesToDataSets(DataProviderBuilder train, DataProviderBuilder eval) {

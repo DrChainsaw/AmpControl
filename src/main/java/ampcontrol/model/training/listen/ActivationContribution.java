@@ -2,11 +2,13 @@ package ampcontrol.model.training.listen;
 
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertexImpl;
 import lombok.Getter;
-import lombok.Setter;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
 import org.deeplearning4j.optimize.api.BaseTrainingListener;
+import org.nd4j.linalg.api.memory.MemoryWorkspace;
+import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
+import org.nd4j.linalg.api.memory.enums.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -36,16 +38,44 @@ public class ActivationContribution extends BaseTrainingListener {
 
     private Contribution lastContribution;
 
-
+    
     @Getter
-    @Setter
     private abstract static class Contribution {
         private INDArray act;
         private INDArray eps;
 
+        private final String wsName = "ContributionWs" + this.toString().split("@")[1];
+        private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
+                .policyAllocation(AllocationPolicy.STRICT)
+                .policyLearning(LearningPolicy.FIRST_LOOP)
+                .policyMirroring(MirroringPolicy.HOST_ONLY)
+                .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
+                .policySpill(SpillPolicy.REALLOCATE)
+                .initialSize(0)
+                //.overallocationLimit(20)
+                .build();
+
         abstract INDArray getContrib();
 
         abstract Contribution calc();
+        
+        private void setAct(INDArray act) {
+            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
+            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+                this.act = act.migrate(false);
+            }
+        }
+
+        private void setEps(INDArray eps) {
+            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
+            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+                this.eps = eps.migrate(false);
+            }
+        }
+
+        protected void destroy() {
+            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
+        }
     }
 
     private static class InitialContribution extends Contribution {
@@ -59,7 +89,9 @@ public class ActivationContribution extends BaseTrainingListener {
             int[] meanDims = IntStream.range(0, getAct().rank()).filter(dim -> dim != 1).toArray();
             final INDArray contribTemplate = Nd4j.zeros(1, getAct().size(1));
 
-            return new SumContribution(getAct(), getEps(), contribTemplate, meanDims);
+            final Contribution toRet = new SumContribution(getAct(), getEps(), contribTemplate, meanDims);
+            destroy();
+            return toRet;
         }
     }
 
@@ -86,7 +118,10 @@ public class ActivationContribution extends BaseTrainingListener {
 
         @Override
         public Contribution calc() {
-            return new SumContribution(getAct(), getEps(), contribution, meanDims);
+
+            final Contribution toRet = new SumContribution(getAct(), getEps(), contribution, meanDims);
+            destroy();
+            return toRet;
         }
     }
 
@@ -97,10 +132,10 @@ public class ActivationContribution extends BaseTrainingListener {
 
     @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
-        if (lastContribution == null) {
-            initEpsilonListener(model);
-        }
-        lastContribution.setAct(activations.get(layerName).detach());
+            if (lastContribution == null) {
+                initEpsilonListener(model);
+            }
+            lastContribution.setAct(activations.get(layerName));
     }
 
 
@@ -135,7 +170,7 @@ public class ActivationContribution extends BaseTrainingListener {
                     .findAny()
                     .orElseThrow(() -> new UnsupportedOperationException("Must have " + EpsilonSpyVertexImpl.class +
                             " as output to " + layerName + "!"))
-                    .addListener(epsilon -> lastContribution.setEps(epsilon.detach()));
+                    .addListener(epsilon -> lastContribution.setEps(epsilon));
         } else { // I.e not a ComputationGraph instance
             throw new IllegalArgumentException("Can only work on ComputationGraph instances! Got " + model);
         }

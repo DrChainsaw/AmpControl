@@ -1,6 +1,8 @@
 package ampcontrol.model.training.model.description;
 
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
+import ampcontrol.model.training.listen.ActivationContribution;
+import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.builder.BlockBuilder;
 import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
@@ -9,6 +11,7 @@ import ampcontrol.model.training.model.evolve.CachedPopulation;
 import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.Population;
 import ampcontrol.model.training.model.evolve.TransformPopulation;
+import ampcontrol.model.training.model.evolve.fitness.AddListener;
 import ampcontrol.model.training.model.evolve.fitness.AggPolicy;
 import ampcontrol.model.training.model.evolve.fitness.ClearListeners;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
@@ -16,10 +19,8 @@ import ampcontrol.model.training.model.evolve.mutate.AggMutation;
 import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
 import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
-import ampcontrol.model.training.model.evolve.selection.CompoundFixedSelection;
-import ampcontrol.model.training.model.evolve.selection.EliteSelection;
-import ampcontrol.model.training.model.evolve.selection.EvolveSelection;
-import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
+import ampcontrol.model.training.model.evolve.selection.*;
+import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
@@ -42,7 +43,11 @@ import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
+import org.nd4j.linalg.api.memory.MemoryWorkspace;
+import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
+import org.nd4j.linalg.api.memory.enums.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ISchedule;
 import org.slf4j.Logger;
@@ -74,6 +79,16 @@ public final class MutatingConv2dFactory {
     private final static class ActivationContributionComparator implements Consumer<INDArray>, Comparator<Integer> {
 
         private INDArray activationContribution = null;
+        private final String wsName = "ActContribCompWs" + this.toString().split("@")[1];
+        private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
+                .policyAllocation(AllocationPolicy.STRICT)
+                .policyLearning(LearningPolicy.FIRST_LOOP)
+                .policyMirroring(MirroringPolicy.HOST_ONLY)
+                .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
+                .policySpill(SpillPolicy.REALLOCATE)
+                .initialSize(0)
+                //.overallocationLimit(20)
+                .build();
 
         @Override
         public int compare(Integer elem1, Integer elem2) {
@@ -84,10 +99,20 @@ public final class MutatingConv2dFactory {
 
         @Override
         public void accept(INDArray activationContribution) {
-            if (this.activationContribution == null) {
-                this.activationContribution = activationContribution;
+            log.info("Got contrib: " + activationContribution);
+            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
+            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+                if (this.activationContribution == null) {
+                    this.activationContribution = activationContribution.dup();
+                }
+                this.activationContribution.addi(activationContribution);
             }
-            this.activationContribution.addi(activationContribution);
+        }
+
+        @Override
+        protected void finalize() throws Throwable {
+            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
+            super.finalize();
         }
     }
 
@@ -129,10 +154,11 @@ public final class MutatingConv2dFactory {
         final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, graphBuilderAdapter -> new VertexSpyGraphAdapter(
                 new GraphSpyAdapter(
                         new GraphSpyAdapter(graphBuilderAdapter, kernelSizeSpy), nOutSpy),
-                new EpsilonSpyVertex(),
-                mutateNoutLayers::contains));
+                new EpsilonSpyVertex(), mutateNoutLayers::contains)
+        );
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
+        final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
         IntStream.range(0, 20).forEach(candInd -> {
 
             final ModelBuilder builder = new DeserializingModelBuilder(
@@ -148,8 +174,13 @@ public final class MutatingConv2dFactory {
             final ComputationGraph graph = builder.buildGraph();
             log.info("Mutation layers: " + mutateNoutLayers);
             final EvolvingGraphAdapter adapter = candInd == 0 ?
-                    new EvolvingGraphAdapter(graph, mutation) : new EvolvingGraphAdapter(graph, mutation);
-            new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation);
+                    new EvolvingGraphAdapter(graph, mutation,
+                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
+                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
+                    //new EvolvingGraphAdapter(graph, mutation);
+                    new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
+                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
+                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
 
             initialPopulation.add(adapter);
         });
@@ -162,11 +193,30 @@ public final class MutatingConv2dFactory {
                         adapter,
                         "cand"), // Do something about the name...
                         new EvolvingPopulation<>(
+                                // The initial population
                                 initialPopulation,
+
+                                // Policy for computing fitness and as of now, do some cleanup and add some checks
                                 AggPolicy.<EvolvingGraphAdapter>builder()
-                                .first(new ClearListeners<>())
-                                .second(new FitnessPolicyTraining<>(151))
-                                .build(),
+                                        .first(new ClearListeners<>())
+                                        .second((a, c) -> {
+                                            comparatorRegistry.clear();
+                                            return a;
+                                        })
+                                        .andThen(new AddListener<>(fitnessConsumer -> new NanScoreWatcher(() -> fitnessConsumer.accept(Double.MAX_VALUE))))
+                                        .andThen((adapter, consumer) -> {
+                                            for (String layerName : mutateNoutLayers) {
+                                                final ActivationContributionComparator comparator = new ActivationContributionComparator();
+                                                adapter.asModel().addListeners(new ActivationContribution(layerName, comparator));
+                                                comparatorRegistry.add(adapter.asModel(), layerName, 0, comparator); // For Conv
+                                                comparatorRegistry.add(adapter.asModel(), layerName, 1, comparator); // For Dense
+                                            }
+                                            return adapter;
+                                        })
+                                        .andThen(new FitnessPolicyTraining<>(2))
+                                        .build(),
+
+                                // Polícy for selecting candidates after fitness has been reported
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
@@ -268,7 +318,7 @@ public final class MutatingConv2dFactory {
                         .setFactory(spyFactory))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
-                        .setLambda(0.003));
+                        .setLambda(0.0035));
     }
 
     @NotNull
