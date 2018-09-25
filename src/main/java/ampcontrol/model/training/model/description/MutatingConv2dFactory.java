@@ -45,7 +45,10 @@ import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.api.memory.MemoryWorkspace;
 import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
-import org.nd4j.linalg.api.memory.enums.*;
+import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
+import org.nd4j.linalg.api.memory.enums.LearningPolicy;
+import org.nd4j.linalg.api.memory.enums.ResetPolicy;
+import org.nd4j.linalg.api.memory.enums.SpillPolicy;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
@@ -83,7 +86,7 @@ public final class MutatingConv2dFactory {
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
                 .policyAllocation(AllocationPolicy.STRICT)
                 .policyLearning(LearningPolicy.FIRST_LOOP)
-                .policyMirroring(MirroringPolicy.HOST_ONLY)
+               // .policyMirroring(MirroringPolicy.HOST_ONLY)
                 .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
                 .policySpill(SpillPolicy.REALLOCATE)
                 .initialSize(0)
@@ -111,12 +114,6 @@ public final class MutatingConv2dFactory {
                 }
                 this.activationContribution.addi(activationContribution);
             }
-        }
-
-        @Override
-        protected void finalize() throws Throwable {
-            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
-            super.finalize();
         }
     }
 
@@ -165,7 +162,7 @@ public final class MutatingConv2dFactory {
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
 
         // Create model population
-        IntStream.range(0, 10).forEach(candInd -> {
+        IntStream.range(0, 20).forEach(candInd -> {
 
             final ModelBuilder builder = new DeserializingModelBuilder(
                     modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);

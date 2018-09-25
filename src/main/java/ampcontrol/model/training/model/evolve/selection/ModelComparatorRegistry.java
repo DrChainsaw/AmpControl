@@ -55,13 +55,16 @@ public class ModelComparatorRegistry {
          * @param comparator the comparator which shall be used for given layerName and dimension
          */
         private void add(int dimension, Comparator<Integer> comparator) {
-            if(mapping.containsKey(dimension)) {
-                throw new IllegalStateException("May not overwrite mapping for dimension " + dimension);
-            }
             mapping.put(dimension, comparator);
         }
     }
 
+    /**
+     * Returns the comparator factory for the given model.
+     *
+     * @param model Model to get comparator factory for
+     * @return The comparator factory associated with the model
+     */
     public Function<String, Optional<Function<Integer, Comparator<Integer>>>> get(Model model) {
         return registry.get(model);
     }
@@ -79,9 +82,7 @@ public class ModelComparatorRegistry {
         registry.put(model, compMapping);
     }
 
-    public void clear(Model model) {
-        registry.remove(model);
+    public void clear() {
+        registry.clear();
     }
-
-
 }
