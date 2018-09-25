@@ -92,6 +92,10 @@ public final class MutatingConv2dFactory {
 
         @Override
         public int compare(Integer elem1, Integer elem2) {
+            if(elem1.equals(elem2)) {
+                return 0;
+            }
+
             return -Double.compare(
                     activationContribution.getDouble(elem1),
                     activationContribution.getDouble(elem2));
@@ -159,6 +163,8 @@ public final class MutatingConv2dFactory {
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
+
+        // Create model population
         IntStream.range(0, 10).forEach(candInd -> {
 
             final ModelBuilder builder = new DeserializingModelBuilder(

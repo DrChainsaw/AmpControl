@@ -8,7 +8,10 @@ import org.deeplearning4j.nn.graph.vertex.VertexIndices;
 import org.deeplearning4j.optimize.api.BaseTrainingListener;
 import org.nd4j.linalg.api.memory.MemoryWorkspace;
 import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
-import org.nd4j.linalg.api.memory.enums.*;
+import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
+import org.nd4j.linalg.api.memory.enums.LearningPolicy;
+import org.nd4j.linalg.api.memory.enums.ResetPolicy;
+import org.nd4j.linalg.api.memory.enums.SpillPolicy;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -36,24 +39,30 @@ public class ActivationContribution extends BaseTrainingListener {
     private final String layerName;
     private final Consumer<INDArray> listener;
 
-    private Contribution lastContribution;
-    final String wsName = "ContributionWs" + this.toString().split("@")[1];
+    private final String wsName = "ContributionWs" + this.toString().split("@")[1];
 
+    private Contribution lastContribution;
     @Getter
-    private abstract class Contribution {
+    private static abstract class Contribution {
         private INDArray act;
         private INDArray eps;
 
+        private final String wsName;
 
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
                 .policyAllocation(AllocationPolicy.STRICT)
-                .policyLearning(LearningPolicy.FIRST_LOOP)
-                .policyMirroring(MirroringPolicy.HOST_ONLY)
+                .policyLearning(LearningPolicy.OVER_TIME)
+                .cyclesBeforeInitialization(2)
+               // .policyMirroring(MirroringPolicy.HOST_ONLY)
                 .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
                 .policySpill(SpillPolicy.REALLOCATE)
                 .initialSize(0)
                 //.overallocationLimit(20)
                 .build();
+
+        protected Contribution(String wsName) {
+            this.wsName = wsName;
+        }
 
         abstract INDArray getContrib();
 
@@ -74,11 +83,15 @@ public class ActivationContribution extends BaseTrainingListener {
         }
 
         protected void destroy() {
-           Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
+            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
         }
     }
 
-    private class InitialContribution extends Contribution {
+    private static class InitialContribution extends Contribution {
+
+        private InitialContribution(String wsName) {
+            super(wsName);
+        }
 
         @Override
         public INDArray getContrib() {
@@ -90,16 +103,17 @@ public class ActivationContribution extends BaseTrainingListener {
 
             final INDArray contribTemplate = Nd4j.zeros(1, getAct().size(1));
 
-            return new SumContribution(getAct(), getEps(), contribTemplate, meanDims);
+            return new SumContribution(getWsName(), getAct(), getEps(), contribTemplate, meanDims);
         }
     }
 
-    private class SumContribution extends Contribution {
+    private static class SumContribution extends Contribution {
 
         private final INDArray contribution;
         private final int[] meanDims;
 
-        private SumContribution(INDArray act, INDArray eps, INDArray contribution, int[] meanDims) {
+        private SumContribution(String wsName, INDArray act, INDArray eps, INDArray contribution, int[] meanDims) {
+            super(wsName);
             if (act == null) {
                 throw new IllegalStateException("No activation!");
             }
@@ -117,7 +131,9 @@ public class ActivationContribution extends BaseTrainingListener {
 
         @Override
         public Contribution calc() {
-            return new SumContribution(getAct(), getEps(), contribution, meanDims);
+            //contribution.assign(contribution.addi(getEps().muli(getAct()).amean(meanDims)));
+            //return this;
+            return new SumContribution(getWsName(), getAct(), getEps(), contribution, meanDims);
         }
     }
 
@@ -144,11 +160,12 @@ public class ActivationContribution extends BaseTrainingListener {
         }
     }
 
+    int cnt = 0;
     @Override
     public void onEpochEnd(Model model) {
         listener.accept(lastContribution.getContrib());
         lastContribution.destroy();
-        lastContribution = new InitialContribution();
+        lastContribution = new InitialContribution(wsName + cnt++);
     }
 
     private void initEpsilonListener(Model model) {
@@ -158,7 +175,7 @@ public class ActivationContribution extends BaseTrainingListener {
                 throw new UnsupportedOperationException("More than one output for " + layerName + "!");
             }
 
-            lastContribution = new InitialContribution();
+            lastContribution = new InitialContribution(wsName);
             Stream.of(cg.getVertex(layerName).getOutputVertices())
                     .map(VertexIndices::getVertexIndex)
                     .map(outputVertexInd -> cg.getVertices()[outputVertexInd])

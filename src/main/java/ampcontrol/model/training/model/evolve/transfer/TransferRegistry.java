@@ -80,18 +80,18 @@ class TransferRegistry {
                         if(e1.equals(e2)){
                             return 0;
                         }
-                        if(!(e1 == 0 && e2 == array.size(dimension))
-                        || !(e2 == 0 && e1 == array.size(dimension))) {
+                        if(!(e1 == 0 && e2 == array.size(dimension)-1)
+                        || !(e2 == 0 && e1 == array.size(dimension)-1)) {
                             if (e1 == 0) {
                                 return 1;
                             }
                             if (e2 == 0) {
                                 return -1;
                             }
-                            if(e1 == array.size(dimension)) {
+                            if(e1 == array.size(dimension)-1) {
                                 return 1;
                             }
-                            if(e2 == array.size(dimension)) {
+                            if(e2 == array.size(dimension)-1) {
                                 return -1;
                             }
                         }

@@ -59,6 +59,40 @@ public class SingleTransferTaskTest {
     }
 
     /**
+     * Test pruning in dimension 2 for which edges are prioritized for removal
+     */
+    @Test
+    public void applySizeDecreaseEdges() {
+        final INDArray source = Nd4j.create(new double[][][][]{{
+                {{1}, {0}, {0}, {0}},
+                {{1}, {0}, {2}, {1}},
+                {{2}, {0}, {3}, {1}}},
+
+        });
+        final long[] shape = source.shape().clone();
+        shape[2] -= 2;
+        final INDArray target = Nd4j.create(shape);
+        final TransferRegistry registry = new TransferRegistry();
+        SingleTransferTask.builder()
+                .target(SingleTransferTask.IndMapping.builder()
+                        .entry(registry.register(target))
+                        .build())
+                .source(SingleTransferTask.IndMapping.builder()
+                        .entry(registry.register(source))
+                        .build())
+                .build().execute();
+
+        registry.commit();
+        final INDArray expected = Nd4j.create(new double[][][][]{{
+                {{0}, {0}},
+                {{0}, {2}},
+                {{0}, {3}}},
+        });
+
+        assertEquals("Incorrect output!", expected, target);
+    }
+
+    /**
      * Test pruning in two dimension out of four
      */
     @Test
@@ -84,6 +118,23 @@ public class SingleTransferTaskTest {
                 .source(SingleTransferTask.IndMapping.builder()
                         .entry(registry.register(source))
                         .build())
+                .compFactory(dimension -> new Comparator<Integer>() {
+
+                    final int[] tensorDimensions = IntStream.range(0, source.rank())
+                            .filter(dim -> dimension != dim)
+                            .toArray();
+
+                    @Override
+                    public int compare(Integer e1, Integer e2) {
+                        if (e1.equals(e2)) {
+                            return 0;
+                        }
+
+                        return -Double.compare(
+                                source.tensorAlongDimension(e1, tensorDimensions).sumNumber().doubleValue(),
+                                source.tensorAlongDimension(e2, tensorDimensions).sumNumber().doubleValue());
+                    }
+                })
                 .build().execute();
 
         registry.commit();

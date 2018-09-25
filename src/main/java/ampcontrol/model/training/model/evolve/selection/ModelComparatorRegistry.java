@@ -2,10 +2,7 @@ package ampcontrol.model.training.model.evolve.selection;
 
 import org.deeplearning4j.nn.api.Model;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -19,7 +16,7 @@ import java.util.function.Function;
  */
 public class ModelComparatorRegistry {
 
-    private final Map<Model, ComparatorMapping> registry = new HashMap<>();
+    private final Map<Model, ComparatorMapping> registry = new WeakHashMap<>();
 
     private final static class ComparatorMapping implements Function<String, Optional<Function<Integer, Comparator<Integer>>>> {
 

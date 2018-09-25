@@ -74,6 +74,6 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
         newGraph.init();
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());
         newGraph.getConfiguration().setEpochCount(graph.getEpochCount());
-        return new EvolvingGraphAdapter(parameterTransfer.transferWeightsTo(newGraph), mutation, parameterTransferFactory);
+        return new EvolvingGraphAdapter(parameterTransfer.transferWeightsTo(newGraph), mutation);
     }
 }
