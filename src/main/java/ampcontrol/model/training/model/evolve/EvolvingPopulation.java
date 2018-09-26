@@ -68,7 +68,7 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
         log.info("Evolving population...");
         population.clear();
 
-        population.addAll(selection.selectCandiates(evalCands)
+        population.addAll(selection.selectCandiates(evalCands).collect(Collectors.toList()).stream()
                 .map(cand -> fitnessPolicy.apply(cand, fitness -> reportFitness(fitness, cand)))
                 .collect(Collectors.toList()));
         evalCands.clear();

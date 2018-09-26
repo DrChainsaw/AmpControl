@@ -200,6 +200,7 @@ public final class MutatingConv2dFactory {
                                 initialPopulation,
 
                                 // Policy for computing fitness and as of now, do some cleanup and add some checks
+                                // TODO: Separate out prepare and clean stuff from actual fitness policy or rename FitnessPolicy to CandidateCreationHook or something
                                 AggPolicy.<EvolvingGraphAdapter>builder()
                                         .first(new ClearListeners<>())
                                         .second(new AddListener<>(fitnessConsumer -> new NanScoreWatcher(() -> fitnessConsumer.accept(Double.MAX_VALUE))))
