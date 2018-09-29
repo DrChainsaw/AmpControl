@@ -190,7 +190,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <nd4j-backend>nd4j-cuda-9.2</nd4j-backend>
+                <nd4j-backend>nd4j-cuda-9.2-platform</nd4j-backend>
             </properties>
         </profile>
     </profiles>

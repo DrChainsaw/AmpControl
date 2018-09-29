@@ -86,7 +86,7 @@ public final class MutatingConv2dFactory {
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
                 .policyAllocation(AllocationPolicy.STRICT)
                 .policyLearning(LearningPolicy.FIRST_LOOP)
-               // .policyMirroring(MirroringPolicy.HOST_ONLY)
+                //.policyMirroring(MirroringPolicy.HOST_ONLY)
                 .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
                 .policySpill(SpillPolicy.REALLOCATE)
                 .initialSize(0)
@@ -107,13 +107,17 @@ public final class MutatingConv2dFactory {
         @Override
         public void accept(INDArray activationContribution) {
            // log.info("Got contrib: " + activationContribution);
-            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
-            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+            try (MemoryWorkspace wss =  Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, wsName)) {
                 if (this.activationContribution == null) {
-                    this.activationContribution = activationContribution.migrate(false);
+                    this.activationContribution = activationContribution.dup().migrate(false);
                 }
                 this.activationContribution.addi(activationContribution);
             }
+        }
+
+        @Override
+        protected void finalize() throws Throwable {
+            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
         }
     }
 
@@ -176,14 +180,14 @@ public final class MutatingConv2dFactory {
 
             final ComputationGraph graph = builder.buildGraph();
             log.info("Mutation layers: " + mutateNoutLayers);
-            final EvolvingGraphAdapter adapter = candInd == 0 ?
+            final EvolvingGraphAdapter adapter = candInd == 0 || graph.getIterationCount() > 0 ?
                     new EvolvingGraphAdapter(graph, mutation,
                             graphToTransfer -> new ParameterTransfer(graphToTransfer,
                                     Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
                     //new EvolvingGraphAdapter(graph, mutation);
                     new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
                             graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
+                                   Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
 
             initialPopulation.add(adapter);
         });
@@ -213,7 +217,7 @@ public final class MutatingConv2dFactory {
                                             }
                                             return adapter;
                                         })
-                                        .andThen(new FitnessPolicyTraining<>(151))
+                                        .andThen(new FitnessPolicyTraining<>(3))
                                         .build(),
 
                                 // Polícy for selecting candidates after fitness has been reported

@@ -69,11 +69,11 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
         final ComputationGraphConfiguration.GraphBuilder mutated = mutation.mutate(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
                         new NeuralNetConfiguration.Builder(graph.conf().clone())));
-        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph);
         final ComputationGraph newGraph = new ComputationGraph(mutated.build());
         newGraph.init();
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());
         newGraph.getConfiguration().setEpochCount(graph.getEpochCount());
+        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph);
         return new EvolvingGraphAdapter(parameterTransfer.transferWeightsTo(newGraph), mutation, parameterTransferFactory);
     }
 }

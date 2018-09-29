@@ -38,102 +38,40 @@ public class ActivationContribution extends BaseTrainingListener {
 
     private final String layerName;
     private final Consumer<INDArray> listener;
-
-    private final String wsName = "ContributionWs" + this.toString().split("@")[1];
-
     private Contribution lastContribution;
+
     @Getter
-    private static abstract class Contribution {
-        private INDArray act;
-        private INDArray eps;
-
-        private final String wsName;
-
+    private class Contribution {
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
-                .policyAllocation(AllocationPolicy.STRICT)
-                .policyLearning(LearningPolicy.OVER_TIME)
-                .cyclesBeforeInitialization(2)
-               // .policyMirroring(MirroringPolicy.HOST_ONLY)
-                .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
-                .policySpill(SpillPolicy.REALLOCATE)
-                .initialSize(0)
-                //.overallocationLimit(20)
+                .policyAllocation(AllocationPolicy.STRICT) // Because the size is not gonna change?
+                .policyLearning(LearningPolicy.OVER_TIME) // To make cyclesBeforeInitialization take effect?
+                .cyclesBeforeInitialization(2) // Because after two arrays the size should be fully known?
+                //.policyMirroring(MirroringPolicy.HOST_ONLY)
+                .policyReset(ResetPolicy.ENDOFBUFFER_REACHED) // To make it cyclic?
+                .policySpill(SpillPolicy.REALLOCATE)  // Does not matter?
+                .initialSize(0) // Any benefit over time with > 0?
                 .build();
 
-        protected Contribution(String wsName) {
-            this.wsName = wsName;
-        }
+        private INDArray act;
+        private final String wsNameIter = "ContributionWs" + this.toString().split("@")[1];
 
-        abstract INDArray getContrib();
-
-        abstract Contribution calc();
 
         private void setAct(INDArray act) {
-            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
-            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
+            try (MemoryWorkspace wss = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, this.wsNameIter)) {
                 this.act = act.migrate(false);
             }
         }
 
         private void setEps(INDArray eps) {
-            final MemoryWorkspace ws = Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName);
-            try (MemoryWorkspace wss = ws.notifyScopeEntered()) {
-                this.eps = eps.migrate(false);
+            try (MemoryWorkspace wss = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, this.wsNameIter)) {
+                final INDArray tmpEps = eps.migrate(false);
+                int[] meanDims = IntStream.range(0, getAct().rank()).filter(dim -> dim != 1).toArray();
+                listener.accept(tmpEps.muli(act).amean(meanDims));
             }
         }
 
         protected void destroy() {
-            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, wsName).destroyWorkspace();
-        }
-    }
-
-    private static class InitialContribution extends Contribution {
-
-        private InitialContribution(String wsName) {
-            super(wsName);
-        }
-
-        @Override
-        public INDArray getContrib() {
-            return null;
-        }
-
-        public Contribution calc() {
-            int[] meanDims = IntStream.range(0, getAct().rank()).filter(dim -> dim != 1).toArray();
-
-            final INDArray contribTemplate = Nd4j.zeros(1, getAct().size(1));
-
-            return new SumContribution(getWsName(), getAct(), getEps(), contribTemplate, meanDims);
-        }
-    }
-
-    private static class SumContribution extends Contribution {
-
-        private final INDArray contribution;
-        private final int[] meanDims;
-
-        private SumContribution(String wsName, INDArray act, INDArray eps, INDArray contribution, int[] meanDims) {
-            super(wsName);
-            if (act == null) {
-                throw new IllegalStateException("No activation!");
-            }
-            if (eps == null) {
-                throw new IllegalStateException("No epsilon!");
-            }
-            this.contribution = contribution.addi(eps.muli(act).amean(meanDims));
-            this.meanDims = meanDims;
-        }
-
-        @Override
-        public INDArray getContrib() {
-            return contribution;
-        }
-
-        @Override
-        public Contribution calc() {
-            //contribution.assign(contribution.addi(getEps().muli(getAct()).amean(meanDims)));
-            //return this;
-            return new SumContribution(getWsName(), getAct(), getEps(), contribution, meanDims);
+            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, this.wsNameIter).destroyWorkspace(true);
         }
     }
 
@@ -150,22 +88,11 @@ public class ActivationContribution extends BaseTrainingListener {
         lastContribution.setAct(activations.get(layerName));
     }
 
-
-    @Override
-    public void onGradientCalculation(Model model) {
-        try {
-            lastContribution = lastContribution.calc();
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to calculate contribution for layer " + layerName, e);
-        }
-    }
-
-    int cnt = 0;
     @Override
     public void onEpochEnd(Model model) {
-        listener.accept(lastContribution.getContrib());
+        Nd4j.getExecutioner().commit();
         lastContribution.destroy();
-        lastContribution = new InitialContribution(wsName + cnt++);
+        lastContribution = null;
     }
 
     private void initEpsilonListener(Model model) {
@@ -175,7 +102,7 @@ public class ActivationContribution extends BaseTrainingListener {
                 throw new UnsupportedOperationException("More than one output for " + layerName + "!");
             }
 
-            lastContribution = new InitialContribution(wsName);
+            lastContribution = new Contribution();
             Stream.of(cg.getVertex(layerName).getOutputVertices())
                     .map(VertexIndices::getVertexIndex)
                     .map(outputVertexInd -> cg.getVertices()[outputVertexInd])
@@ -184,7 +111,7 @@ public class ActivationContribution extends BaseTrainingListener {
                     .findAny()
                     .orElseThrow(() -> new UnsupportedOperationException("Must have " + EpsilonSpyVertexImpl.class +
                             " as output to " + layerName + "!"))
-                    .addListener(epsilon -> lastContribution.setEps(epsilon));
+                    .setListener(lastContribution::setEps);
         } else { // I.e not a ComputationGraph instance
             throw new IllegalArgumentException("Can only work on ComputationGraph instances! Got " + model);
         }

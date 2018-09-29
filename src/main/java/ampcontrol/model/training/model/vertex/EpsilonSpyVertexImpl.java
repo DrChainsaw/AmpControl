@@ -11,8 +11,7 @@ import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.primitives.Pair;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -24,7 +23,7 @@ import java.util.function.Consumer;
  */
 public class EpsilonSpyVertexImpl extends BaseGraphVertex {
 
-    private final List<Consumer<INDArray>> listeners = new ArrayList<>();
+    private Consumer<INDArray> listener;
 
     protected EpsilonSpyVertexImpl(ComputationGraph graph, String name, int vertexIndex) {
         this(graph, name, vertexIndex, null, null);
@@ -34,8 +33,8 @@ public class EpsilonSpyVertexImpl extends BaseGraphVertex {
         super(graph, name, vertexIndex, inputVertices, outputVertices);
     }
 
-    public void addListener(Consumer<INDArray> listener) {
-        listeners.add(listener);
+    public void setListener(Consumer<INDArray> listener) {
+        this.listener = listener;
     }
 
     @Override
@@ -59,7 +58,7 @@ public class EpsilonSpyVertexImpl extends BaseGraphVertex {
 
     @Override
     public Pair<Gradient, INDArray[]> doBackward(boolean tbptt, LayerWorkspaceMgr workspaceMgr) {
-        listeners.forEach(listener -> listener.accept(getEpsilon()));
+        Optional.ofNullable(listener).ifPresent(list -> list.accept(getEpsilon()));
         return new Pair<>(null, new INDArray[]{workspaceMgr.leverageTo(ArrayType.ACTIVATION_GRAD, epsilon)});
     }
 

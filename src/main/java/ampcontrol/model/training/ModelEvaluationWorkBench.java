@@ -186,7 +186,7 @@ class ModelEvaluationWorkBench {
             @Override
             public void accept(INDArray indArray) {
                 if (array == null) {
-                    array = indArray;
+                    array = indArray.detach();
                 } else {
                     array.addi(indArray);
                 }

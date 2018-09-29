@@ -2,7 +2,6 @@ package ampcontrol.model.training.model.evolve.fitness;
 
 import ampcontrol.model.training.listen.TrainScoreListener;
 import ampcontrol.model.training.model.ModelAdapter;
-import ampcontrol.model.training.model.description.MutatingConv2dFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +15,7 @@ import java.util.function.Consumer;
  */
 public class FitnessPolicyTraining<T extends ModelAdapter> implements FitnessPolicy<T> {
 
-    private static final Logger log = LoggerFactory.getLogger(MutatingConv2dFactory.class);
+    private static final Logger log = LoggerFactory.getLogger(FitnessPolicyTraining.class);
 
     private final int nrofItersToAccumulate;
 
