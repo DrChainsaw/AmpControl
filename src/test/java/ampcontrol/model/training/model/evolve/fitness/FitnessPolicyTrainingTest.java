@@ -84,6 +84,6 @@ public class FitnessPolicyTrainingTest {
 
         listeners.forEach(listener -> listener.iterationDone(model, 2, 0));
         listeners.forEach(listener -> listener.onEpochEnd(model));
-        assertEquals("No fitness shall have been reported!", 1.234515, measuredScore[0], 1e-10);
+        assertEquals("Incorrect fitness!", 1.230005, measuredScore[0], 1e-10);
     }
 }

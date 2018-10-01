@@ -141,7 +141,7 @@ public class ActivationContributionTest {
         @Override
         public void accept(INDArray indArray) {
             nrofCalls++;
-            last = indArray;
+            last = indArray.detach();
         }
 
         private void assertNrofCalls(int expected) {

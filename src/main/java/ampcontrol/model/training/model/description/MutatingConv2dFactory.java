@@ -35,6 +35,7 @@ import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
+import org.apache.commons.lang.mutable.MutableLong;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
@@ -184,15 +185,16 @@ public final class MutatingConv2dFactory {
                     new EvolvingGraphAdapter(graph, mutation,
                             graphToTransfer -> new ParameterTransfer(graphToTransfer,
                                     Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
-                    //new EvolvingGraphAdapter(graph, mutation);
                     new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
                             graphToTransfer -> new ParameterTransfer(graphToTransfer,
                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
 
             initialPopulation.add(adapter);
         });
+        Nd4j.getMemoryManager().purgeCaches();
 
         final Random rng = new Random(666);
+        final MutableLong nrofParams = new MutableLong(0);
         final Population<ModelHandle> population = new CachedPopulation<>(
                 new TransformPopulation<>(adapter -> new GenericModelHandle(
                         trainIter,
@@ -217,18 +219,27 @@ public final class MutatingConv2dFactory {
                                             }
                                             return adapter;
                                         })
-                                        .andThen(new FitnessPolicyTraining<>(3))
+                                        .andThen(new FitnessPolicyTraining<>(101))
+                                        .andThen((adapter, fitcons) -> {
+                                            nrofParams.add(adapter.asModel().numParams());
+                                            return adapter;
+                                        })
                                         .build(),
 
                                 // Polícy for selecting candidates after fitness has been reported
 
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
-                                        .andThen(initialPopulation.size() - 2,
+                                        .andThen(initialPopulation.size() -2,
                                                 new EvolveSelection<>(
                                                         new RouletteSelection<EvolvingGraphAdapter>(rng::nextDouble)))
                                         .build()
                         )));
+
+        population.onChangeCallback(() -> {
+            log.info("Avg nrof params: " + (nrofParams.doubleValue() / initialPopulation.size()));
+            nrofParams.setValue(0);
+        });
 
         final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
         modelData.add(new GenericModelHandle(trainIter, evalIter,

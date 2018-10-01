@@ -43,23 +43,20 @@ public class ActivationContribution extends BaseTrainingListener {
     @Getter
     private class Contribution {
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
-                .policyAllocation(AllocationPolicy.STRICT) // Because the size is not gonna change?
-                .policyLearning(LearningPolicy.OVER_TIME) // To make cyclesBeforeInitialization take effect?
-                .cyclesBeforeInitialization(2) // Because after two arrays the size should be fully known?
+                .policyAllocation(AllocationPolicy.STRICT)
+                .policyLearning(LearningPolicy.FIRST_LOOP)
                 //.policyMirroring(MirroringPolicy.HOST_ONLY)
-                .policyReset(ResetPolicy.ENDOFBUFFER_REACHED) // To make it cyclic?
+                .policyReset(ResetPolicy.BLOCK_LEFT)
                 .policySpill(SpillPolicy.REALLOCATE)  // Does not matter?
                 .initialSize(0) // Any benefit over time with > 0?
                 .build();
 
         private INDArray act;
-        private final String wsNameIter = "ContributionWs" + this.toString().split("@")[1];
+        private final String wsNameIter = "ContributionWs";
 
 
         private void setAct(INDArray act) {
-            try (MemoryWorkspace wss = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, this.wsNameIter)) {
-                this.act = act.migrate(false);
-            }
+            this.act = act;
         }
 
         private void setEps(INDArray eps) {
@@ -69,10 +66,6 @@ public class ActivationContribution extends BaseTrainingListener {
                 listener.accept(tmpEps.muli(act).amean(meanDims));
             }
         }
-
-        protected void destroy() {
-            Nd4j.getWorkspaceManager().getWorkspaceForCurrentThread(workspaceConfig, this.wsNameIter).destroyWorkspace(true);
-        }
     }
 
     public ActivationContribution(String layerName, Consumer<INDArray> listener) {
@@ -81,28 +74,32 @@ public class ActivationContribution extends BaseTrainingListener {
     }
 
     @Override
+    public void iterationDone(Model model, int iteration, int epoch) {
+        super.iterationDone(model, iteration, epoch);
+    }
+
+    @Override
     public void onForwardPass(Model model, Map<String, INDArray> activations) {
         if (lastContribution == null) {
-            initEpsilonListener(model);
+            lastContribution = new Contribution();
+            setEpsilonListener(model, lastContribution::setEps);
         }
         lastContribution.setAct(activations.get(layerName));
+
     }
 
     @Override
     public void onEpochEnd(Model model) {
-        Nd4j.getExecutioner().commit();
-        lastContribution.destroy();
         lastContribution = null;
     }
 
-    private void initEpsilonListener(Model model) {
+    private void setEpsilonListener(Model model, Consumer<INDArray> epsListener) {
         if (model instanceof ComputationGraph) {
             ComputationGraph cg = ((ComputationGraph) model);
             if (cg.getVertex(layerName).getOutputVertices().length != 1) {
                 throw new UnsupportedOperationException("More than one output for " + layerName + "!");
             }
 
-            lastContribution = new Contribution();
             Stream.of(cg.getVertex(layerName).getOutputVertices())
                     .map(VertexIndices::getVertexIndex)
                     .map(outputVertexInd -> cg.getVertices()[outputVertexInd])
@@ -111,7 +108,7 @@ public class ActivationContribution extends BaseTrainingListener {
                     .findAny()
                     .orElseThrow(() -> new UnsupportedOperationException("Must have " + EpsilonSpyVertexImpl.class +
                             " as output to " + layerName + "!"))
-                    .setListener(lastContribution::setEps);
+                    .setListener(epsListener);
         } else { // I.e not a ComputationGraph instance
             throw new IllegalArgumentException("Can only work on ComputationGraph instances! Got " + model);
         }
