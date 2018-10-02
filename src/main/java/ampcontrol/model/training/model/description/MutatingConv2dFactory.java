@@ -43,6 +43,7 @@ import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
+import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.api.memory.MemoryWorkspace;
 import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
@@ -191,7 +192,10 @@ public final class MutatingConv2dFactory {
 
             initialPopulation.add(adapter);
         });
-        Nd4j.getMemoryManager().purgeCaches();
+        // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
+        if(Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
+            Nd4j.getMemoryManager().purgeCaches();
+        }
 
         final Random rng = new Random(666);
         final MutableLong nrofParams = new MutableLong(0);
@@ -208,8 +212,11 @@ public final class MutatingConv2dFactory {
                                 // Policy for computing fitness and as of now, do some cleanup and add some checks
                                 // TODO: Separate out prepare and clean stuff from actual fitness policy or rename FitnessPolicy to CandidateCreationHook or something
                                 AggPolicy.<EvolvingGraphAdapter>builder()
+                                        // Not a fitness policy
                                         .first(new ClearListeners<>())
+                                        // Kind of a fitness policy
                                         .second(new AddListener<>(fitnessConsumer -> new NanScoreWatcher(() -> fitnessConsumer.accept(Double.MAX_VALUE))))
+                                        // Not a fitness policy
                                         .andThen((adapter, consumer) -> {
                                             for (String layerName : mutateNoutLayers) {
                                                 final ActivationContributionComparator comparator = new ActivationContributionComparator();
@@ -219,7 +226,9 @@ public final class MutatingConv2dFactory {
                                             }
                                             return adapter;
                                         })
-                                        .andThen(new FitnessPolicyTraining<>(101))
+                                        // This is the actual fitness policy
+                                        .andThen(new FitnessPolicyTraining<>(107))
+                                        // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
                                             return adapter;

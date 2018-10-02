@@ -1,7 +1,6 @@
 package ampcontrol.model.training.listen;
 
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertexImpl;
-import lombok.Getter;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
@@ -40,7 +39,6 @@ public class ActivationContribution extends BaseTrainingListener {
     private final Consumer<INDArray> listener;
     private Contribution lastContribution;
 
-    @Getter
     private class Contribution {
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
                 .policyAllocation(AllocationPolicy.STRICT)
@@ -52,7 +50,7 @@ public class ActivationContribution extends BaseTrainingListener {
                 .build();
 
         private INDArray act;
-        private final String wsNameIter = "ContributionWs";
+        private static final String wsName = "ContributionWs";
 
 
         private void setAct(INDArray act) {
@@ -60,9 +58,9 @@ public class ActivationContribution extends BaseTrainingListener {
         }
 
         private void setEps(INDArray eps) {
-            try (MemoryWorkspace wss = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, this.wsNameIter)) {
+            try (MemoryWorkspace wss = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, wsName)) {
                 final INDArray tmpEps = eps.migrate(false);
-                int[] meanDims = IntStream.range(0, getAct().rank()).filter(dim -> dim != 1).toArray();
+                int[] meanDims = IntStream.range(0, act.rank()).filter(dim -> dim != 1).toArray();
                 listener.accept(tmpEps.muli(act).amean(meanDims));
             }
         }
