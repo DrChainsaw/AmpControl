@@ -16,9 +16,10 @@ import ampcontrol.model.training.model.evolve.fitness.AggPolicy;
 import ampcontrol.model.training.model.evolve.fitness.ClearListeners;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
 import ampcontrol.model.training.model.evolve.mutate.AggMutation;
-import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
-import ampcontrol.model.training.model.evolve.mutate.MutateNout;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
+import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutation;
+import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
 import ampcontrol.model.training.model.evolve.selection.*;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
@@ -155,7 +156,7 @@ public final class MutatingConv2dFactory {
             }
         };
 
-        final Set<MutateLayerContained.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
+        final Set<LayerContainedMutation.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
         final GraphSpyAdapter.LayerSpy kernelSizeSpy = createKernelSizeSpy(mutateKernelSizeLayers);
 
         final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, graphBuilderAdapter -> new VertexSpyGraphAdapter(
@@ -260,7 +261,7 @@ public final class MutatingConv2dFactory {
     }
 
     @NotNull
-    GraphSpyAdapter.LayerSpy createKernelSizeSpy(Set<MutateLayerContained.LayerMutation> mutateKernelSizeLayers) {
+    GraphSpyAdapter.LayerSpy createKernelSizeSpy(Set<LayerContainedMutation.LayerMutation> mutateKernelSizeLayers) {
         final Random rng = new Random(666);
         final Set<String> layerNames = new HashSet<>();
         return (layerName, layer, layerInputs) -> {
@@ -269,10 +270,14 @@ public final class MutatingConv2dFactory {
             }
 
             if (layer instanceof ConvolutionLayer) {
-                mutateKernelSizeLayers.add(MutateLayerContained.LayerMutation.builder()
+                mutateKernelSizeLayers.add(
+                        LayerContainedMutation.LayerMutation.builder()
+                        .mutationInfo(
+                        LayerMutationInfo.builder()
                         .layerName(layerName)
                         .inputLayers(layerInputs)
-                        .mutation(layerConfOpt -> layerConfOpt
+                                .build())
+                        .mutation(layerConfOpt -> Optional.ofNullable(layerConfOpt)
                                 .map(Layer::clone)
                                 .filter(layerConf -> layerConf instanceof ConvolutionLayer)
                                 .map(layerConf -> (ConvolutionLayer) layerConf)
@@ -290,21 +295,21 @@ public final class MutatingConv2dFactory {
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createNoutMutation(final Set<String> mutationLayers, int seed) {
         final Random rng = new Random(seed);
-        final Set<MutateNout.NoutMutation> nOutMutationSet = mutationLayers.stream()
-                .map(str -> MutateNout.NoutMutation.builder()
+        final Set<NoutMutation.NoutMutationDescription> nOutMutationSet = mutationLayers.stream()
+                .map(str -> NoutMutation.NoutMutationDescription.builder()
                         .layerName(str)
                         .mutateNout(nOut -> (long) Math.max(4, nOut + Math.max(nOut, 10) * 0.5 * (rng.nextDouble() - 0.5)))
                         .build())
                 .collect(Collectors.toSet());
-        return new MutateNout(
+        return new NoutMutation(
                 () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.1));
     }
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createKernelSizeMutation(
-            final Set<MutateLayerContained.LayerMutation> mutationLayers,
+            final Set<LayerContainedMutation.LayerMutation> mutationLayers,
             int seed) {
         final Random rng = new Random(seed);
-        return new MutateLayerContained(
+        return new LayerContainedMutation(
                 () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.1));
     }
 

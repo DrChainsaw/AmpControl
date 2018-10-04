@@ -1,7 +1,8 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
-import ampcontrol.model.training.model.evolve.mutate.MutateLayerContained;
+import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutation;
+import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
@@ -24,7 +25,7 @@ import java.util.stream.Stream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Test cases for {@link ParameterTransfer} with {@link MutateLayerContained}.
+ * Test cases for {@link ParameterTransfer} with {@link LayerContainedMutation}.
  *
  * @author Christian Skärby
  */
@@ -39,7 +40,7 @@ public class ParameterTransferLayerMutationTest {
         final String mutateTooName = "toMutateToo";
         final ComputationGraph graph = GraphUtils.getCnnGraph(mutateName, mutateTooName, "conv3");
 
-        final int[] orderToKeepFirst = {0, 2 ,1};
+        final int[] orderToKeepFirst = {0, 2, 1};
         final Map<String, Function<Integer, Comparator<Integer>>> comparatorMap = new HashMap<>();
         comparatorMap.put(mutateName, SingleTransferTaskTest.fixedOrderComp(orderToKeepFirst));
 
@@ -47,15 +48,21 @@ public class ParameterTransferLayerMutationTest {
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
         final double nextMutationNewVal = 666d;
-        final ComputationGraph newGraph = new ComputationGraph(new MutateLayerContained(() -> Stream.of(
-                MutateLayerContained.LayerMutation.builder()
-                        .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateName).toArray(new String[]{}))
-                        .layerName(mutateName)
+        final ComputationGraph newGraph = new ComputationGraph(new LayerContainedMutation(() -> Stream.of(
+                LayerContainedMutation.LayerMutation.builder()
+                        .mutationInfo(
+                                LayerMutationInfo.builder()
+                                        .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateName).toArray(new String[]{}))
+                                        .layerName(mutateName)
+                                        .build())
                         .mutation(layer -> new Convolution2D.Builder(2, 2).build())
                         .build(),
-                MutateLayerContained.LayerMutation.builder()
-                        .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateTooName).toArray(new String[]{}))
-                        .layerName(mutateTooName)
+                LayerContainedMutation.LayerMutation.builder()
+                        .mutationInfo(
+                                LayerMutationInfo.builder()
+                                        .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateTooName).toArray(new String[]{}))
+                                        .layerName(mutateTooName)
+                                        .build())
                         .mutation(layer -> new Convolution2D.Builder(4, 4).weightInit(new ConstantDistribution(nextMutationNewVal)).build())
                         .build()))
                 .mutate(new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
@@ -66,7 +73,7 @@ public class ParameterTransferLayerMutationTest {
 
         final INDArray source = graph.getLayer(mutateName).getParam(GraphUtils.W);
         final INDArray target = mutatedGraph.getLayer(mutateName).getParam(GraphUtils.W);
-        for(int elemInd = 0; elemInd < target.size(2); elemInd++) {
+        for (int elemInd = 0; elemInd < target.size(2); elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
                     source.tensorAlongDimension(orderToKeepFirst[elemInd], 0, 1, 2).tensorAlongDimension(orderToKeepFirst[elemInd], 0, 1),
                     target.tensorAlongDimension(elemInd, 0, 1, 2).tensorAlongDimension(elemInd, 0, 1));
@@ -74,7 +81,7 @@ public class ParameterTransferLayerMutationTest {
 
         final INDArray sourceNext = graph.getLayer(mutateTooName).getParam(GraphUtils.W);
         final INDArray targetNext = mutatedGraph.getLayer(mutateTooName).getParam(GraphUtils.W);
-        for(int elemInd = 0; elemInd < sourceNext.size(2); elemInd++) {
+        for (int elemInd = 0; elemInd < sourceNext.size(2); elemInd++) {
             assertEquals("Incorrect target for element index " + elemInd + "!",
                     sourceNext.tensorAlongDimension(elemInd, 0, 1, 2).tensorAlongDimension(elemInd, 0, 1),
                     targetNext.tensorAlongDimension(elemInd, 0, 1, 2).tensorAlongDimension(elemInd, 0, 1));

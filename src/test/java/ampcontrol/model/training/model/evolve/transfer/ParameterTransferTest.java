@@ -1,7 +1,7 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
-import ampcontrol.model.training.model.evolve.mutate.MutateNout;
+import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -184,13 +184,13 @@ public class ParameterTransferTest {
         final ParameterTransfer parameterTransfer = new ParameterTransfer(graph,
                 name -> Optional.ofNullable(comparatorMap.get(name)));
 
-        final ComputationGraph newGraph = new ComputationGraph(new MutateNout(
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
                 () -> Stream.of(
-                        MutateNout.NoutMutation.builder()
+                        NoutMutation.NoutMutationDescription.builder()
                                 .layerName(mutationName)
                                 .mutateNout(nOut -> nOut / 2)
                                 .build(),
-                        MutateNout.NoutMutation.builder()
+                        NoutMutation.NoutMutationDescription.builder()
                                 .layerName(nextMutationName)
                                 .mutateNout(nOut -> nOut / 2)
                                 .build()))
@@ -245,12 +245,12 @@ public class ParameterTransferTest {
         final int nextMutationPrevNout = graph.layerSize(nextMutationName);
         final double nextMutationNewVal = 666d; // Is this obtainable somehow?
 
-        final ComputationGraph newGraph = new ComputationGraph(new MutateNout(
-                () -> Stream.of(MutateNout.NoutMutation.builder()
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(NoutMutation.NoutMutationDescription.builder()
                                 .layerName(mutationName)
                                 .mutateNout(nOut -> mutationNewNout)
                                 .build(),
-                        MutateNout.NoutMutation.builder()
+                        NoutMutation.NoutMutationDescription.builder()
                                 .layerName(nextMutationName)
                                 .mutateNout(nOut -> nextMutationNewNout)
                                 .build()))

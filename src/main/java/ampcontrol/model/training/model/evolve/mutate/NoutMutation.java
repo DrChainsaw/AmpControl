@@ -22,24 +22,24 @@ import java.util.function.UnaryOperator;
  *
  * @author Christian Skärby
  */
-public class MutateNout implements Mutation<ComputationGraphConfiguration.GraphBuilder> {
+public class NoutMutation implements Mutation<ComputationGraphConfiguration.GraphBuilder> {
 
-    private static final Logger log = LoggerFactory.getLogger(MutateNout.class);
+    private static final Logger log = LoggerFactory.getLogger(ampcontrol.model.training.model.evolve.mutate.NoutMutation.class);
 
-    private final Supplier<NoutMutation> mutationLayerSupplier;
+    private final Supplier<NoutMutationDescription> mutationLayerSupplier;
 
     /**
-     * Interface for mutating Nout
+     * Description for how to mutate nOut
      */
     @Builder
     @Getter
-    public static class NoutMutation {
+    public static class NoutMutationDescription {
         private final String layerName;
         private final UnaryOperator<Long> mutateNout;
     }
 
 
-    public MutateNout(Supplier<NoutMutation> mutationLayerSupplier) {
+    public NoutMutation(Supplier<NoutMutationDescription> mutationLayerSupplier) {
         this.mutationLayerSupplier = mutationLayerSupplier;
     }
 
@@ -53,7 +53,7 @@ public class MutateNout implements Mutation<ComputationGraphConfiguration.GraphB
     private GraphBuilder updateNoutOfLayer(
             Map<String, FeedForwardLayer> changedLayers,
             GraphBuilder builder,
-            NoutMutation mutation) {
+            NoutMutationDescription mutation) {
         final String layerName = mutation.getLayerName();
 
 
@@ -79,10 +79,7 @@ public class MutateNout implements Mutation<ComputationGraphConfiguration.GraphB
         vertexInputss.entrySet().stream().filter(entry -> entry.getValue().contains(layerName))
                 .map(Map.Entry::getKey)
                 .forEachOrdered(outputName -> {
-//        prevGraph.getVertexInputs().entrySet().stream().filter()
-//        Stream.of(Optional.ofNullable(prevGraph.getVertex(layerName).getOutputVertices()).orElse(new VertexIndices[0]))
-//                .map(vertexInd -> prevGraph.getVertices()[vertexInd.getVertexIndex()])
-//                .filter(vertex -> !vertex.getVertexName().equals(layerName))
+
                     final GraphVertex graphVertex = builder.getVertices().get(outputName);
                     if (graphVertex instanceof LayerVertex && ((LayerVertex) graphVertex).getLayerConf().getLayer() instanceof FeedForwardLayer) { // Layer for which it is possible to set inputs
 

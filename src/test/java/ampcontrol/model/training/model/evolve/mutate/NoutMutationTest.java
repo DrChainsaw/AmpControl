@@ -12,11 +12,11 @@ import java.util.stream.Stream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Test cases for {@link MutateNout}
+ * Test cases for {@link NoutMutation}
  *
  * @author Christian Skärby
  */
-public class MutateNoutTest {
+public class NoutMutationTest {
 
     /**
      * Test mutation function
@@ -28,10 +28,10 @@ public class MutateNoutTest {
         final String noMut = "noMut";
         final ComputationGraph graph = GraphUtils.getCnnGraph(mut1, mut2, noMut);
 
-        final MutateNout mutateNout = new MutateNout(() -> Stream.of(
-                MutateNout.NoutMutation.builder().layerName(mut1).mutateNout(nOut -> 2 * nOut).build(),
-                MutateNout.NoutMutation.builder().layerName(mut2).mutateNout(nOut -> 2 * nOut).build()));
-        final ComputationGraph newGraph = new ComputationGraph(mutateNout.mutate(
+        final NoutMutation noutMutation = new NoutMutation(() -> Stream.of(
+                NoutMutation.NoutMutationDescription.builder().layerName(mut1).mutateNout(nOut -> 2 * nOut).build(),
+                NoutMutation.NoutMutationDescription.builder().layerName(mut2).mutateNout(nOut -> 2 * nOut).build()));
+        final ComputationGraph newGraph = new ComputationGraph(noutMutation.mutate(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf())))
                 .build());
         newGraph.init();
