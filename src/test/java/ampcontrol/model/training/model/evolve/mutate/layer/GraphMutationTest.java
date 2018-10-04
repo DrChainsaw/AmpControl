@@ -2,6 +2,8 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.layerblocks.AggBlock;
+import ampcontrol.model.training.model.layerblocks.Conv2DBatchNormAfter;
 import ampcontrol.model.training.model.layerblocks.Conv2DBatchNormBefore;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
@@ -48,9 +50,9 @@ public class GraphMutationTest {
                         .mutation(graphBuilder -> {
                             graphBuilder.addLayer(toInsert,
                                     new Convolution2D.Builder(5, 5)
-                                    .nOut(LayerMutationInfo.getInputSize(mut2, graphBuilder))
-                                    .nIn(LayerMutationInfo.getOutputSize(mut1, graphBuilder))
-                                    .build(), mut1);
+                                            .nOut(LayerMutationInfo.getInputSize(mut2, graphBuilder))
+                                            .nIn(LayerMutationInfo.getOutputSize(mut1, graphBuilder))
+                                            .build(), mut1);
                             return GraphMutation.InputsAndOutputNames.builder()
                                     .inputName(mut1)
                                     .keepInputConnection(toInsert::equals)
@@ -72,10 +74,10 @@ public class GraphMutationTest {
 
 
     /**
-     * Test mutation by inserting a layer between two layers
+     * Test {@link BlockMutation} with a {@link Conv2DBatchNormBefore} followed by a {@link Conv2DBatchNormAfter}.
      */
     @Test
-    public void mutateInsertConv2dBatchNormBefore() {
+    public void blockMutation() {
         final String mut1 = "mut1";
         final String mut2 = "mut2";
         final String noMut = "noMut";
@@ -83,9 +85,13 @@ public class GraphMutationTest {
 
         final String[] inputNames = new String[]{mut1};
         final Function<String, String> nameMapper = str -> "mutinsert_" + String.join("_", inputNames) + str;
-        final BlockMutation blockMutation = new BlockMutation((nIn, nOut) -> new Conv2DBatchNormBefore()
-                .setConvolutionMode(ConvolutionMode.Same)
-                .setNrofKernels(nIn.intValue()),
+        final BlockMutation blockMutation = new BlockMutation((nIn, nOut) ->
+                new AggBlock(
+                        new Conv2DBatchNormBefore()
+                                .setConvolutionMode(ConvolutionMode.Same))
+                        .andThen(new Conv2DBatchNormAfter()
+                                .setConvolutionMode(ConvolutionMode.Same)
+                                .setNrofKernels(nOut.intValue())),
                 inputNames,
                 nameMapper
         );
@@ -99,11 +105,11 @@ public class GraphMutationTest {
                 .build());
         newGraph.init();
 
-        IntStream.range(0, 2)
+        IntStream.range(0, 4)
                 .mapToObj(String::valueOf)
                 .map(nameMapper)
                 .forEach(expectedName ->
-        assertTrue("Vertex " + expectedName + "not added!", Optional.ofNullable(newGraph.getVertex(expectedName)).isPresent()));
+                        assertTrue("Vertex " + expectedName + "not added!", Optional.ofNullable(newGraph.getVertex(expectedName)).isPresent()));
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
@@ -111,7 +117,7 @@ public class GraphMutationTest {
 
     private static class BlockMutation implements Function<ComputationGraphConfiguration.GraphBuilder, GraphMutation.InputsAndOutputNames> {
 
-        private final BiFunction<Long,Long, LayerBlockConfig> blockConfigFactory;
+        private final BiFunction<Long, Long, LayerBlockConfig> blockConfigFactory;
         private final String[] inputNames;
         private final Function<String, String> nameMapping;
 
@@ -126,7 +132,7 @@ public class GraphMutationTest {
 
             @Override
             public void accept(String layerName, Layer layer, String... layerInputs) {
-                if(Stream.of(layerInputs).anyMatch(blockInputs::contains)) {
+                if (Stream.of(layerInputs).anyMatch(blockInputs::contains)) {
                     firstLayers.add(layerName);
                 }
             }
@@ -148,7 +154,7 @@ public class GraphMutationTest {
                     .setInputs(inputNames)
                     .setPrevLayerInd(-1)
                     .setNameMapper(nameMapping)
-                    .setPrevNrofOutputs((int)nIn)
+                    .setPrevNrofOutputs((int) nIn)
                     .build();
 
             final FirstLayersSpy spy = new FirstLayersSpy(Stream.of(inputNames).collect(Collectors.toSet()));
