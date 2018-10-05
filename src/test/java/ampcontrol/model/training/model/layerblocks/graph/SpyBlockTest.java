@@ -25,7 +25,7 @@ public class SpyBlockTest {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
         final GraphSpyAdapterTest.ProbeSpy probeSpy = new GraphSpyAdapterTest.ProbeSpy();
         new SpyBlock(new Dense())
-                .setFactory(graphBuilderAdapter -> new GraphSpyAdapter(graphBuilderAdapter,probeSpy))
+                .setFactory(graphBuilderAdapter -> new GraphSpyAdapter(probeSpy, graphBuilderAdapter))
                 .addLayers(probeAdapter, new LayerBlockConfig.SimpleBlockInfo.Builder()
                         .setInputs(new String[]{"666", "addLayer2"})
                         .setPrevLayerInd(666)

@@ -18,7 +18,7 @@ public class VertexSpyGraphAdapter implements GraphBuilderAdapter {
     private final Predicate<String> namesToSpyOn;
     private final String spyPrefix;
 
-    public VertexSpyGraphAdapter(GraphBuilderAdapter adapter, GraphVertex vertexSpy, Predicate<String> namesToSpyOn){
+    public VertexSpyGraphAdapter(GraphVertex vertexSpy, Predicate<String> namesToSpyOn, GraphBuilderAdapter adapter){
         this(adapter, vertexSpy, namesToSpyOn, "spy_");
     }
 

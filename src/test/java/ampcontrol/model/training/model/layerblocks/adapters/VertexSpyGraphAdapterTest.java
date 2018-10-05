@@ -22,7 +22,7 @@ public class VertexSpyGraphAdapterTest {
     @Test
     public void addLayerNoSpy() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(probeAdapter, new EpsilonSpyVertex(), layername -> false).addLayer("addLayer",
+        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> false, probeAdapter).addLayer("addLayer",
                 new DenseLayer.Builder().build(),
                 "addLayerInput1", "addLayerInput2");
         assertEquals("Adapter did not get input!", 3, probeAdapter.inputs.size());
@@ -34,7 +34,7 @@ public class VertexSpyGraphAdapterTest {
     @Test(expected = IllegalArgumentException.class)
     public void addLayer() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(probeAdapter, new EpsilonSpyVertex(), layername -> true).addLayer("addLayer",
+        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> true, probeAdapter).addLayer("addLayer",
                 new DenseLayer.Builder().build(),
                 "addLayerInput1", "addLayerInput2");
     }
@@ -45,7 +45,7 @@ public class VertexSpyGraphAdapterTest {
     @Test
     public void addVertexNoSpy() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(probeAdapter, new EpsilonSpyVertex(), layername -> false ).addVertex("addVertex",
+        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> false, probeAdapter).addVertex("addVertex",
                 new ScaleVertex(2),
                 "addVertexInput1", "addVertexInput2");
         assertEquals("Adapter did not get input!", 3, probeAdapter.inputs.size());
@@ -57,7 +57,7 @@ public class VertexSpyGraphAdapterTest {
     @Test(expected = IllegalArgumentException.class)
     public void addVertexSpy() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(probeAdapter, new EpsilonSpyVertex(), layername -> true ).addVertex("addVertex",
+        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> true, probeAdapter).addVertex("addVertex",
                 new ScaleVertex(2),
                 "addVertexInput1", "addVertexInput2"); // exception!
     }
@@ -68,7 +68,7 @@ public class VertexSpyGraphAdapterTest {
     @Test
     public void mergeIfMultiple() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(probeAdapter, new EpsilonSpyVertex(), layername->true).mergeIfMultiple("mergeIf",
+        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername->true, probeAdapter).mergeIfMultiple("mergeIf",
                 new String[]{"mergeIf1", "mergeIf2"});
         assertEquals("Incorrect data to adapter", 2, probeAdapter.inputs.size());
     }

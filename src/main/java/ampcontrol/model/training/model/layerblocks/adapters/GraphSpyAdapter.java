@@ -16,10 +16,10 @@ public class GraphSpyAdapter implements GraphBuilderAdapter {
 
     /**
      * Constructor
-     * @param adapter {@link GraphBuilderAdapter} to spy on
      * @param spy Will be notified of added layers
+     * @param adapter {@link GraphBuilderAdapter} to spy on
      */
-    public GraphSpyAdapter(GraphBuilderAdapter adapter, LayerSpy spy) {
+    public GraphSpyAdapter(LayerSpy spy, GraphBuilderAdapter adapter) {
         this.adapter = adapter;
         this.spy = spy;
     }

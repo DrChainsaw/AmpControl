@@ -98,7 +98,7 @@ public final class MutatingConv2dFactory {
 
         @Override
         public int compare(Integer elem1, Integer elem2) {
-            if(elem1.equals(elem2)) {
+            if (elem1.equals(elem2)) {
                 return 0;
             }
 
@@ -109,8 +109,8 @@ public final class MutatingConv2dFactory {
 
         @Override
         public void accept(INDArray activationContribution) {
-           // log.info("Got contrib: " + activationContribution);
-            try (MemoryWorkspace wss =  Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, wsName)) {
+            // log.info("Got contrib: " + activationContribution);
+            try (MemoryWorkspace wss = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, wsName)) {
                 if (this.activationContribution == null) {
                     this.activationContribution = activationContribution.dup().migrate(false);
                 }
@@ -139,14 +139,6 @@ public final class MutatingConv2dFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
 
-        final int schedPeriod = 50;
-        final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
-                new SawTooth(schedPeriod, 1e-6, 0.05));
-        final ISchedule momSched = new Offset(schedPeriod / 2,
-                new SawTooth(schedPeriod, 0.85, 0.95));
-
-        final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
-
         final Set<String> mutateNoutLayers = new LinkedHashSet<>();
         final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
             if (layer instanceof ConvolutionLayer) {
@@ -159,26 +151,37 @@ public final class MutatingConv2dFactory {
         final Set<LayerContainedMutation.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
         final GraphSpyAdapter.LayerSpy kernelSizeSpy = createKernelSizeSpy(mutateKernelSizeLayers);
 
-        final ModelBuilder baseBuilder = createModelBuilder(lrSched, momSched, graphBuilderAdapter -> new VertexSpyGraphAdapter(
-                new GraphSpyAdapter(
-                        new GraphSpyAdapter(graphBuilderAdapter, kernelSizeSpy), nOutSpy),
-                new EpsilonSpyVertex(), mutateNoutLayers::contains)
+        final ModelBuilder baseBuilder = createModelBuilder(graphBuilderAdapter ->
+                new VertexSpyGraphAdapter(new EpsilonSpyVertex(), mutateNoutLayers::contains,
+                        new GraphSpyAdapter(nOutSpy,
+                                new GraphSpyAdapter(kernelSizeSpy,
+                                        graphBuilderAdapter)))
         );
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
 
         // Create model population
+        final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
         IntStream.range(0, 20).forEach(candInd -> {
 
+            final FileNamePolicy candNamePolicy = modelFileNamePolicy
+                    .compose(evolvingSuffix)
+                    .andThen(modelNamePolicyFactory.apply(candInd));
             final ModelBuilder builder = new DeserializingModelBuilder(
-                    modelFileNamePolicy.compose(evolvingSuffix).andThen(modelNamePolicyFactory.apply(candInd)), baseBuilder);
+                    candNamePolicy,
+                    baseBuilder);
 
             baseBuilder.buildGraph(); // Just to populate mutationLayers...
             final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation =
                     AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
-                            .first(createNoutMutation(mutateNoutLayers, candInd))
-                            .second(createKernelSizeMutation(mutateKernelSizeLayers, -candInd))
+                            .first(gb -> {
+                                new ConvType(inputShape)
+                                        .addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
+                                return gb;
+                            })
+                            .second(createNoutMutation(mutateNoutLayers, candInd))
+                            .andThen(createKernelSizeMutation(mutateKernelSizeLayers, -candInd))
                             .build();
 
             final ComputationGraph graph = builder.buildGraph();
@@ -189,15 +192,31 @@ public final class MutatingConv2dFactory {
                                     Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
                     new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
                             graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                   Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
+                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
 
             initialPopulation.add(adapter);
         });
         // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
-        if(Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
+        if (Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
             Nd4j.getMemoryManager().purgeCaches();
         }
 
+        final Population<ModelHandle> population = createPopulation(mutateNoutLayers, comparatorRegistry, initialPopulation);
+
+        final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
+        modelData.add(new GenericModelHandle(trainIter, evalIter,
+                new GraphModelAdapter(
+                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
+                                baseBuilder).buildGraph()),
+                referenceSuffix.toFileName(baseBuilder.name())));
+        modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
+    }
+
+    @NotNull
+    private Population<ModelHandle> createPopulation(
+            Set<String> mutateNoutLayers,
+            ModelComparatorRegistry comparatorRegistry,
+            List<EvolvingGraphAdapter> initialPopulation) {
         final Random rng = new Random(666);
         final MutableLong nrofParams = new MutableLong(0);
         final Population<ModelHandle> population = new CachedPopulation<>(
@@ -240,7 +259,7 @@ public final class MutatingConv2dFactory {
 
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
-                                        .andThen(initialPopulation.size() -2,
+                                        .andThen(initialPopulation.size() - 2,
                                                 new EvolveSelection<>(
                                                         new RouletteSelection<EvolvingGraphAdapter>(rng::nextDouble)))
                                         .build()
@@ -250,14 +269,7 @@ public final class MutatingConv2dFactory {
             log.info("Avg nrof params: " + (nrofParams.doubleValue() / initialPopulation.size()));
             nrofParams.setValue(0);
         });
-
-        final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
-        modelData.add(new GenericModelHandle(trainIter, evalIter,
-                new GraphModelAdapter(
-                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
-                                baseBuilder).buildGraph()),
-                referenceSuffix.toFileName(baseBuilder.name())));
-        modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
+        return population;
     }
 
     @NotNull
@@ -272,23 +284,23 @@ public final class MutatingConv2dFactory {
             if (layer instanceof ConvolutionLayer) {
                 mutateKernelSizeLayers.add(
                         LayerContainedMutation.LayerMutation.builder()
-                        .mutationInfo(
-                        LayerMutationInfo.builder()
-                        .layerName(layerName)
-                        .inputLayers(layerInputs)
-                                .build())
-                        .mutation(layerConfOpt -> Optional.ofNullable(layerConfOpt)
-                                .map(Layer::clone)
-                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
-                                .map(layerConf -> (ConvolutionLayer) layerConf)
-                                .map(convConf -> {
-                                    convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
-                                            .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
-                                            .toArray());
-                                    return convConf;
-                                })
-                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer " + layerName + " from " + layerConfOpt)))
-                        .build());
+                                .mutationInfo(
+                                        LayerMutationInfo.builder()
+                                                .layerName(layerName)
+                                                .inputLayers(layerInputs)
+                                                .build())
+                                .mutation(layerConfOpt -> Optional.ofNullable(layerConfOpt)
+                                        .map(Layer::clone)
+                                        .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                        .map(layerConf -> (ConvolutionLayer) layerConf)
+                                        .map(convConf -> {
+                                            convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
+                                                    .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
+                                                    .toArray());
+                                            return convConf;
+                                        })
+                                        .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer " + layerName + " from " + layerConfOpt)))
+                                .build());
             }
         };
     }
@@ -314,9 +326,14 @@ public final class MutatingConv2dFactory {
     }
 
     private ModelBuilder createModelBuilder(
-            ISchedule lrSched,
-            ISchedule momSched,
             UnaryOperator<GraphBuilderAdapter> spyFactory) {
+
+        final int schedPeriod = 50;
+        final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
+                new SawTooth(schedPeriod, 1e-6, 0.05));
+        final ISchedule momSched = new Offset(schedPeriod / 2,
+                new SawTooth(schedPeriod, 0.85, 0.95));
+
         final LayerBlockConfig pool = new Pool2D().setSize(2).setStride(2);
         return new BlockBuilder()
                 .setUpdater(new Nesterovs(lrSched, momSched))

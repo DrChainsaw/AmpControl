@@ -26,7 +26,7 @@ public class GraphSpyAdapterTest {
     public void addLayer() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
         final ProbeSpy probeSpy = new ProbeSpy();
-        new GraphSpyAdapter(probeAdapter, probeSpy).addLayer("addLayer",
+        new GraphSpyAdapter(probeSpy, probeAdapter).addLayer("addLayer",
                 new DenseLayer.Builder().build(),
                 "addLayerInput1", "addLayerInput2");
         assertFalse("Expected input!", probeSpy.inputs.isEmpty());
@@ -40,7 +40,7 @@ public class GraphSpyAdapterTest {
     public void addVertex() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
         final ProbeSpy probeSpy = new ProbeSpy();
-        new GraphSpyAdapter(probeAdapter, probeSpy).addVertex("addVertex",
+        new GraphSpyAdapter(probeSpy, probeAdapter).addVertex("addVertex",
                 new ScaleVertex(2),
                 "addVertexInput1", "addVertexInput2");
         assertEquals("Incorrect data to adapter", 3, probeAdapter.inputs.size());
@@ -54,7 +54,7 @@ public class GraphSpyAdapterTest {
     public void mergeIfMultiple() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
         final ProbeSpy probeSpy = new ProbeSpy();
-        new GraphSpyAdapter(probeAdapter, probeSpy).mergeIfMultiple("mergeIf",
+        new GraphSpyAdapter(probeSpy, probeAdapter).mergeIfMultiple("mergeIf",
                 new String[]{"mergeIf1", "mergeIf2"});
         assertEquals("Incorrect data to adapter", 2, probeAdapter.inputs.size());
         assertEquals("Incorrect data to spy", 0, probeSpy.inputs.size());
@@ -67,7 +67,7 @@ public class GraphSpyAdapterTest {
     public void layer() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
         final ProbeSpy probeSpy = new ProbeSpy();
-        new GraphSpyAdapter(probeAdapter, probeSpy).layer(new LayerBlockConfig.SimpleBlockInfo.Builder()
+        new GraphSpyAdapter(probeSpy, probeAdapter).layer(new LayerBlockConfig.SimpleBlockInfo.Builder()
                         .setPrevLayerInd(666)
                         .setInputs(new String[]{"666", "layerInput2"})
                         .build(),
