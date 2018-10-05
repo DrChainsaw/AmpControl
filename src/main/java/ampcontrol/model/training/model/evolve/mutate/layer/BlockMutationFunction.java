@@ -13,6 +13,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Function to use with {@link GraphMutation} which inserts vertices from a supplied {@link LayerBlockConfig} in given
+ * {@link ComputationGraphConfiguration.GraphBuilder}s.
+ *
+ * @author Christian Skärby
+ */
 public class BlockMutationFunction implements Function<ComputationGraphConfiguration.GraphBuilder, GraphMutation.InputsAndOutputNames> {
 
     private final Function<Long, LayerBlockConfig> blockConfigFactory;
@@ -36,6 +42,12 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
         }
     }
 
+    /**
+     * Constructor
+     * @param blockConfigFactory Creates {@link LayerBlockConfig}s. Input is size of nOut of the last layer.
+     * @param inputNames Names of input vertices
+     * @param nameMapping Add stuff to vertex names in order to guarantee uniqueness.
+     */
     BlockMutationFunction(Function<Long, LayerBlockConfig> blockConfigFactory, String[] inputNames, Function<String, String> nameMapping) {
         this.blockConfigFactory = blockConfigFactory;
         this.inputNames = inputNames;
