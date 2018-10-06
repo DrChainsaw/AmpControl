@@ -176,8 +176,7 @@ public final class MutatingConv2dFactory {
             final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation =
                     AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
                             .first(gb -> {
-                                new ConvType(inputShape)
-                                        .addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
+                                new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                                 return gb;
                             })
                             .second(createNoutMutation(mutateNoutLayers, candInd))
@@ -185,7 +184,6 @@ public final class MutatingConv2dFactory {
                             .build();
 
             final ComputationGraph graph = builder.buildGraph();
-            log.info("Mutation layers: " + mutateNoutLayers);
             final EvolvingGraphAdapter adapter = candInd == 0 || graph.getIterationCount() > 0 ?
                     new EvolvingGraphAdapter(graph, mutation,
                             graphToTransfer -> new ParameterTransfer(graphToTransfer,
@@ -287,7 +285,6 @@ public final class MutatingConv2dFactory {
                                 .mutationInfo(
                                         LayerMutationInfo.builder()
                                                 .layerName(layerName)
-                                                .inputLayers(layerInputs)
                                                 .build())
                                 .mutation(layerConfOpt -> Optional.ofNullable(layerConfOpt)
                                         .map(Layer::clone)

@@ -13,7 +13,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * Base class for mutating vertices. Apart from name itself, it contains input names and functions to calculate nIn and nOut
+ * Base class for mutating vertices. Apart from name itself, it contains functions to calculate nIn and nOut
  * for a given layer in a given graph.
  *
  * @author Christian Skärby
@@ -101,7 +101,6 @@ public class LayerMutationInfo {
 
 
     private final String layerName;
-    private final String[] inputLayers;
 
     private final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Long> outputSizeMapping =
             LayerMutationInfo::getOutputSize;

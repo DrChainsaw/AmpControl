@@ -36,7 +36,6 @@ public class LayerContainedMutationTest {
                         .mutationInfo(
                                 LayerMutationInfo.builder()
                                         .layerName(mut1)
-                                        .inputLayers(getInputs(graph, mut1))
                                         .build())
                         .mutation(layer -> new Convolution2D.Builder(5, 5).build())
                         .build(),
@@ -44,7 +43,6 @@ public class LayerContainedMutationTest {
                         .mutationInfo(
                                 LayerMutationInfo.builder()
                                         .layerName(mut2)
-                                        .inputLayers(getInputs(graph, mut2))
                                         .build())
                         .mutation(layer -> new Convolution2D.Builder(7, 7).build())
                         .build()));
@@ -64,9 +62,5 @@ public class LayerContainedMutationTest {
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
-    }
-
-    private String[] getInputs(ComputationGraph graph, String vertexName) {
-        return graph.getConfiguration().getVertexInputs().get(vertexName).toArray(new String[]{});
     }
 }

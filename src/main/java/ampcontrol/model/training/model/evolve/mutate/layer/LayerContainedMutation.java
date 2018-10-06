@@ -55,6 +55,7 @@ public class LayerContainedMutation implements Mutation<GraphBuilder> {
 
         final long nOut = mutationInfo.getOutputSizeMapping().apply(mutationInfo.getLayerName(), builder);
         final long nIn = mutationInfo.getInputSizeMapping().apply(mutationInfo.getLayerName(), builder);
+        final String[] inputNames = builder.getVertexInputs().get(mutationInfo.getLayerName()).toArray(new String[0]);
         builder.removeVertex(mutationInfo.getLayerName(), false);
 
         final Layer mutatedLayer = mutation.getMutation().apply(toMutate);
@@ -65,6 +66,6 @@ public class LayerContainedMutation implements Mutation<GraphBuilder> {
         }
 
         log.info("Mutated layer " + mutationInfo.getLayerName() + " to " + mutatedLayer);
-        builder.addLayer(mutationInfo.getLayerName(), mutatedLayer, mutationInfo.getInputLayers());
+        builder.addLayer(mutationInfo.getLayerName(), mutatedLayer, inputNames);
     }
 }

@@ -69,7 +69,6 @@ class ModelEvaluationWorkBench {
                 Stream.of(LayerContainedMutation.LayerMutation.builder()
                         .mutationInfo(LayerMutationInfo.builder()
                 .layerName(layer)
-                .inputLayers(getInputLayers(graph, layer))
                                 .build())
                 .mutation(layerConfIn -> Optional.ofNullable(layerConfIn)
                         .map(Layer::clone)
@@ -93,7 +92,6 @@ class ModelEvaluationWorkBench {
                 Stream.of(LayerContainedMutation.LayerMutation.builder()
                 .mutationInfo(LayerMutationInfo.builder()
                         .layerName(layer)
-                        .inputLayers(getInputLayers(graph, layer))
                         .build())
                 .mutation(layerConfIn -> Optional.of(layerConfIn)
                         .map(Layer::clone)
@@ -173,14 +171,17 @@ class ModelEvaluationWorkBench {
                 new NeuralNetConfiguration.Builder(best.conf())
         );
         final String epsSpyName = "EpsSpy_" + layer;
-        GraphMutation.makeRoomFor(
-                LayerMutationInfo.builder()
-                        .layerName(epsSpyName)
-                        .inputLayers(new String[]{layer})
-                        .build(),
-                addEpsSpy
-        );
-        addEpsSpy.addVertex(epsSpyName, new EpsilonSpyVertex(), layer);
+        new GraphMutation(() -> Stream.of(GraphMutation.GraphMutationDescription.builder()
+        .mutation(gb -> {
+            gb.addVertex(epsSpyName, new EpsilonSpyVertex(), layer);
+            return GraphMutation.InputsAndOutputNames.builder()
+                    .inputName(layer)
+                    .outputName(epsSpyName)
+                    .keepInputConnection(str -> str.equals(epsSpyName))
+                    .build();
+        })
+        .build()))
+        .mutate(addEpsSpy);
 
         class INDArrayCompsumer implements Comparator<Integer>, Consumer<INDArray> {
 

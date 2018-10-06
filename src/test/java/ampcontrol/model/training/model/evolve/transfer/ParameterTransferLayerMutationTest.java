@@ -52,7 +52,6 @@ public class ParameterTransferLayerMutationTest {
                 LayerContainedMutation.LayerMutation.builder()
                         .mutationInfo(
                                 LayerMutationInfo.builder()
-                                        .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateName).toArray(new String[]{}))
                                         .layerName(mutateName)
                                         .build())
                         .mutation(layer -> new Convolution2D.Builder(2, 2).build())
@@ -60,7 +59,6 @@ public class ParameterTransferLayerMutationTest {
                 LayerContainedMutation.LayerMutation.builder()
                         .mutationInfo(
                                 LayerMutationInfo.builder()
-                                        .inputLayers(graph.getConfiguration().getVertexInputs().get(mutateTooName).toArray(new String[]{}))
                                         .layerName(mutateTooName)
                                         .build())
                         .mutation(layer -> new Convolution2D.Builder(4, 4).weightInit(new ConstantDistribution(nextMutationNewVal)).build())
