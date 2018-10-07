@@ -9,6 +9,7 @@ import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
+import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.eval.Evaluation;
@@ -65,7 +66,8 @@ class ModelEvaluationWorkBench {
 
     private void evalDecreaseKernelSize(ComputationGraph graph, String layer) {
         final String experimentLabel = "decreaseKernelSize: ";
-        final ModelAdapter decreaseKs = new EvolvingGraphAdapter(graph, new LayerContainedMutation(() ->
+        final ModelAdapter decreaseKs = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
+                new LayerContainedMutation(() ->
                 Stream.of(LayerContainedMutation.LayerMutation.builder()
                         .mutationInfo(LayerMutationInfo.builder()
                 .layerName(layer)
@@ -81,14 +83,15 @@ class ModelEvaluationWorkBench {
                             return convConf;
                         })
                         .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))
-                .build())
+                .build()))
         )).evolve();
         evaluateExperiment(decreaseKs, experimentLabel);
     }
 
     private void evalIncreaseKernelSize(ComputationGraph graph, String layer) {
         final String experimentLabel = "increaseKernelSize: ";
-        final ModelAdapter increaseKs = new EvolvingGraphAdapter(graph, new LayerContainedMutation(() ->
+        final ModelAdapter increaseKs = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
+                new LayerContainedMutation(() ->
                 Stream.of(LayerContainedMutation.LayerMutation.builder()
                 .mutationInfo(LayerMutationInfo.builder()
                         .layerName(layer)
@@ -104,7 +107,7 @@ class ModelEvaluationWorkBench {
                             return convConf;
                         })
                         .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))
-                .build())
+                .build()))
         )).evolve();
         evaluateExperiment(increaseKs, experimentLabel);
     }
@@ -112,11 +115,12 @@ class ModelEvaluationWorkBench {
     private void evalDecreaseNoutOptimal(ComputationGraph graph, String layer) {
         final String experimentLabel = "decreaseNoutOpt: ";
         final Comparator<Integer> actContribComparator = getActivationContributionComparator(trainIter, layer, graph);
-        final ModelAdapter decreaseNoutOpt = new EvolvingGraphAdapter(graph, new NoutMutation(() -> Stream.of(
+        final ModelAdapter decreaseNoutOpt = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
+                new NoutMutation(() -> Stream.of(
                 NoutMutation.NoutMutationDescription.builder()
                 .layerName(layer)
                 .mutateNout(nOut -> nOut - 1)
-                .build())
+                .build()))
         ),
                 graphVar -> new ParameterTransfer(graphVar,
                         layerName -> Optional.of(i -> actContribComparator))).evolve();
@@ -125,22 +129,24 @@ class ModelEvaluationWorkBench {
 
     private void evalDecreaseNout(ComputationGraph graph, String layer) {
         final String experimentLabel = "decreaseNout: ";
-        final ModelAdapter decreaseNout = new EvolvingGraphAdapter(graph, new NoutMutation(() -> Stream.of(
+        final ModelAdapter decreaseNout = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
+                new NoutMutation(() -> Stream.of(
                 NoutMutation.NoutMutationDescription.builder()
                 .layerName(layer)
                 .mutateNout(nOut -> nOut - 1)
-                .build())
+                .build()))
         )).evolve();
         evaluateExperiment(decreaseNout, experimentLabel);
     }
 
     private void evalIncreaseNout(ComputationGraph graph, String layer) {
         final String experimentLabel = "increaseNout: ";
-        final ModelAdapter increaseNout = new EvolvingGraphAdapter(graph, new NoutMutation(() -> Stream.of(
+        final ModelAdapter increaseNout = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
+                new NoutMutation(() -> Stream.of(
                 NoutMutation.NoutMutationDescription.builder()
                 .layerName(layer)
                 .mutateNout(nOut -> nOut + 1)
-                .build())
+                .build()))
         )).evolve();
         evaluateExperiment(increaseNout, experimentLabel);
     }
@@ -156,10 +162,6 @@ class ModelEvaluationWorkBench {
         baseline.eval(evalIter, evaluation);
         log.info(experimentLabel + evaluation.accuracy());
         evalIter.restartMiniEpoch();
-    }
-
-    private static String[] getInputLayers(ComputationGraph graph, String layerName) {
-        return graph.getConfiguration().getVertexInputs().get(layerName).toArray(new String[]{});
     }
 
     private static Comparator<Integer> getActivationContributionComparator(

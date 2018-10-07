@@ -2,6 +2,7 @@ package ampcontrol.model.training.model;
 
 import ampcontrol.model.training.model.evolve.Evolving;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
@@ -25,18 +26,18 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
     private static final Logger log = LoggerFactory.getLogger(EvolvingGraphAdapter.class);
 
     private final ComputationGraph graph;
-    private final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation;
+    private final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation;
     private final Function<ComputationGraph, ParameterTransfer> parameterTransferFactory;
 
     public EvolvingGraphAdapter(
             ComputationGraph graph,
-            Mutation<ComputationGraphConfiguration.GraphBuilder> mutation) {
+            MutationState<ComputationGraphConfiguration.GraphBuilder> mutation) {
         this(graph, mutation, ParameterTransfer::new);
     }
 
     public EvolvingGraphAdapter(
             ComputationGraph graph,
-            Mutation<ComputationGraphConfiguration.GraphBuilder> mutation,
+            MutationState<ComputationGraphConfiguration.GraphBuilder> mutation,
             Function<ComputationGraph, ParameterTransfer> parameterTransferFactory) {
         this.graph = graph;
         this.mutation = mutation;
@@ -66,7 +67,8 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
     @Override
     public EvolvingGraphAdapter evolve() {
         log.info("Evolve " + this);
-        final ComputationGraphConfiguration.GraphBuilder mutated = mutation.mutate(
+        final MutationState<ComputationGraphConfiguration.GraphBuilder> newMutationState = mutation.clone();
+        final ComputationGraphConfiguration.GraphBuilder mutated = newMutationState.mutate(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
                         new NeuralNetConfiguration.Builder(graph.conf().clone())));
         final ComputationGraph newGraph = new ComputationGraph(mutated.build());
@@ -74,6 +76,6 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());
         newGraph.getConfiguration().setEpochCount(graph.getEpochCount());
         final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph);
-        return new EvolvingGraphAdapter(parameterTransfer.transferWeightsTo(newGraph), mutation, parameterTransferFactory);
+        return new EvolvingGraphAdapter(parameterTransfer.transferWeightsTo(newGraph), newMutationState, parameterTransferFactory);
     }
 }

@@ -3,7 +3,10 @@ package ampcontrol.model.training.model.description;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.ActivationContribution;
 import ampcontrol.model.training.listen.NanScoreWatcher;
-import ampcontrol.model.training.model.*;
+import ampcontrol.model.training.model.EvolvingGraphAdapter;
+import ampcontrol.model.training.model.GenericModelHandle;
+import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.ModelHandlePopulation;
 import ampcontrol.model.training.model.builder.BlockBuilder;
 import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
 import ampcontrol.model.training.model.builder.ModelBuilder;
@@ -15,13 +18,16 @@ import ampcontrol.model.training.model.evolve.fitness.AddListener;
 import ampcontrol.model.training.model.evolve.fitness.AggPolicy;
 import ampcontrol.model.training.model.evolve.fitness.ClearListeners;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
-import ampcontrol.model.training.model.evolve.mutate.AggMutation;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.BlockMutationFunction;
 import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
+import ampcontrol.model.training.model.evolve.mutate.state.AggMutationState;
+import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
+import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
+import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
 import ampcontrol.model.training.model.evolve.selection.CompoundFixedSelection;
 import ampcontrol.model.training.model.evolve.selection.EvolveSelection;
 import ampcontrol.model.training.model.evolve.selection.ModelComparatorRegistry;
@@ -41,6 +47,7 @@ import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
+import lombok.Builder;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
@@ -133,6 +140,38 @@ public final class MutatingConv2dFactory {
         }
     }
 
+    @Builder(builderClassName = "Builder")
+    private final static class GraphSpyAppender implements UnaryOperator<GraphBuilderAdapter> {
+        final Set<String> mutateNout;
+        final Set<String> mutateKernelSize;
+        final Set<String> layersWithEpsSpyAfter;
+
+
+        @Override
+        public GraphBuilderAdapter apply(GraphBuilderAdapter graphBuilderAdapter) {
+            log.info(System.identityHashCode(this) + " apply nout: " + mutateNout + " and ks: " + mutateKernelSize);
+            final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
+                if (layer instanceof ConvolutionLayer) {
+                    mutateNout.add(layerName);
+                } else if (layer instanceof DenseLayer) {
+                    mutateNout.add(layerName);
+                }
+            };
+
+            final GraphSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
+                if (layer instanceof ConvolutionLayer) {
+                    mutateKernelSize.add(layerName);
+                }
+            };
+
+            return new VertexSpyGraphAdapter(new EpsilonSpyVertex(), mutateNout::contains,
+                            new GraphSpyAdapter(nOutSpy,
+                                    new GraphSpyAdapter(kernelSizeSpy,
+                                            graphBuilderAdapter)));
+
+        }
+    }
+
     public MutatingConv2dFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, FileNamePolicy modelFileNamePolicy) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
@@ -156,31 +195,25 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 20).forEach(candInd -> {
+        IntStream.range(0, 2).forEach(candInd -> {
 
             final Set<String> mutateNoutLayers = new LinkedHashSet<>();
-            final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
-                if (layer instanceof ConvolutionLayer) {
-                    mutateNoutLayers.add(layerName);
-                } else if (layer instanceof DenseLayer) {
-                    mutateNoutLayers.add(layerName);
-                }
-            };
-
             final Set<String> mutateKernelSizeLayers = new LinkedHashSet<>();
-            final GraphSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
-                if (layer instanceof ConvolutionLayer) {
-                    mutateKernelSizeLayers.add(layerName);
-                }
-            };
 
-            final UnaryOperator<GraphBuilderAdapter> graphSpyFactory = graphBuilderAdapter ->
-                    new VertexSpyGraphAdapter(new EpsilonSpyVertex(), mutateNoutLayers::contains,
-                            new GraphSpyAdapter(nOutSpy,
-                                    new GraphSpyAdapter(kernelSizeSpy,
-                                            graphBuilderAdapter)));
+            // Beware! Each candidate has their own builder initially. However, if
+            // the same candidate has been selected twice for mutation its two offspring
+            // will share the same instance of the builder. It works because each offspring
+            // still has its own state and will "load" the builder with that state before
+            // building. This will most likely break if candidates were to be evolved in
+            // parallel but I don't think I wanna go there anyways.
+            // Would be nice to clean it up though so things are not as much "working by accident".
+            final GraphSpyAppender.Builder graphSpyBuilder = GraphSpyAppender.builder()
+                    .mutateNout(mutateNoutLayers)
+                    .layersWithEpsSpyAfter(mutateNoutLayers)
+                    .mutateKernelSize(mutateKernelSizeLayers);
+            log.info("Create graphSpyAppender: " + System.identityHashCode(graphSpyBuilder));
 
-            final ModelBuilder baseBuilder = createModelBuilder(graphSpyFactory);
+            final ModelBuilder baseBuilder = createModelBuilder(graphSpyBuilder.build());
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -191,16 +224,47 @@ public final class MutatingConv2dFactory {
 
             baseBuilder.buildGraph(); // Just to populate mutationLayers...
 
+
+            UnaryOperator<Set<String>> copyNoutLayers = layersToCopy -> {
+                Set<String> copy = new LinkedHashSet<>(layersToCopy);
+                log.info(System.identityHashCode(graphSpyBuilder)+ " clone nout state " + copy);
+                graphSpyBuilder
+                        .mutateNout(copy)
+                        .layersWithEpsSpyAfter(copy);
+                return copy;
+            };
+
+            UnaryOperator<Set<String>> copyKernalLayers = layersToCopy -> {
+                Set<String> copy = new LinkedHashSet<>(layersToCopy);
+                log.info(System.identityHashCode(graphSpyBuilder) + " clone ks state " + copy);
+                graphSpyBuilder.mutateKernelSize(copy);
+                return copy;
+            };
             allNoutMutationLayers.addAll(mutateNoutLayers);
-            final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation =
-                    AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
-                            .first(gb -> {
+            final Random seedGenNout = new Random(candInd);
+            final Random seedGenKs = new Random(-candInd);
+            final Random seedGenGraphAdd = new Random(candInd+100);
+            final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation =
+                    AggMutationState.<ComputationGraphConfiguration.GraphBuilder>builder()
+                            .first(new NoMutationStateWapper<>(gb -> {
                                 new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                                 return gb;
-                            })
-                            .second(createNoutMutation(mutateNoutLayers, candInd))
-                            .andThen(createKernelSizeMutation(mutateKernelSizeLayers, -candInd))
-                            .andThen(createGraphMutation(graphSpyFactory, candInd + 101))
+                            }))
+                            .second(new GenericMutationState<>(
+                                    mutateNoutLayers,
+                                    copyNoutLayers,
+                                    (str, set) -> {/* TBD */},
+                                    layerNames -> createNoutMutation(layerNames, seedGenNout.nextInt())))
+                            .andThen(new GenericMutationState<>(
+                                    mutateKernelSizeLayers,
+                                    copyKernalLayers,
+                                    (str, set) -> {/* TBD */},
+                                    layerNames -> createKernelSizeMutation(mutateKernelSizeLayers, seedGenKs.nextInt())))
+                            .andThen(new GenericMutationState<>(
+                                    graphSpyBuilder,
+                                    UnaryOperator.identity(),
+                                    (str, set) -> {/* Not needed? Maybe seed... */},
+                                    graphSpyBuilderState -> createGraphMutation(graphSpyBuilder.build(), seedGenGraphAdd.nextInt())))
                             .build();
 
             final ComputationGraph graph = builder.buildGraph();
@@ -223,11 +287,11 @@ public final class MutatingConv2dFactory {
 
         final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
         final ModelBuilder baseBuilder = createModelBuilder(UnaryOperator.identity());
-        modelData.add(new GenericModelHandle(trainIter, evalIter,
-                new GraphModelAdapter(
-                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
-                                baseBuilder).buildGraph()),
-                referenceSuffix.toFileName(baseBuilder.name())));
+//        modelData.add(new GenericModelHandle(trainIter, evalIter,
+//                new GraphModelAdapter(
+//                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
+//                                baseBuilder).buildGraph()),
+//                referenceSuffix.toFileName(baseBuilder.name())));
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
     }
 
@@ -266,7 +330,7 @@ public final class MutatingConv2dFactory {
                                             return adapter;
                                         })
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(107))
+                                        .andThen(new FitnessPolicyTraining<>(1))
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
@@ -382,7 +446,7 @@ public final class MutatingConv2dFactory {
                             .findFirst().orElseThrow(() -> new IllegalStateException("Could not find inputs!"))
                             .toArray(new String[0]);
 
-                    log.info("Insert layer after " + inputNames[0]);
+                   // log.info("Insert layer after " + inputNames[0]);
 
                     return Stream.of(inputNames)
                             .filter(vertexName -> !vertexName.contains(afterGpStr))
@@ -414,14 +478,14 @@ public final class MutatingConv2dFactory {
                 .map(vertex -> vertex.getLayerConf().getLayer())
                 .anyMatch(layer -> layer instanceof DenseLayer || layer instanceof GlobalPoolingLayer)
         ) {
-            log.info("vertex " + vertexName + " is after glob pool");
+           // log.info("vertex " + vertexName + " is after glob pool");
             return true;
         }
 
         List<String> inputs = graphBuilder.getVertexInputs().get(vertexName);
         if(inputs == null || inputs.isEmpty()) {
             // Found input layer before finding globpool or denselayer
-            log.info("vertex " + vertexName + " is before glob pool");
+            //log.info("vertex " + vertexName + " is before glob pool");
             return false;
         }
         return inputs.stream().anyMatch(vertexInputName -> isAfterGlobPool(vertexInputName, graphBuilder));
