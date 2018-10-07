@@ -26,7 +26,7 @@ public class LayerMutationInfo {
      * Returns a {@link LayerVertex} with the given name if one exists in the {@link ComputationGraphConfiguration.GraphBuilder}.
      * Would very much prefer to do this some other way, but the API does not seem allow for it
      */
-    private static final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Optional<LayerVertex>> vertexAsLayerVertex =
+    public static final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Optional<LayerVertex>> vertexAsLayerVertex =
             (layerName, graphBuilder) -> Optional.ofNullable(graphBuilder.getVertices().get(layerName))
                     .filter(gv -> gv instanceof LayerVertex)
                     .map(gv -> ((LayerVertex) gv));
@@ -35,7 +35,7 @@ public class LayerMutationInfo {
      * Returns a {@link FeedForwardLayer} of a given {@link LayerVertex} if that is the type of layer it encapsulates
      * Would very much prefer to do this some other way, but the API does not seem allow for it
      */
-    private static final BiFunction<String, Optional<LayerVertex>, Optional<FeedForwardLayer>> layerVertexAsFeedForward =
+    public static final BiFunction<String, Optional<LayerVertex>, Optional<FeedForwardLayer>> layerVertexAsFeedForward =
             (layerName, layerVertexOptional) -> layerVertexOptional
                     .map(LayerVertex::getLayerConf)
                     .map(NeuralNetConfiguration::getLayer)

@@ -106,8 +106,18 @@ class TransferRegistry {
 
         private void put(INDArray anotherArray) {
             try {
+                // Something tells me I'll need this soon again...
+//                System.out.println(debugName + " assign " + Arrays.toString(anotherArray.shape()) + " to " +
+//                        Arrays.toString(array.shape()) + " with " + indexMap);
                 // Not just (premature) optimization, this also seems to avoid some exceptions, possibly due to dl4j issue #6327
                 if (indexMap.isEmpty()) {
+                    // Why check this here? Because Nd4j with GPU backend delays OPs like this so error is thrown due to
+                    // some subsequent op
+                    if(!Arrays.equals(array.shape(), anotherArray.shape())) {
+                        throw new IllegalArgumentException("Tried to assign arrays of different shapes for " + debugName
+                                + "!\nThis shape: " + Arrays.toString(array.shape()) + " other shape: "
+                                + Arrays.toString(anotherArray.shape()));
+                    }
                     array.assign(anotherArray);
                     return;
                 }

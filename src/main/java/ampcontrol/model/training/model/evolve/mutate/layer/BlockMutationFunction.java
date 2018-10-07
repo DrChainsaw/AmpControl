@@ -4,12 +4,14 @@ import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -63,8 +65,9 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
 
     @Override
     public GraphMutation.InputsAndOutputNames apply(ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+
         final long nIn = Stream.of(inputNames)
-                .mapToLong(layerName -> LayerMutationInfo.getOutputSize(layerName, graphBuilder))
+                .mapToLong(layerName -> LayerMutationInfo.getInputSize(layerName, graphBuilder))
                 .sum();
 
         final LayerBlockConfig.BlockInfo blockInfo = new LayerBlockConfig.SimpleBlockInfo.Builder()
@@ -76,7 +79,15 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
 
         final FirstLayersSpy spy = new FirstLayersSpy(Stream.of(inputNames).collect(Collectors.toSet()));
 
-        final LayerBlockConfig conf = new SpyBlock(blockConfigFactory.apply(nIn))
+        final long nOut = Stream.of(inputNames)
+                .flatMap(inputName -> graphBuilder.getVertexInputs().entrySet()
+                        .stream()
+                        .filter(entry -> entry.getValue().contains(inputName))
+                        .map(Map.Entry::getKey))
+                .mapToLong(layerName -> getInputSizeForward(layerName, graphBuilder))
+                .sum();
+
+        final LayerBlockConfig conf = new SpyBlock(blockConfigFactory.apply(nOut))
                 .setFactory(adapter -> new GraphSpyAdapter(spy, adapter));
         log.info("Adding " + conf.name() + " to " + Arrays.toString(inputNames));
 
@@ -87,5 +98,18 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
                 .inputNames(Arrays.asList(inputNames))
                 .keepInputConnection(spy.firstLayers::contains)
                 .build();
+    }
+
+    private static long getInputSizeForward(String layerName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+        return LayerMutationInfo.vertexAsLayerVertex
+                .andThen(layerVertex -> LayerMutationInfo.layerVertexAsFeedForward.apply(layerName, layerVertex))
+                .apply(layerName, graphBuilder)
+                .map(FeedForwardLayer::getNIn)
+                .orElseGet(() -> graphBuilder.getVertexInputs().entrySet().stream()
+                        .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(layerName))
+                        .map(Map.Entry::getKey)
+                        .mapToLong(inputLayerName -> getInputSizeForward(inputLayerName, graphBuilder))
+                        .findAny()
+                        .orElseThrow(() -> new IllegalStateException("Could not find any feedforward layers after " + layerName)));
     }
 }
