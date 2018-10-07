@@ -5,6 +5,8 @@ import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.layers.Layer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -20,6 +22,9 @@ import java.util.stream.Stream;
  * @author Christian Skärby
  */
 public class BlockMutationFunction implements Function<ComputationGraphConfiguration.GraphBuilder, GraphMutation.InputsAndOutputNames> {
+
+    private static final Logger log = LoggerFactory.getLogger(BlockMutationFunction.class);
+
 
     private final Function<Long, LayerBlockConfig> blockConfigFactory;
     private final String[] inputNames;
@@ -48,7 +53,9 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
      * @param inputNames Names of input vertices
      * @param nameMapping Add stuff to vertex names in order to guarantee uniqueness.
      */
-    BlockMutationFunction(Function<Long, LayerBlockConfig> blockConfigFactory, String[] inputNames, Function<String, String> nameMapping) {
+    public BlockMutationFunction(Function<Long, LayerBlockConfig> blockConfigFactory,
+                                 String[] inputNames,
+                                 Function<String, String> nameMapping) {
         this.blockConfigFactory = blockConfigFactory;
         this.inputNames = inputNames;
         this.nameMapping = nameMapping;
@@ -69,9 +76,11 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
 
         final FirstLayersSpy spy = new FirstLayersSpy(Stream.of(inputNames).collect(Collectors.toSet()));
 
-        final LayerBlockConfig.BlockInfo outinfo = new SpyBlock(blockConfigFactory.apply(nIn))
-                .setFactory(adapter -> new GraphSpyAdapter(spy, adapter))
-                .addLayers(graphBuilder, blockInfo);
+        final LayerBlockConfig conf = new SpyBlock(blockConfigFactory.apply(nIn))
+                .setFactory(adapter -> new GraphSpyAdapter(spy, adapter));
+        log.info("Adding " + conf.name() + " to " + Arrays.toString(inputNames));
+
+        final LayerBlockConfig.BlockInfo outinfo = conf.addLayers(graphBuilder, blockInfo);
 
         return GraphMutation.InputsAndOutputNames.builder()
                 .outputName(outinfo.getInputsNames()[0])

@@ -18,9 +18,14 @@ import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
 import ampcontrol.model.training.model.evolve.mutate.AggMutation;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
+import ampcontrol.model.training.model.evolve.mutate.layer.BlockMutationFunction;
+import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
-import ampcontrol.model.training.model.evolve.selection.*;
+import ampcontrol.model.training.model.evolve.selection.CompoundFixedSelection;
+import ampcontrol.model.training.model.evolve.selection.EvolveSelection;
+import ampcontrol.model.training.model.evolve.selection.ModelComparatorRegistry;
+import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
@@ -38,9 +43,12 @@ import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
+import org.deeplearning4j.nn.conf.layers.GlobalPoolingLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
@@ -66,6 +74,7 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Description for simple 2D convolutional networs which will evolve during training to perform architecture search.
@@ -139,31 +148,39 @@ public final class MutatingConv2dFactory {
      */
     public void addModelData(List<ModelHandle> modelData) {
 
-        final Set<String> mutateNoutLayers = new LinkedHashSet<>();
-        final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
-            if (layer instanceof ConvolutionLayer) {
-                mutateNoutLayers.add(layerName);
-            } else if (layer instanceof DenseLayer) {
-                mutateNoutLayers.add(layerName);
-            }
-        };
-
-        final Set<LayerContainedMutation.LayerMutation> mutateKernelSizeLayers = new LinkedHashSet<>();
-        final GraphSpyAdapter.LayerSpy kernelSizeSpy = createKernelSizeSpy(mutateKernelSizeLayers);
-
-        final ModelBuilder baseBuilder = createModelBuilder(graphBuilderAdapter ->
-                new VertexSpyGraphAdapter(new EpsilonSpyVertex(), mutateNoutLayers::contains,
-                        new GraphSpyAdapter(nOutSpy,
-                                new GraphSpyAdapter(kernelSizeSpy,
-                                        graphBuilderAdapter)))
-        );
         final Function<Integer, FileNamePolicy> modelNamePolicyFactory = candInd -> new AddSuffix(File.separator + candInd);
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
+        // TODO: Some other way to do this please...
+        final Set<String> allNoutMutationLayers = new LinkedHashSet<>();
 
         // Create model population
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
         IntStream.range(0, 20).forEach(candInd -> {
+
+            final Set<String> mutateNoutLayers = new LinkedHashSet<>();
+            final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
+                if (layer instanceof ConvolutionLayer) {
+                    mutateNoutLayers.add(layerName);
+                } else if (layer instanceof DenseLayer) {
+                    mutateNoutLayers.add(layerName);
+                }
+            };
+
+            final Set<String> mutateKernelSizeLayers = new LinkedHashSet<>();
+            final GraphSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
+                if (layer instanceof ConvolutionLayer) {
+                    mutateKernelSizeLayers.add(layerName);
+                }
+            };
+
+            final UnaryOperator<GraphBuilderAdapter> graphSpyFactory = graphBuilderAdapter ->
+                    new VertexSpyGraphAdapter(new EpsilonSpyVertex(), mutateNoutLayers::contains,
+                            new GraphSpyAdapter(nOutSpy,
+                                    new GraphSpyAdapter(kernelSizeSpy,
+                                            graphBuilderAdapter)));
+
+            final ModelBuilder baseBuilder = createModelBuilder(graphSpyFactory);
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -173,6 +190,8 @@ public final class MutatingConv2dFactory {
                     baseBuilder);
 
             baseBuilder.buildGraph(); // Just to populate mutationLayers...
+
+            allNoutMutationLayers.addAll(mutateNoutLayers);
             final Mutation<ComputationGraphConfiguration.GraphBuilder> mutation =
                     AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
                             .first(gb -> {
@@ -181,6 +200,7 @@ public final class MutatingConv2dFactory {
                             })
                             .second(createNoutMutation(mutateNoutLayers, candInd))
                             .andThen(createKernelSizeMutation(mutateKernelSizeLayers, -candInd))
+                            .andThen(createGraphMutation(graphSpyFactory, candInd + 101))
                             .build();
 
             final ComputationGraph graph = builder.buildGraph();
@@ -199,9 +219,10 @@ public final class MutatingConv2dFactory {
             Nd4j.getMemoryManager().purgeCaches();
         }
 
-        final Population<ModelHandle> population = createPopulation(mutateNoutLayers, comparatorRegistry, initialPopulation);
+        final Population<ModelHandle> population = createPopulation(allNoutMutationLayers, comparatorRegistry, initialPopulation);
 
         final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
+        final ModelBuilder baseBuilder = createModelBuilder(UnaryOperator.identity());
         modelData.add(new GenericModelHandle(trainIter, evalIter,
                 new GraphModelAdapter(
                         new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
@@ -256,8 +277,8 @@ public final class MutatingConv2dFactory {
                                 // Polícy for selecting candidates after fitness has been reported
 
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
-                                        .andThen(2, new EliteSelection<>())
-                                        .andThen(initialPopulation.size() - 2,
+                                        // .andThen(2, new EliteSelection<>())
+                                        .andThen(initialPopulation.size(), //- 2,
                                                 new EvolveSelection<>(
                                                         new RouletteSelection<EvolvingGraphAdapter>(rng::nextDouble)))
                                         .build()
@@ -268,38 +289,6 @@ public final class MutatingConv2dFactory {
             nrofParams.setValue(0);
         });
         return population;
-    }
-
-    @NotNull
-    GraphSpyAdapter.LayerSpy createKernelSizeSpy(Set<LayerContainedMutation.LayerMutation> mutateKernelSizeLayers) {
-        final Random rng = new Random(666);
-        final Set<String> layerNames = new HashSet<>();
-        return (layerName, layer, layerInputs) -> {
-            if (!layerNames.add(layerName)) {
-                return;
-            }
-
-            if (layer instanceof ConvolutionLayer) {
-                mutateKernelSizeLayers.add(
-                        LayerContainedMutation.LayerMutation.builder()
-                                .mutationInfo(
-                                        LayerMutationInfo.builder()
-                                                .layerName(layerName)
-                                                .build())
-                                .mutation(layerConfOpt -> Optional.ofNullable(layerConfOpt)
-                                        .map(Layer::clone)
-                                        .filter(layerConf -> layerConf instanceof ConvolutionLayer)
-                                        .map(layerConf -> (ConvolutionLayer) layerConf)
-                                        .map(convConf -> {
-                                            convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
-                                                    .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
-                                                    .toArray());
-                                            return convConf;
-                                        })
-                                        .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer " + layerName + " from " + layerConfOpt)))
-                                .build());
-            }
-        };
     }
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createNoutMutation(final Set<String> mutationLayers, int seed) {
@@ -315,11 +304,136 @@ public final class MutatingConv2dFactory {
     }
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createKernelSizeMutation(
-            final Set<LayerContainedMutation.LayerMutation> mutationLayers,
+            final Set<String> mutationLayers,
             int seed) {
         final Random rng = new Random(seed);
         return new LayerContainedMutation(
-                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.1));
+                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.1)
+                        .map(layerName ->
+                                LayerContainedMutation.LayerMutation.builder()
+                                        .mutationInfo(
+                                                LayerMutationInfo.builder()
+                                                        .layerName(layerName)
+                                                        .build())
+                                        .mutation(layerConfOpt -> Optional.ofNullable(layerConfOpt)
+                                                .map(Layer::clone)
+                                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                                .map(layerConf -> (ConvolutionLayer) layerConf)
+                                                .map(convConf -> {
+                                                    convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
+                                                            .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
+                                                            .toArray());
+                                                    return convConf;
+                                                })
+                                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer " + layerName + " from " + layerConfOpt)))
+                                        .build())
+        );
+    }
+
+    private Mutation<ComputationGraphConfiguration.GraphBuilder> createGraphMutation(
+            UnaryOperator<GraphBuilderAdapter> spyFactory,
+            int seed) {
+        final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
+                .setFactory(spyFactory);
+
+        final Random rng = new Random(seed);
+        final List<Function<Long, LayerBlockConfig>> beforeGpBlocks = Arrays.asList(
+                nOut -> new Conv2DBatchNormAfter()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(5))
+                        .setKernelSize_h(1 + rng.nextInt(5)),
+                nOut -> new Conv2DBatchNormBefore()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(5))
+                        .setKernelSize_h(1 + rng.nextInt(5)),
+                nOut -> new Conv2DBatchNormBetween()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(5))
+                        .setKernelSize_h(1 + rng.nextInt(5)));
+
+        final List<Function<Long, LayerBlockConfig>> afterGpBlocks = Arrays.asList(
+                nOut -> new Dense().setHiddenWidth(nOut.intValue()));
+
+        Function<Long, LayerBlockConfig> lbcBeforeGpSupplier = nOut -> beforeGpBlocks.get(rng.nextInt(beforeGpBlocks.size())).andThen(spyConfig).apply(nOut);
+        Function<Long, LayerBlockConfig> lbcAfterGpSupplier = nOut -> afterGpBlocks.get(rng.nextInt(afterGpBlocks.size())).andThen(spyConfig).apply(nOut);
+
+        final String afterGpStr = "mutafterGp_";
+        return new GraphMutation(() -> Stream.of(GraphMutation.GraphMutationDescription.builder()
+                .mutation(graphBuilder -> {
+                    final Map<String, List<String>> validVertexes = graphBuilder.getVertexInputs().entrySet().stream()
+                            // Skip spy vertexes as this will break Activation contribution
+                            .filter(vertexInfo -> !vertexInfo.getKey().contains("spy"))
+                            // Skip vertexes which are not input to any other vertex (i.e they are output layers)
+                            .filter(vertexInfo -> graphBuilder.getVertexInputs().values().stream()
+                                    .flatMap(Collection::stream)
+                                    .anyMatch(input -> vertexInfo.getKey().equals(input)))
+                            // Skip vertex which have no inputs (i.e they are input vertexes assuming such a thing exists).
+                            .filter(vertexInfo -> !vertexInfo.getValue().isEmpty())
+                            .collect(Collectors.toMap(
+                                    Map.Entry::getKey,
+                                    Map.Entry::getValue
+                            ));
+
+                    final String[] inputNames = validVertexes.values().stream()
+                            .skip(rng.nextInt(validVertexes.size()))
+                            .findFirst().orElseThrow(() -> new IllegalStateException("Could not find inputs!"))
+                            .toArray(new String[0]);
+
+                    log.info("Insert layer after " + inputNames[0]);
+
+                    return Stream.of(inputNames)
+                            .filter(vertexName -> !vertexName.contains(afterGpStr))
+                            .filter(vertexName -> isAfterGlobPool(vertexName, graphBuilder))
+                            .map(layer -> new BlockMutationFunction(
+                                    lbcAfterGpSupplier,
+                                    inputNames,
+                                    newName -> createUniqueVertexName(
+                                            afterGpStr + String.join("_", inputNames) + "_" + newName,
+                                            graphBuilder)))
+                            .findAny()
+                            .orElseGet(() -> new BlockMutationFunction(
+                                    lbcBeforeGpSupplier,
+                                    inputNames,
+                                    newName -> createUniqueVertexName(
+                                            "mutbeforeGp_" + String.join("_", inputNames) + "_" + newName,
+                                            graphBuilder)))
+                            .apply(graphBuilder);
+
+                }).build()
+        )
+                .filter(mut -> rng.nextDouble() < 1));
+    }
+
+    private static boolean isAfterGlobPool(String vertexName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+        if(Stream.of(graphBuilder.getVertices().get(vertexName))
+                .filter(vertex -> vertex instanceof LayerVertex)
+                .map(vertex -> (LayerVertex) vertex)
+                .map(vertex -> vertex.getLayerConf().getLayer())
+                .anyMatch(layer -> layer instanceof DenseLayer || layer instanceof GlobalPoolingLayer)
+        ) {
+            log.info("vertex " + vertexName + " is after glob pool");
+            return true;
+        }
+
+        List<String> inputs = graphBuilder.getVertexInputs().get(vertexName);
+        if(inputs == null || inputs.isEmpty()) {
+            // Found input layer before finding globpool or denselayer
+            log.info("vertex " + vertexName + " is before glob pool");
+            return false;
+        }
+        return inputs.stream().anyMatch(vertexInputName -> isAfterGlobPool(vertexInputName, graphBuilder));
+    }
+
+    private static String createUniqueVertexName(String wantedName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+        return graphBuilder.getVertices().keySet().stream()
+                .filter(wantedName::equals)
+                .map(name -> createUniqueVertexName("_" + name, graphBuilder))
+                .findAny()
+                .orElse(wantedName);
+
     }
 
     private ModelBuilder createModelBuilder(
