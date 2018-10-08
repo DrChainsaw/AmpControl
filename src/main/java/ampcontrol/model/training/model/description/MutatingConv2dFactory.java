@@ -20,10 +20,7 @@ import ampcontrol.model.training.model.evolve.fitness.ClearListeners;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
-import ampcontrol.model.training.model.evolve.mutate.layer.BlockMutationFunction;
-import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
-import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutation;
-import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
+import ampcontrol.model.training.model.evolve.mutate.layer.*;
 import ampcontrol.model.training.model.evolve.mutate.state.AggMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
@@ -53,10 +50,7 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
-import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
-import org.deeplearning4j.nn.conf.layers.DenseLayer;
-import org.deeplearning4j.nn.conf.layers.GlobalPoolingLayer;
-import org.deeplearning4j.nn.conf.layers.Layer;
+import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.jita.memory.CudaMemoryManager;
@@ -141,11 +135,25 @@ public final class MutatingConv2dFactory {
     }
 
     @Builder(builderClassName = "Builder")
-    private final static class GraphSpyAppender implements UnaryOperator<GraphBuilderAdapter> {
+    private final static class GraphSpyAppender implements UnaryOperator<GraphBuilderAdapter>, Consumer<String> {
         final Set<String> mutateNout;
         final Set<String> mutateKernelSize;
         final Set<String> layersWithEpsSpyAfter;
+        final Set<String> removeLayers;
 
+
+        /**
+         * Accept a layer name to remove
+         *
+         * @param layerToRemove Layer name to remove
+         */
+        @Override
+        public void accept(String layerToRemove) {
+            mutateNout.remove(layerToRemove);
+            mutateKernelSize.remove(layerToRemove);
+            layersWithEpsSpyAfter.remove(layerToRemove);
+            removeLayers.remove(layerToRemove);
+        }
 
         @Override
         public GraphBuilderAdapter apply(GraphBuilderAdapter graphBuilderAdapter) {
@@ -164,10 +172,17 @@ public final class MutatingConv2dFactory {
                 }
             };
 
+            final GraphSpyAdapter.LayerSpy removeVertexSpy = (layerName, layer, layerInputs) -> {
+                if (!(layer instanceof OutputLayer)) {
+                    removeLayers.add(layerName);
+                }
+            };
+
             return new VertexSpyGraphAdapter(new EpsilonSpyVertex(), mutateNout::contains,
-                            new GraphSpyAdapter(nOutSpy,
-                                    new GraphSpyAdapter(kernelSizeSpy,
-                                            graphBuilderAdapter)));
+                    new GraphSpyAdapter(nOutSpy,
+                            new GraphSpyAdapter(kernelSizeSpy,
+                                    new GraphSpyAdapter(removeVertexSpy,
+                                            graphBuilderAdapter))));
 
         }
     }
@@ -199,6 +214,7 @@ public final class MutatingConv2dFactory {
 
             final Set<String> mutateNoutLayers = new LinkedHashSet<>();
             final Set<String> mutateKernelSizeLayers = new LinkedHashSet<>();
+            final Set<String> removeLayers = new LinkedHashSet<>();
 
             // Beware! Each candidate has their own builder initially. However, if
             // the same candidate has been selected twice for mutation its two offspring
@@ -210,7 +226,8 @@ public final class MutatingConv2dFactory {
             final GraphSpyAppender.Builder graphSpyBuilder = GraphSpyAppender.builder()
                     .mutateNout(mutateNoutLayers)
                     .layersWithEpsSpyAfter(mutateNoutLayers)
-                    .mutateKernelSize(mutateKernelSizeLayers);
+                    .mutateKernelSize(mutateKernelSizeLayers)
+                    .removeLayers(removeLayers);
             log.info("Create graphSpyAppender: " + System.identityHashCode(graphSpyBuilder));
 
             final ModelBuilder baseBuilder = createModelBuilder(graphSpyBuilder.build());
@@ -227,23 +244,32 @@ public final class MutatingConv2dFactory {
 
             UnaryOperator<Set<String>> copyNoutLayers = layersToCopy -> {
                 Set<String> copy = new LinkedHashSet<>(layersToCopy);
-                log.info(System.identityHashCode(graphSpyBuilder)+ " clone nout state " + copy);
+                log.info(System.identityHashCode(graphSpyBuilder) + " clone nout state " + copy);
                 graphSpyBuilder
                         .mutateNout(copy)
                         .layersWithEpsSpyAfter(copy);
                 return copy;
             };
 
-            UnaryOperator<Set<String>> copyKernalLayers = layersToCopy -> {
+            UnaryOperator<Set<String>> copyKernelLayers = layersToCopy -> {
                 Set<String> copy = new LinkedHashSet<>(layersToCopy);
                 log.info(System.identityHashCode(graphSpyBuilder) + " clone ks state " + copy);
                 graphSpyBuilder.mutateKernelSize(copy);
                 return copy;
             };
+
+            UnaryOperator<Set<String>> copyRemoveLayers = layersToCopy -> {
+                Set<String> copy = new LinkedHashSet<>(layersToCopy);
+                log.info(System.identityHashCode(graphSpyBuilder) + " clone remove state " + copy);
+                graphSpyBuilder.removeLayers(copy);
+                return copy;
+            };
+
             allNoutMutationLayers.addAll(mutateNoutLayers);
             final Random seedGenNout = new Random(candInd);
             final Random seedGenKs = new Random(-candInd);
-            final Random seedGenGraphAdd = new Random(candInd+100);
+            final Random seedGenGraphAdd = new Random(candInd + 100);
+            final Random seedRemoveLayer = new Random(-candInd - 100);
             final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation =
                     AggMutationState.<ComputationGraphConfiguration.GraphBuilder>builder()
                             .first(new NoMutationStateWapper<>(gb -> {
@@ -257,14 +283,20 @@ public final class MutatingConv2dFactory {
                                     layerNames -> createNoutMutation(layerNames, seedGenNout.nextInt())))
                             .andThen(new GenericMutationState<>(
                                     mutateKernelSizeLayers,
-                                    copyKernalLayers,
+                                    copyKernelLayers,
                                     (str, set) -> {/* TBD */},
                                     layerNames -> createKernelSizeMutation(mutateKernelSizeLayers, seedGenKs.nextInt())))
                             .andThen(new GenericMutationState<>(
+                                    removeLayers,
+                                    copyRemoveLayers,
+                                    (str, set) -> {/* TBD */},
+                                    layerNames -> createRemoveLayersMutation(layerNames, graphSpyBuilder.build(), seedRemoveLayer.nextInt())))
+                            .andThen(new GenericMutationState<>(
                                     graphSpyBuilder,
-                                    UnaryOperator.identity(),
+                                    UnaryOperator.identity(), // Do not want to copy or else reference above is lost
                                     (str, set) -> {/* Not needed? Maybe seed... */},
                                     graphSpyBuilderState -> createGraphMutation(graphSpyBuilder.build(), seedGenGraphAdd.nextInt())))
+
                             .build();
 
             final ComputationGraph graph = builder.buildGraph();
@@ -446,7 +478,7 @@ public final class MutatingConv2dFactory {
                             .findFirst().orElseThrow(() -> new IllegalStateException("Could not find inputs!"))
                             .toArray(new String[0]);
 
-                   // log.info("Insert layer after " + inputNames[0]);
+                    // log.info("Insert layer after " + inputNames[0]);
 
                     return Stream.of(inputNames)
                             .filter(vertexName -> !vertexName.contains(afterGpStr))
@@ -472,18 +504,18 @@ public final class MutatingConv2dFactory {
     }
 
     private static boolean isAfterGlobPool(String vertexName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
-        if(Stream.of(graphBuilder.getVertices().get(vertexName))
+        if (Stream.of(graphBuilder.getVertices().get(vertexName))
                 .filter(vertex -> vertex instanceof LayerVertex)
                 .map(vertex -> (LayerVertex) vertex)
                 .map(vertex -> vertex.getLayerConf().getLayer())
                 .anyMatch(layer -> layer instanceof DenseLayer || layer instanceof GlobalPoolingLayer)
         ) {
-           // log.info("vertex " + vertexName + " is after glob pool");
+            // log.info("vertex " + vertexName + " is after glob pool");
             return true;
         }
 
         List<String> inputs = graphBuilder.getVertexInputs().get(vertexName);
-        if(inputs == null || inputs.isEmpty()) {
+        if (inputs == null || inputs.isEmpty()) {
             // Found input layer before finding globpool or denselayer
             //log.info("vertex " + vertexName + " is before glob pool");
             return false;
@@ -498,6 +530,41 @@ public final class MutatingConv2dFactory {
                 .findAny()
                 .orElse(wantedName);
 
+    }
+
+    private Mutation<ComputationGraphConfiguration.GraphBuilder> createRemoveLayersMutation(
+            Set<String> mutationLayers,
+            Consumer<String> removeListener,
+            int seed) {
+        Random rng = new Random(seed);
+        return new GraphMutation(() -> mutationLayers.stream()
+                .filter(str -> rng.nextDouble() < 0.1)
+                .peek(vertexToRemove -> log.info("Attempt to remove " + vertexToRemove))
+                // Collect subset to avoid that the removeListener causes ConcurrentModificationExceptions
+                .collect(Collectors.toSet()).stream()
+                .map(vertexToRemove -> GraphMutation.GraphMutationDescription.builder()
+                        .mutation(graphBuilder -> {
+                            if (graphBuilder.getVertexInputs().get(vertexToRemove).stream()
+                                    .noneMatch(inputLayer -> !graphBuilder.getVertexInputs().containsKey(inputLayer))) {
+
+
+                                final GraphMutation.InputsAndOutputNames toRet = new RemoveLayerFunction(vertexToRemove).apply(graphBuilder);
+                                // Remove any spy vertices as well since they don't to anything useful by themselves
+                                graphBuilder.getVertexInputs().entrySet().stream()
+                                        .filter(vertexInfo -> vertexInfo.getValue().contains(vertexToRemove))
+                                        .filter(vertexInfo -> vertexInfo.getKey().contains("spy"))
+                                        .map(Map.Entry::getKey)
+                                        .collect(Collectors.toList())
+                                        .forEach(spyVertexName ->
+                                                new RemoveLayerFunction(spyVertexName).apply(graphBuilder)
+                                        );
+                                removeListener.accept(vertexToRemove);
+                                return toRet;
+                            }
+                            log.info("Skipping removal of " + vertexToRemove + " due to it being input");
+                            return GraphMutation.InputsAndOutputNames.builder().build();
+                        })
+                        .build()));
     }
 
     private ModelBuilder createModelBuilder(

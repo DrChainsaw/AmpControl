@@ -22,6 +22,7 @@ import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 public class GraphMutationTest {
 
@@ -101,6 +102,32 @@ public class GraphMutationTest {
                 .map(nameMapper)
                 .forEach(expectedName ->
                         assertTrue("Vertex " + expectedName + "not added!", Optional.ofNullable(newGraph.getVertex(expectedName)).isPresent()));
+
+        graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+    }
+
+    /**
+     * Test removal of a convolution layer.
+     */
+    @Test
+    public void removeConvVertex() {
+        final String conv1 = "conv1";
+        final String conv2 = "conv2";
+        final String conv3 = "conv3";
+        final ComputationGraph graph = GraphUtils.getCnnGraph(conv1, conv2, conv3);
+
+        final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(
+                GraphMutation.GraphMutationDescription.builder()
+                        .mutation(new RemoveLayerFunction(conv2))
+                        .build()));
+        final ComputationGraph newGraph = new ComputationGraph(mutatation.mutate(
+                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf())))
+                .setInputTypes(InputType.convolutional(33, 33, 3))
+                .build());
+        newGraph.init();
+
+        assertFalse("Expected vertex to be removed!", newGraph.getConfiguration().getVertices().containsKey(conv2));
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));

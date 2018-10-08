@@ -59,7 +59,7 @@ public class GraphMutation implements Mutation<GraphBuilder> {
     public ComputationGraphConfiguration.GraphBuilder mutate(ComputationGraphConfiguration.GraphBuilder toMutate) {
         mutationSupplier.stream().forEach(mutation -> {
             final InputsAndOutputNames inputsAndOutputNames = mutation.mutation.apply(toMutate);
-            makeRoomFor(inputsAndOutputNames, toMutate);
+            reconnectVertices(inputsAndOutputNames, toMutate);
         });
         return toMutate;
     }
@@ -79,7 +79,7 @@ public class GraphMutation implements Mutation<GraphBuilder> {
      * @param builder  {@link ComputationGraphConfiguration.GraphBuilder} to mutate
      */
     @NotNull
-    private static void makeRoomFor(InputsAndOutputNames mutation, ComputationGraphConfiguration.GraphBuilder builder) {
+    private static void reconnectVertices(InputsAndOutputNames mutation, ComputationGraphConfiguration.GraphBuilder builder) {
         for (String inputName : mutation.getInputNames()) {
 
             // Find all layers to which vertex of inputName is output

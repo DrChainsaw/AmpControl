@@ -27,7 +27,6 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
 
     private static final Logger log = LoggerFactory.getLogger(BlockMutationFunction.class);
 
-
     private final Function<Long, LayerBlockConfig> blockConfigFactory;
     private final String[] inputNames;
     private final Function<String, String> nameMapping;

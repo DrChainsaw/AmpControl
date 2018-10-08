@@ -56,7 +56,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             NoutMutationDescription mutation) {
         final String layerName = mutation.getLayerName();
 
-
         final FeedForwardLayer newLayerConf = changedLayers.computeIfAbsent(layerName,
                 key -> (FeedForwardLayer) ((LayerVertex) builder.getVertices().get(layerName)).getLayerConf().getLayer().clone());
         final long oldNout = newLayerConf.getNOut();
@@ -93,6 +92,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                             newLayerConf.setNOut(newNIn);
                         }
 
+                        log.info("Mutating nIn of layer " + newLayerConf.getLayerName() + " to " + newNIn);
                         final List<String> vertexInputs = builder.getVertexInputs().get(newLayerConf.getLayerName());
                         builder.removeVertex(newLayerConf.getLayerName(), false);
 

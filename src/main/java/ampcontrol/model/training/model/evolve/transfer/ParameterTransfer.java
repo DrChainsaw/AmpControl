@@ -24,7 +24,7 @@ import java.util.stream.Stream;
  */
 public class ParameterTransfer {
 
-   // private static final Logger log = LoggerFactory.getLogger(ParameterTransfer.class);
+    // private static final Logger log = LoggerFactory.getLogger(ParameterTransfer.class);
 
     private final ComputationGraph graph;
     private final Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory;
@@ -73,7 +73,7 @@ public class ParameterTransfer {
             final GraphVertex sourceVertex = sourceVertexMaybe.get();
             final GraphVertex targetVertex = targetVertexMaybe.get();
 
-           // log.info("Transfer parameters from " + sourceVertex.getVertexName());
+            // log.info("Transfer parameters from " + sourceVertex.getVertexName());
 
             final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
             final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
@@ -108,7 +108,7 @@ public class ParameterTransfer {
         compFactory.apply(layerName)
                 .ifPresent(firstTaskBuilder::compFactory);
 
-        if(sourceParams.containsKey(DefaultParamInitializer.BIAS_KEY)) {
+        if (sourceParams.containsKey(DefaultParamInitializer.BIAS_KEY)) {
             return firstTaskBuilder
                     .addDependentTask(SingleTransferTask.builder()
                             .maskDim(2)
@@ -177,7 +177,7 @@ public class ParameterTransfer {
                         final GraphVertex sourceVertex = sourceVertexMaybe.get();
                         final GraphVertex targetVertex = targetVertexMaybe.get();
 
-                       // log.info("Transfer output parameters of " + layerName);
+                        // log.info("Transfer output parameters of " + layerName);
                         final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
                         final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
                         addTasksFor(registry, taskListBuilder, layerName, sourceParams, targetParams);
@@ -200,18 +200,21 @@ public class ParameterTransfer {
                 final INDArray sourceParam = sourceParams.get(parKey);
                 final INDArray targetParam = targetParams.get(parKey);
 
-                taskListBuilder.addDependentTask(SingleTransferTask.builder()
-                        .maskDim(2) // Always things like kernel size which does not transfer
-                        .maskDim(3) // Always things like kernel size which does not transfer
-                        .maskDim(4) // Always things like kernel size which does not transfer
-                        .source(SingleTransferTask.IndMapping.builder()
-                                .entry(registry.register(sourceParam, layerName + "_source_" + parKey))
-                                .dimensionMapper(dimMapper)
-                                .build())
-                        .target(SingleTransferTask.IndMapping.builder()
-                                .entry(registry.register(targetParam, layerName + "_target_" + parKey))
-                                .dimensionMapper(dimMapper)
-                                .build()));
+                if (sourceParam.size(0) != targetParam.size(0)
+                        || sourceParam.size(1) != targetParam.size(1)) {
+                    taskListBuilder.addDependentTask(SingleTransferTask.builder()
+                            .maskDim(2) // Always things like kernel size which does not transfer
+                            .maskDim(3) // Always things like kernel size which does not transfer
+                            .maskDim(4) // Always things like kernel size which does not transfer
+                            .source(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(sourceParam, layerName + "_source_" + parKey))
+                                    .dimensionMapper(dimMapper)
+                                    .build())
+                            .target(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(targetParam, layerName + "_target_" + parKey))
+                                    .dimensionMapper(dimMapper)
+                                    .build()));
+                }
             });
         }
     }
@@ -226,11 +229,14 @@ public class ParameterTransfer {
         switch (paramName) {
             case (DefaultParamInitializer.WEIGHT_KEY):
                 switch (rank) {
-                    case 2: return Optional.of(dim -> 0); // dim 0 is input to dense layers
-                    case 4: return Optional.of(dim -> 1); // dim 1 is input to conv layers
-                    default: throw new UnsupportedOperationException("Not supported yet: " + rank);
+                    case 2:
+                        return Optional.of(dim -> 0); // dim 0 is input to dense layers
+                    case 4:
+                        return Optional.of(dim -> 1); // dim 1 is input to conv layers
+                    default:
+                        throw new UnsupportedOperationException("Not supported yet: " + rank);
                 }
-            case(CenterLossParamInitializer.CENTER_KEY):
+            case (CenterLossParamInitializer.CENTER_KEY):
                 return Optional.of(dim -> 1); // dim 1 is input to center loss
             case (DefaultParamInitializer.BIAS_KEY):
             case (BatchNormalizationParamInitializer.BETA):

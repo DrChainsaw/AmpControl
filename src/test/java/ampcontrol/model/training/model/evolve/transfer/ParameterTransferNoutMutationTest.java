@@ -23,11 +23,11 @@ import java.util.stream.Stream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Test cases for {@link ParameterTransfer}
+ * Test cases for {@link ParameterTransfer} with {@link NoutMutation}.
  *
  * @author Christian Skärby
  */
-public class ParameterTransferTest {
+public class ParameterTransferNoutMutationTest {
 
     /**
      * Test to decrease nOut in a conv layer which is input to another conv layer and see that weights get transferred.

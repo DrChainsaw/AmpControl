@@ -83,8 +83,8 @@ public class TrainingDescription {
 
         List<ModelHandle> modelData = new ArrayList<>();
 
-        final int trainingSeed = new Random().nextInt();
-        //final int trainingSeed = 666;
+        //final int trainingSeed = new Random().nextInt();
+        final int trainingSeed = 666;
         final int timeWindowSizeMs = 50;
 
         final ProcessingResult.Factory audioPostProcessingFactory = getAudioProcessingFactory();
