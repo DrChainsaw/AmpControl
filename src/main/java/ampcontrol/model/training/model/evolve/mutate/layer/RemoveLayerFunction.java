@@ -1,10 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.layers.BaseRecurrentLayer;
-import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
-import org.deeplearning4j.nn.conf.layers.DenseLayer;
-import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
+import org.deeplearning4j.nn.conf.layers.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +38,7 @@ public class RemoveLayerFunction implements Function<ComputationGraphConfigurati
         final List<String> inputNames = graphBuilder.getVertexInputs().get(vertexNameToRemove);
 
         final long nOut = LayerMutationInfo.getOutputSize(vertexNameToRemove, graphBuilder);
+        final long nIn = LayerMutationInfo.getInputSize(vertexNameToRemove, graphBuilder);
         graphBuilder.removeVertex(vertexNameToRemove, true);
 
         outputNames.forEach(outputName ->
@@ -51,22 +49,26 @@ public class RemoveLayerFunction implements Function<ComputationGraphConfigurati
 
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames + " nOut: " + nOut);
 
-        //log.info("Prev FF: " + findPrevFeedForwardLayer(inputNames.get(0), graphBuilder));
+        // Not possible to change network inputs (e.g. image size)
+        final boolean isAnyLayerInputNetworkInput = graphBuilder.getNetworkInputs().stream()
+                .anyMatch(inputNames::contains);
 
-     //   log.info("10 pre:  " + ((FeedForwardLayer)((LayerVertex)graphBuilder.getVertices().get("10")).getLayerConf().getLayer()).getNOut());
-        inputNames.stream()
-                .map(layerName -> findPrevFeedForwardLayer(layerName, graphBuilder, nOut))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + nOut))
-                .forEach(layer -> {
-                    layer.setNOut(nOut);
-                    log.info("layer: " + layer);
-//                    final String[] layerInputs = graphBuilder.getVertexInputs().get(layer.getLayerName()).toArray(new String[0]);
-//                    graphBuilder.removeVertex(layer.getLayerName(), false)
-//                            .addLayer(layer.getLayerName(), layer, layerInputs);
-                });
-       // log.info("10 post: " + ((FeedForwardLayer) ((LayerVertex) graphBuilder.getVertices().get("10")).getLayerConf().getLayer()).getNOut());
+        // Do the change which adds neurons rather than the one which removes them
+        if (nIn > nOut || isAnyLayerInputNetworkInput) {
+            outputNames.stream()
+                    .map(layerName -> findNextFeedForwardLayer(layerName, graphBuilder, nOut))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .peek(layer -> log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nIn))
+                    .forEach(layer -> layer.setNIn(nIn));
+        } else {
+            inputNames.stream()
+                    .map(layerName -> findPrevFeedForwardLayer(layerName, graphBuilder, nOut))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + nOut))
+                    .forEach(layer -> layer.setNOut(nOut));
+        }
 
         return GraphMutation.InputsAndOutputNames.builder().build();
     }
@@ -78,7 +80,7 @@ public class RemoveLayerFunction implements Function<ComputationGraphConfigurati
         return LayerMutationInfo.vertexAsLayerVertex
                 .andThen(layerVertex -> LayerMutationInfo.layerVertexAsFeedForward.apply(layerName, layerVertex))
                 .apply(layerName, graphBuilder)
-                .filter(layer -> isNoutSetable(layer, newNout))
+                .filter(layer -> isTransitionLayer(layer, newNout))
                 .map(Optional::of)
                 .orElseGet(() -> Optional.ofNullable(graphBuilder.getVertexInputs().get(layerName))
                         .flatMap(inputLayers -> inputLayers.stream()
@@ -88,10 +90,29 @@ public class RemoveLayerFunction implements Function<ComputationGraphConfigurati
                                 .findAny()));
     }
 
-    private static boolean isNoutSetable(FeedForwardLayer layer, long newNout) {
-        if( layer instanceof ConvolutionLayer
+    private static Optional<FeedForwardLayer> findNextFeedForwardLayer(
+            String layerName,
+            ComputationGraphConfiguration.GraphBuilder graphBuilder,
+            long newNin) {
+        return LayerMutationInfo.vertexAsLayerVertex
+                .andThen(layerVertex -> LayerMutationInfo.layerVertexAsFeedForward.apply(layerName, layerVertex))
+                .apply(layerName, graphBuilder)
+                .filter(layer -> isTransitionLayer(layer, newNin))
+                .map(Optional::of)
+                .orElseGet(() -> graphBuilder.getVertexInputs().entrySet().stream()
+                        .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(layerName))
+                        .map(Map.Entry::getKey)
+                        .map(layerInputName -> findNextFeedForwardLayer(layerInputName, graphBuilder, newNin))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .findAny());
+    }
+
+    private static boolean isTransitionLayer(FeedForwardLayer layer, long newNout) {
+        if (layer instanceof ConvolutionLayer
                 || layer instanceof DenseLayer
-                || layer instanceof BaseRecurrentLayer) {
+                || layer instanceof BaseRecurrentLayer
+                || layer instanceof BaseOutputLayer) {
             return true;
         }
         layer.setNIn(newNout);

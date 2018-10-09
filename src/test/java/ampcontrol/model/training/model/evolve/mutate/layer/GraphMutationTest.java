@@ -133,4 +133,30 @@ public class GraphMutationTest {
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
 
+    /**
+     * Test removal of the first layer.
+     */
+    @Test
+    public void removeFirstVertex() {
+        final String dense1 = "dense1";
+        final String dense2 = "dense2";
+        final String dense3 = "dense3";
+        final ComputationGraph graph = GraphUtils.getGraph(dense1, dense2, dense3);
+
+        final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(
+                GraphMutation.GraphMutationDescription.builder()
+                        .mutation(new RemoveLayerFunction(dense1))
+                        .build()));
+        final ComputationGraph newGraph = new ComputationGraph(mutatation.mutate(
+                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf())))
+                .setInputTypes(InputType.feedForward(33))
+                .build());
+        newGraph.init();
+
+        assertFalse("Expected vertex to be removed!", newGraph.getConfiguration().getVertices().containsKey(dense1));
+
+        graph.outputSingle(Nd4j.randn(new long[]{1, 33}));
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 33}));
+    }
+
 }
