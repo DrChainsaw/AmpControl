@@ -104,6 +104,6 @@ public class ParameterTransferAddLayerTest {
         newGraph.init();
         assertEquals("No vertex was added!", graph.getVertices().length+1, newGraph.getVertices().length);
         assertTrue("Vertex not added!", Optional.ofNullable(newGraph.getVertex("0_mut")).isPresent());
-        return newGraph;
+        return new ParameterTransfer(graph).transferWeightsTo(newGraph);
     }
 }

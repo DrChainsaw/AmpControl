@@ -1,6 +1,5 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
-import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
@@ -10,9 +9,8 @@ import org.deeplearning4j.nn.params.CenterLossParamInitializer;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
-import java.util.Comparator;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Stream;
@@ -24,10 +22,13 @@ import java.util.stream.Stream;
  */
 public class ParameterTransfer {
 
+    private final static String W = DefaultParamInitializer.WEIGHT_KEY;
+
     // private static final Logger log = LoggerFactory.getLogger(ParameterTransfer.class);
 
     private final ComputationGraph graph;
     private final Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory;
+    private final Set<String> nInTransferredFromPreviousNoutLayers = new HashSet<>();
 
     public ParameterTransfer(ComputationGraph graph) {
         this(graph, str -> Optional.empty());
@@ -45,6 +46,8 @@ public class ParameterTransfer {
      * @return A {@link ComputationGraph} initialized with parameters from the existing graph
      */
     public ComputationGraph transferWeightsTo(ComputationGraph newGraph) {
+
+        nInTransferredFromPreviousNoutLayers.clear();
 
         final TransferRegistry registry = new TransferRegistry();
         final int[] topologicalOrder = newGraph.topologicalSortOrder();
@@ -78,9 +81,11 @@ public class ParameterTransfer {
             final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
             final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
 
-            if (sourceVertex.getLayer().paramTable().containsKey(DefaultParamInitializer.WEIGHT_KEY)) {
+            if (sourceVertex.getLayer().paramTable().containsKey(W)) {
                 TransferTask.ListBuilder taskBuilder = initReshapeListBuilder(registry, layerName, sourceParams, targetParams);
-                transferOutputParameters(registry, newGraph, targetVertex, taskBuilder);
+                if (sourceParams.get(W).size(outputDim(sourceParams)) != targetParams.get(W).size(outputDim(targetParams))) {
+                    transferOutputParameters(inputDim(sourceParams), registry, newGraph, targetVertex, taskBuilder);
+                }
                 taskBuilder.build().execute();
             } else {
                 transferAllParameters(registry, layerName, sourceParams, targetParams);
@@ -94,23 +99,27 @@ public class ParameterTransfer {
             Map<String, INDArray> sourceParams,
             Map<String, INDArray> targetParams) {
 
-        // 1 for conv, 0 for dense ?? for recurrent
-        final int inputDim = sourceParams.get(DefaultParamInitializer.WEIGHT_KEY).shape().length == 4 ? 1 : 0;
-        final SingleTransferTask.Builder firstTaskBuilder = SingleTransferTask.builder()
-                .maskDim(inputDim) // Shall be transferred based on cropped outputs from previous layer
+        final SingleTransferTask.Builder firstTaskBuilder = SingleTransferTask.builder();
+        if (nInTransferredFromPreviousNoutLayers.contains(layerName)) {
+            firstTaskBuilder
+                    .maskDim(inputDim(sourceParams));
+        }
+
+        firstTaskBuilder
                 .source(SingleTransferTask.IndMapping.builder()
-                        .entry(registry.register(sourceParams.get(DefaultParamInitializer.WEIGHT_KEY), layerName + "_source_W"))
+                        .entry(registry.register(sourceParams.get(W), layerName + "_source_W"))
                         .build())
                 .target(SingleTransferTask.IndMapping.builder()
-                        .entry(registry.register(targetParams.get(DefaultParamInitializer.WEIGHT_KEY), layerName + "_target_W"))
+                        .entry(registry.register(targetParams.get(W), layerName + "_target_W"))
                         .build());
 
         compFactory.apply(layerName)
                 .ifPresent(firstTaskBuilder::compFactory);
 
         if (sourceParams.containsKey(DefaultParamInitializer.BIAS_KEY)) {
-            return firstTaskBuilder
+            firstTaskBuilder
                     .addDependentTask(SingleTransferTask.builder()
+                            .maskDim(inputDim(sourceParams))
                             .maskDim(2)
                             .maskDim(3)
                             .maskDim(4)
@@ -124,7 +133,89 @@ public class ParameterTransfer {
                                     .build())
                     );
         }
+        if (sourceParams.containsKey(CenterLossParamInitializer.CENTER_KEY)) {
+            firstTaskBuilder
+                    .addDependentTask(SingleTransferTask.builder()
+                            .maskDim(2)
+                            .maskDim(3)
+                            .maskDim(4)
+                            .source(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(sourceParams.get(CenterLossParamInitializer.CENTER_KEY), layerName + "_source_b"))
+                                    .dimensionMapper(dim -> 1) // Always 1 for centerloss!
+                                    .build())
+                            .target(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(targetParams.get(CenterLossParamInitializer.CENTER_KEY), layerName + "_target_b"))
+                                    .dimensionMapper(dim -> 1) // Always 1 for centerloss!
+                                    .build())
+                    );
+        }
         return firstTaskBuilder;
+    }
+
+    private void transferOutputParameters(
+            int prevInputDim,
+            TransferRegistry registry,
+            ComputationGraph newGraph,
+            GraphVertex rootNode,
+            TransferTask.ListBuilder taskListBuilder) {
+
+        Stream.of(Optional.ofNullable(rootNode.getOutputVertices()).orElse(new VertexIndices[0]))
+                .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
+                .forEachOrdered(vertex -> {
+                    final String layerName = vertex.getVertexName();
+
+                    Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
+                    Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
+
+                    if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
+                        final GraphVertex sourceVertex = sourceVertexMaybe.get();
+                        final GraphVertex targetVertex = targetVertexMaybe.get();
+
+                        // log.info("Transfer output parameters of " + layerName);
+                        final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
+                        final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
+
+                        addTasksFor(registry, task -> taskListBuilder.addDependentTask(task
+                                .maskDim(prevInputDim)
+                                .maskDim(2) // Always things like kernel size which does not transfer
+                                .maskDim(3) // Always things like kernel size which does not transfer
+                                .maskDim(4) // Always things like kernel size which does not transfer
+                        ), layerName, sourceParams, targetParams);
+                    }
+                    if (doesNinPropagateToNext(vertex)) {
+                        transferOutputParameters(prevInputDim, registry, newGraph, vertex, taskListBuilder);
+                    }
+                });
+    }
+
+    private void addTasksFor(
+            TransferRegistry registry,
+            Consumer<SingleTransferTask.Builder> taskConsumer,
+            String layerName,
+            Map<String, INDArray> sourceParams,
+            Map<String, INDArray> targetParams) {
+
+        nInTransferredFromPreviousNoutLayers.add(layerName);
+        for (String parKey : sourceParams.keySet()) {
+            outputToInputDimMapping(parKey, sourceParams.get(parKey).shape().length).ifPresent(dimMapper -> {
+
+                final INDArray sourceParam = sourceParams.get(parKey);
+                final INDArray targetParam = targetParams.get(parKey);
+
+                if (sourceParam.size(0) != targetParam.size(0)
+                        || sourceParam.size(1) != targetParam.size(1)) {
+                    taskConsumer.accept(SingleTransferTask.builder()
+                            .source(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(sourceParam, layerName + "_source_" + parKey))
+                                    .dimensionMapper(dimMapper)
+                                    .build())
+                            .target(SingleTransferTask.IndMapping.builder()
+                                    .entry(registry.register(targetParam, layerName + "_target_" + parKey))
+                                    .dimensionMapper(dimMapper)
+                                    .build()));
+                }
+            });
+        }
     }
 
     private void transferAllParameters(TransferRegistry registry,
@@ -159,66 +250,6 @@ public class ParameterTransfer {
 
     }
 
-    private void transferOutputParameters(
-            TransferRegistry registry,
-            ComputationGraph newGraph,
-            GraphVertex rootNode,
-            TransferTask.ListBuilder taskListBuilder) {
-
-        Stream.of(Optional.ofNullable(rootNode.getOutputVertices()).orElse(new VertexIndices[0]))
-                .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
-                .forEachOrdered(vertex -> {
-                    final String layerName = vertex.getVertexName();
-
-                    Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
-                    Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
-
-                    if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
-                        final GraphVertex sourceVertex = sourceVertexMaybe.get();
-                        final GraphVertex targetVertex = targetVertexMaybe.get();
-
-                        // log.info("Transfer output parameters of " + layerName);
-                        final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
-                        final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
-                        addTasksFor(registry, taskListBuilder, layerName, sourceParams, targetParams);
-                    }
-                    if (Mutation.doesNinPropagateToNext(vertex)) {
-                        transferOutputParameters(registry, newGraph, vertex, taskListBuilder);
-                    }
-                });
-    }
-
-    private void addTasksFor(TransferRegistry registry,
-                             TransferTask.ListBuilder taskListBuilder,
-                             String layerName,
-                             Map<String, INDArray> sourceParams,
-                             Map<String, INDArray> targetParams) {
-
-        for (String parKey : sourceParams.keySet()) {
-            outputToInputDimMapping(parKey, sourceParams.get(parKey).shape().length).ifPresent(dimMapper -> {
-
-                final INDArray sourceParam = sourceParams.get(parKey);
-                final INDArray targetParam = targetParams.get(parKey);
-
-                if (sourceParam.size(0) != targetParam.size(0)
-                        || sourceParam.size(1) != targetParam.size(1)) {
-                    taskListBuilder.addDependentTask(SingleTransferTask.builder()
-                            .maskDim(2) // Always things like kernel size which does not transfer
-                            .maskDim(3) // Always things like kernel size which does not transfer
-                            .maskDim(4) // Always things like kernel size which does not transfer
-                            .source(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(sourceParam, layerName + "_source_" + parKey))
-                                    .dimensionMapper(dimMapper)
-                                    .build())
-                            .target(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(targetParam, layerName + "_target_" + parKey))
-                                    .dimensionMapper(dimMapper)
-                                    .build()));
-                }
-            });
-        }
-    }
-
     /**
      * Describes how to map output dimension from a previous layer to a input dimension of a next layer for different parameters
      *
@@ -227,7 +258,7 @@ public class ParameterTransfer {
      */
     private Optional<IntUnaryOperator> outputToInputDimMapping(String paramName, int rank) {
         switch (paramName) {
-            case (DefaultParamInitializer.WEIGHT_KEY):
+            case W:
                 switch (rank) {
                     case 2:
                         return Optional.of(dim -> 0); // dim 0 is input to dense layers
@@ -247,5 +278,37 @@ public class ParameterTransfer {
             default:
                 throw new UnsupportedOperationException("Param type not supported: " + paramName);
         }
+    }
+
+    private static boolean doesNinPropagateToNext(GraphVertex vertex) {
+        if (!vertex.hasLayer()) {
+            return true;
+        }
+        // Is there any parameter which can tell this instead of hardcoding it to types like this?
+        switch (vertex.getLayer().type()) {
+            case FEED_FORWARD:
+            case RECURRENT:
+            case CONVOLUTIONAL:
+            case CONVOLUTIONAL3D:
+            case RECURSIVE:
+                return false;
+            case SUBSAMPLING:
+            case UPSAMPLING:
+            case NORMALIZATION:
+                return true;
+            case MULTILAYER:
+            default:
+                throw new UnsupportedOperationException("No idea what to do with this type: " + vertex.getLayer().type());
+
+        }
+    }
+
+    private static int inputDim(Map<String, INDArray> params) {
+        // 1 for conv, 0 for dense ?? for recurrent
+        return params.get(W).shape().length == 4 ? 1 : 0;
+    }
+
+    private static int outputDim(Map<String, INDArray> params) {
+        return inputDim(params) == 0 ? 1 : 0;
     }
 }

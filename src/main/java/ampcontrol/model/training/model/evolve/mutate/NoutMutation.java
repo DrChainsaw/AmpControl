@@ -60,7 +60,9 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 key -> (FeedForwardLayer) ((LayerVertex) builder.getVertices().get(layerName)).getLayerConf().getLayer().clone());
         final long oldNout = newLayerConf.getNOut();
         newLayerConf.setNOut(mutation.getMutateNout().apply(oldNout));
+
         log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + newLayerConf.getNOut());
+
         final List<String> inputs = builder.getVertexInputs().get(layerName);
         builder.removeVertex(layerName, false)
                 .addLayer(layerName, newLayerConf, inputs.toArray(new String[0]));
@@ -87,13 +89,15 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                 key -> (FeedForwardLayer) ((LayerVertex) graphVertex).getLayerConf().getLayer().clone());
 
                         final long newNIn = newLayerConf.getNIn() - nNinDelta;
+
+                        log.info("Mutating nIn of layer " + newLayerConf.getLayerName() + "from " + newLayerConf.getNIn() + " to " + newNIn);
+
                         newLayerConf.setNIn(newNIn);
                         if (changeNinMeansChangeNout(newLayerConf)) {
                             newLayerConf.setNOut(newNIn);
                         }
 
-                        log.info("Mutating nIn of layer " + newLayerConf.getLayerName() + " to " + newNIn);
-                        final List<String> vertexInputs = builder.getVertexInputs().get(newLayerConf.getLayerName());
+                       final List<String> vertexInputs = builder.getVertexInputs().get(newLayerConf.getLayerName());
                         builder.removeVertex(newLayerConf.getLayerName(), false);
 
                         builder.addLayer(

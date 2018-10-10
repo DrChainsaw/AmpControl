@@ -1,7 +1,5 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
-import org.deeplearning4j.nn.graph.vertex.GraphVertex;
-
 import java.util.stream.Stream;
 
 /**
@@ -29,27 +27,4 @@ public interface Mutation<T> {
      * @return The mutated builder. Note: might not be same instance as input!
      */
     T mutate(T toMutate);
-
-    static boolean doesNinPropagateToNext(GraphVertex vertex) {
-        if (!vertex.hasLayer()) {
-            return true;
-        }
-        // Is there any parameter which can tell this instead of hardcoding it to types like this?
-        switch (vertex.getLayer().type()) {
-            case FEED_FORWARD:
-            case RECURRENT:
-            case CONVOLUTIONAL:
-            case CONVOLUTIONAL3D:
-            case RECURSIVE:
-                return false;
-            case SUBSAMPLING:
-            case UPSAMPLING:
-            case NORMALIZATION:
-                return true;
-            case MULTILAYER:
-            default:
-                throw new UnsupportedOperationException("No idea what to do with this type: " + vertex.getLayer().type());
-
-        }
-    }
 }
