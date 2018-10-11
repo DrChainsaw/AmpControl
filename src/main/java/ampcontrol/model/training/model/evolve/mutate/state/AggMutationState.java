@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve.mutate.state;
 
+import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -39,7 +40,7 @@ public class AggMutationState<T> implements MutationState<T> {
     }
 
     @Override
-    public void save(String baseName) {
+    public void save(String baseName) throws IOException {
         first.save(baseName);
         second.save(baseName);
     }

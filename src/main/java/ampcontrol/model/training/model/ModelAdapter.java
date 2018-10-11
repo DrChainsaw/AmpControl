@@ -2,7 +2,11 @@ package ampcontrol.model.training.model;
 
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
+import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Adapter interface for {@link Model Models} which can be fitted and evaluated. Necessary to avoid code duplication
@@ -29,5 +33,11 @@ public interface ModelAdapter {
      * @return a {@link Model}
      */
     Model asModel();
+
+    default void saveModel(String fileName) throws IOException {
+        final File file = new File(fileName);
+        file.getParentFile().mkdirs();
+        ModelSerializer.writeModel(asModel(), file, true);
+    }
 
 }

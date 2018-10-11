@@ -6,11 +6,9 @@ import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.optimize.api.TrainingListener;
-import org.deeplearning4j.util.ModelSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,10 +65,7 @@ public class GenericModelHandle implements ModelHandle {
     @Override
     public void saveModel(String fileName) throws IOException {
         log.info("Saving model: " + name() + " as " + fileName);
-        final File file = new File(fileName);
-        file.getParentFile().mkdirs();
-        ModelSerializer.writeModel(model.asModel(), file, true);
-
+        model.saveModel(fileName);
     }
 
     @Override

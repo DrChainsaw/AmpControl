@@ -6,10 +6,11 @@ import org.apache.commons.lang.mutable.MutableInt;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.function.BiConsumer;
+import java.io.IOException;
 import java.util.function.UnaryOperator;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Test cases for {@link GenericMutationState}
@@ -24,14 +25,14 @@ public class GenericMutationStateTest {
     @Test
     public void mutate() {
         final MutableInt state = new MutableInt(13);
-        final Mutation<String> mutationState =  createIntStateMutation(state);
+        final Mutation<String> mutationState = createIntStateMutation(state);
         assertEquals("Incorrect output!", "mutate_13", mutationState.mutate("mutate"));
     }
 
     @Test
     public void mutateClone() {
         final MutableInt state = new MutableInt(0);
-        final Mutation<String> mutationState =  createIntStateMutation(state).clone();
+        final Mutation<String> mutationState = createIntStateMutation(state).clone();
         state.setValue(666);
         assertEquals("Incorrect output!", "mutate_0", mutationState.mutate("mutate"));
     }
@@ -41,8 +42,12 @@ public class GenericMutationStateTest {
     public void save() {
         final SaveProbe probe = new SaveProbe(17);
         final MutationState<Integer> mutationState = createSaveStateMutation(17, probe);
-        mutationState.save("test");
-        assertEquals("Incorrect save str", "test", probe.getLastString());
+        try {
+            mutationState.save("test");
+            assertEquals("Incorrect save str", "test", probe.getLastString());
+        } catch (IOException e) {
+            fail("Unexpected exception!");
+        }
     }
 
     static MutationState<String> createIntStateMutation(MutableInt startState) {
@@ -53,7 +58,7 @@ public class GenericMutationStateTest {
                 state -> str -> str + "_" + state.intValue());
     }
 
-    static MutationState<Integer> createSaveStateMutation(int startState, BiConsumer<String, Integer> saveOperation) {
+    static MutationState<Integer> createSaveStateMutation(int startState, GenericMutationState.PersistState<Integer> saveOperation) {
         return new GenericMutationState<>(
                 startState,
                 UnaryOperator.identity(),
@@ -63,7 +68,7 @@ public class GenericMutationStateTest {
     }
 
     @Getter
-    static final class SaveProbe implements BiConsumer<String, Integer> {
+    static final class SaveProbe implements GenericMutationState.PersistState<Integer> {
 
         private String lastString = "NONE";
         private final int expectInt;
@@ -73,7 +78,7 @@ public class GenericMutationStateTest {
         }
 
         @Override
-        public void accept(String s, Integer integer) {
+        public void save(String s, Integer integer) {
             lastString = s;
             Assert.assertEquals("Incorrect state to save!", expectInt, integer.intValue());
         }

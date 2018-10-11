@@ -2,7 +2,7 @@ package ampcontrol.model.training.model.evolve.mutate.state;
 
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 
-import java.util.function.BiConsumer;
+import java.io.IOException;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -18,10 +18,17 @@ public class GenericMutationState<T,V> implements MutationState<T> {
 
     private final V state;
     private final UnaryOperator<V> copyState;
-    private final BiConsumer<String, V> persistState;
+    private final PersistState<V> persistState;
     private final Function<V, Mutation<T>> factory;
 
-    public GenericMutationState(V state, UnaryOperator<V> copyState, BiConsumer<String, V> persistState, Function<V, Mutation<T>> factory) {
+    /**
+     * Interface for persisting state
+     */
+    public interface PersistState<V> {
+        void save(String baseName, V state) throws IOException;
+    }
+
+    public GenericMutationState(V state, UnaryOperator<V> copyState, PersistState<V> persistState, Function<V, Mutation<T>> factory) {
         this.state = state;
         this.copyState = copyState;
         this.persistState = persistState;
@@ -29,8 +36,8 @@ public class GenericMutationState<T,V> implements MutationState<T> {
     }
 
     @Override
-    public void save(String baseName) {
-        persistState.accept(baseName, state);
+    public void save(String baseName) throws IOException {
+        persistState.save(baseName, state);
     }
 
     @Override

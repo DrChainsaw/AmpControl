@@ -3,10 +3,7 @@ package ampcontrol.model.training.model.description;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.ActivationContribution;
 import ampcontrol.model.training.listen.NanScoreWatcher;
-import ampcontrol.model.training.model.EvolvingGraphAdapter;
-import ampcontrol.model.training.model.GenericModelHandle;
-import ampcontrol.model.training.model.ModelHandle;
-import ampcontrol.model.training.model.ModelHandlePopulation;
+import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.builder.BlockBuilder;
 import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
 import ampcontrol.model.training.model.builder.ModelBuilder;
@@ -20,12 +17,10 @@ import ampcontrol.model.training.model.evolve.fitness.ClearListeners;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
+import ampcontrol.model.training.model.evolve.mutate.PersistentSet;
 import ampcontrol.model.training.model.evolve.mutate.layer.*;
 import ampcontrol.model.training.model.evolve.mutate.state.*;
-import ampcontrol.model.training.model.evolve.selection.CompoundFixedSelection;
-import ampcontrol.model.training.model.evolve.selection.EvolveSelection;
-import ampcontrol.model.training.model.evolve.selection.ModelComparatorRegistry;
-import ampcontrol.model.training.model.evolve.selection.RouletteSelection;
+import ampcontrol.model.training.model.evolve.selection.*;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
@@ -41,6 +36,7 @@ import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
 import ampcontrol.model.training.schedule.epoch.SawTooth;
 import ampcontrol.model.training.schedule.epoch.Step;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang.mutable.MutableLong;
@@ -55,10 +51,7 @@ import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.api.memory.MemoryWorkspace;
 import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
-import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
-import org.nd4j.linalg.api.memory.enums.LearningPolicy;
-import org.nd4j.linalg.api.memory.enums.ResetPolicy;
-import org.nd4j.linalg.api.memory.enums.SpillPolicy;
+import org.nd4j.linalg.api.memory.enums.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
@@ -67,6 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -97,7 +91,7 @@ public final class MutatingConv2dFactory {
         private final WorkspaceConfiguration workspaceConfig = WorkspaceConfiguration.builder()
                 .policyAllocation(AllocationPolicy.STRICT)
                 .policyLearning(LearningPolicy.FIRST_LOOP)
-                //.policyMirroring(MirroringPolicy.HOST_ONLY)
+                .policyMirroring(MirroringPolicy.HOST_ONLY)
                 .policyReset(ResetPolicy.ENDOFBUFFER_REACHED)
                 .policySpill(SpillPolicy.REALLOCATE)
                 .initialSize(0)
@@ -140,8 +134,6 @@ public final class MutatingConv2dFactory {
         @Builder.Default
         final Set<String> mutateKernelSize = new LinkedHashSet<>();
         @Builder.Default
-        final Set<String> layersWithEpsSpyAfter = new LinkedHashSet<>();
-        @Builder.Default
         final Set<String> removeLayers = new LinkedHashSet<>();
 
         /**
@@ -153,14 +145,12 @@ public final class MutatingConv2dFactory {
         public void accept(String layerToRemove) {
             mutateNout.remove(layerToRemove);
             mutateKernelSize.remove(layerToRemove);
-            layersWithEpsSpyAfter.remove(layerToRemove);
             removeLayers.remove(layerToRemove);
         }
 
         public MutationLayerState clone() {
             return builder()
                     .mutateNout(new LinkedHashSet<>(mutateNout))
-                    .layersWithEpsSpyAfter(new LinkedHashSet<>(layersWithEpsSpyAfter))
                     .mutateKernelSize(new LinkedHashSet<>(mutateKernelSize))
                     .removeLayers(new LinkedHashSet<>(removeLayers))
                     .build();
@@ -177,7 +167,6 @@ public final class MutatingConv2dFactory {
 
         @Override
         public GraphBuilderAdapter apply(GraphBuilderAdapter graphBuilderAdapter) {
-            log.info("apply nout: " + state.mutateNout + " and ks: " + state.mutateKernelSize);
             final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
                 if (layer instanceof ConvolutionLayer) {
                     state.mutateNout.add(layerName);
@@ -228,14 +217,19 @@ public final class MutatingConv2dFactory {
         // TODO: Some other way to do this please...
         final Set<String> allNoutMutationLayers = new LinkedHashSet<>();
 
+        final String removeName = "_mutRemoveLayers.json";
+        final String nOutName = "_mutNOutLayers.json";
+        final String kernelSizeName = "_mutKernelSizeLayers.json";
+
         // Create model population
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 2).forEach(candInd -> {
+        IntStream.range(0, 20).forEach(candInd -> {
 
-            final LinkedHashSet<String> mutateNoutLayers = new LinkedHashSet<>();
+            final FileNamePolicy candNamePolicy = modelFileNamePolicy
+                    .compose(evolvingSuffix)
+                    .andThen(modelNamePolicyFactory.apply(candInd));
+
             final MutationLayerState mutationLayerState = MutationLayerState.builder()
-                    .mutateNout(mutateNoutLayers)
-                    .layersWithEpsSpyAfter(mutateNoutLayers)
                     .build();
 
 
@@ -243,65 +237,71 @@ public final class MutatingConv2dFactory {
 
             final ModelBuilder baseBuilder = createModelBuilder(graphSpyBuilder);
 
-            final FileNamePolicy candNamePolicy = modelFileNamePolicy
-                    .compose(evolvingSuffix)
-                    .andThen(modelNamePolicyFactory.apply(candInd));
             final ModelBuilder builder = new DeserializingModelBuilder(
                     candNamePolicy,
                     baseBuilder);
 
-            baseBuilder.buildGraph(); // Just to populate mutationLayers...
+            try {
+                final ComputationGraph graph = builder.buildGraph(); // Will also populate mutation layers in case graph is new.
+                final String baseName = candNamePolicy.toFileName(builder.name());
+                final SharedSynchronizedState<MutationLayerState> initialState = new SharedSynchronizedState<>(MutationLayerState.builder()
+                        .removeLayers(new PersistentSet<>(baseName + removeName, mutationLayerState.getRemoveLayers()).get())
+                        .mutateNout(new PersistentSet<>(baseName + nOutName, mutationLayerState.getMutateNout()).get())
+                        .mutateKernelSize(new PersistentSet<>(baseName + kernelSizeName, mutationLayerState.getMutateKernelSize()).get())
+                        .build());
 
-            final SharedSynchronizedState<MutationLayerState> initialState = new SharedSynchronizedState<>(mutationLayerState);
-            final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState = view -> {
-                allNoutMutationLayers.addAll(view.get().getMutateNout());
-                return view.update(view.get().clone()).copy();
-            };
+                final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState = view -> {
+                    allNoutMutationLayers.addAll(view.get().getMutateNout());
+                    return view.update(view.get().clone()).copy();
+                };
 
-            allNoutMutationLayers.addAll(mutateNoutLayers);
-            final Random seedGenNout = new Random(candInd);
-            final Random seedGenKs = new Random(-candInd);
-            final Random seedGenGraphAdd = new Random(candInd + 100);
-            final Random seedRemoveLayer = new Random(-candInd - 100);
-            final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation =
-                    AggMutationState.<ComputationGraphConfiguration.GraphBuilder>builder()
-                            .first(new NoMutationStateWapper<>(gb -> {
-                                new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
-                                return gb;
-                            }))
-                            .andThen(new GenericMutationState<>(
-                                    initialState.view(),
-                                    copyState,
-                                    (str, set) -> {/* TBD */},
-                                    state -> createRemoveLayersMutation(state.get().getRemoveLayers(), state.get(), seedRemoveLayer.nextInt())))
-                            .andThen(new GenericMutationState<>(
-                                    initialState.view(),
-                                    copyState,
-                                    (str, set) -> {/* TBD */},
-                                    state -> createNoutMutation(state.get().getMutateNout(), seedGenNout.nextInt())))
-                            .andThen(new GenericMutationState<>(
-                                    initialState.view(),
-                                    copyState,
-                                    (str, set) -> {/* TBD */},
-                                    state -> createKernelSizeMutation(state.get().getMutateKernelSize(), seedGenKs.nextInt())))
-                            .andThen(new GenericMutationState<>(
-                                    initialState.view(),
-                                    copyState,
-                                    (str, set) -> {/* Not needed? Maybe seed... */},
-                                    state -> createGraphMutation(new GraphSpyAppender(state.get()), seedGenGraphAdd.nextInt())))
+                allNoutMutationLayers.addAll(initialState.view().get().getMutateNout());
+                final Random seedGenNout = new Random(candInd);
+                final Random seedGenKs = new Random(-candInd);
+                final Random seedGenGraphAdd = new Random(candInd + 100);
+                final Random seedRemoveLayer = new Random(-candInd - 100);
+                final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation =
+                        AggMutationState.<ComputationGraphConfiguration.GraphBuilder>builder()
+                                .first(new NoMutationStateWapper<>(gb -> {
+                                    new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
+                                    return gb;
+                                }))
+                                .andThen(new GenericMutationState<>(
+                                        initialState.view(),
+                                        copyState,
+                                        (str, state) -> new ObjectMapper().writeValue(new File(str + removeName), state.get().getRemoveLayers()),
+                                        state -> createRemoveLayersMutation(state.get().getRemoveLayers(), state.get(), seedRemoveLayer.nextInt())))
+                                .andThen(new GenericMutationState<>(
+                                        initialState.view(),
+                                        copyState,
+                                        (str, state) -> new ObjectMapper().writeValue(new File(str + nOutName), state.get().getMutateNout()),
+                                        state -> createNoutMutation(state.get().getMutateNout(), seedGenNout.nextInt())))
+                                .andThen(new GenericMutationState<>(
+                                        initialState.view(),
+                                        copyState,
+                                        (str, state) -> new ObjectMapper().writeValue(new File(str + kernelSizeName), state.get().getMutateKernelSize()),
+                                        state -> createKernelSizeMutation(state.get().getMutateKernelSize(), seedGenKs.nextInt())))
+                                .andThen(new GenericMutationState<>(
+                                        initialState.view(),
+                                        copyState,
+                                        (str, state) -> {/* Not needed? Maybe seed... */},
+                                        state -> createGraphMutation(new GraphSpyAppender(state.get()), seedGenGraphAdd.nextInt())))
 
-                            .build();
+                                .build();
 
-            final ComputationGraph graph = builder.buildGraph();
-            final EvolvingGraphAdapter adapter = candInd == 0 || graph.getIterationCount() > 0 ?
-                    new EvolvingGraphAdapter(graph, mutation,
-                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
-                    new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
-                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
+                final EvolvingGraphAdapter adapter = candInd == 0 || graph.getIterationCount() > 0 ?
+                        new EvolvingGraphAdapter(graph, mutation,
+                                graphToTransfer -> new ParameterTransfer(graphToTransfer,
+                                        Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
+                        new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
+                                graphToTransfer -> new ParameterTransfer(graphToTransfer,
+                                        Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
 
-            initialPopulation.add(adapter);
+                initialPopulation.add(adapter);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
         // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
         if (Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
@@ -312,11 +312,11 @@ public final class MutatingConv2dFactory {
 
         final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
         final ModelBuilder baseBuilder = createModelBuilder(UnaryOperator.identity());
-//        modelData.add(new GenericModelHandle(trainIter, evalIter,
-//                new GraphModelAdapter(
-//                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
-//                                baseBuilder).buildGraph()),
-//                referenceSuffix.toFileName(baseBuilder.name())));
+        modelData.add(new GenericModelHandle(trainIter, evalIter,
+                new GraphModelAdapter(
+                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
+                                baseBuilder).buildGraph()),
+                referenceSuffix.toFileName(baseBuilder.name())));
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
     }
 
@@ -357,7 +357,7 @@ public final class MutatingConv2dFactory {
                                             return adapter;
                                         })
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(1))
+                                        .andThen(new FitnessPolicyTraining<>(107))
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
@@ -368,8 +368,8 @@ public final class MutatingConv2dFactory {
                                 // Polícy for selecting candidates after fitness has been reported
 
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
-                                        // .andThen(2, new EliteSelection<>())
-                                        .andThen(initialPopulation.size(), //- 2,
+                                        .andThen(2, new EliteSelection<>())
+                                        .andThen(initialPopulation.size() - 2,
                                                 new EvolveSelection<>(
                                                         new RouletteSelection<EvolvingGraphAdapter>(rng::nextDouble)))
                                         .build()
@@ -495,7 +495,7 @@ public final class MutatingConv2dFactory {
 
                 }).build()
         )
-                .filter(mut -> rng.nextDouble() < 1));
+                .filter(mut -> rng.nextDouble() < 0.05));
     }
 
     private static boolean isAfterGlobPool(String vertexName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
@@ -532,7 +532,7 @@ public final class MutatingConv2dFactory {
             int seed) {
         Random rng = new Random(seed);
         return new GraphMutation(() -> mutationLayers.stream()
-                .filter(str -> rng.nextDouble() < 0.1)
+                .filter(str -> rng.nextDouble() < 0.05 / mutationLayers.size())
                 .peek(vertexToRemove -> log.info("Attempt to remove " + vertexToRemove))
                 // Collect subset to avoid that the removeListener causes ConcurrentModificationExceptions
                 .collect(Collectors.toSet()).stream()
@@ -575,31 +575,32 @@ public final class MutatingConv2dFactory {
                 .first(new ConvType(inputShape))
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
                         .setKernelSize(3)
-                        .setNrofKernels(32))
+                        .setNrofKernels(24))
                         .setFactory(spyFactory))
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
-                        .setKernelSize(3)
-                        .setNrofKernels(64))
+                        .setKernelSize(2)
+                        .setNrofKernels(49))
                         .setFactory(spyFactory))
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
-                        .setKernelSize(3)
-                        .setNrofKernels(128))
+                        .setKernelSize_h(1)
+                        .setKernelSize_w(4)
+                        .setNrofKernels(48))
                         .setFactory(spyFactory))
                 .andThen(pool)
 
                 .andThen(new GlobPool())
                 .andThenStack(2)
                 .of(new SpyBlock(new Dense()
-                        .setHiddenWidth(128)
+                        .setHiddenWidth(75)
                         .setActivation(new ActivationReLU()))
                         .setFactory(spyFactory))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
-                        .setLambda(0.0035));
+                        .setLambda(0.003));
     }
 
     @NotNull

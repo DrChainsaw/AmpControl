@@ -3,6 +3,7 @@ package ampcontrol.model.training.model.evolve.mutate.state;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -10,6 +11,7 @@ import java.util.stream.IntStream;
 import static ampcontrol.model.training.model.evolve.mutate.state.GenericMutationStateTest.createIntStateMutation;
 import static ampcontrol.model.training.model.evolve.mutate.state.GenericMutationStateTest.createSaveStateMutation;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Test cases for {@link AggMutationState}
@@ -69,15 +71,19 @@ public class AggMutationStateTest {
      */
     @Test
     public void save() {
-        final List<GenericMutationStateTest.SaveProbe> probes = IntStream.range(0,17).mapToObj(GenericMutationStateTest.SaveProbe::new).collect(Collectors.toList());
+        final List<GenericMutationStateTest.SaveProbe> probes = IntStream.range(0, 17).mapToObj(GenericMutationStateTest.SaveProbe::new).collect(Collectors.toList());
         final AggMutationState<Integer> aggMutationState = probes.stream()
                 .reduce(AggMutationState.<Integer>builder(),
                         (builder, probe) -> builder.andThen(createSaveStateMutation(probe.getExpectInt(), probe)),
                         (builder1, builder2) -> builder2)
                 .build();
 
-        aggMutationState.save("test");
-        probes.forEach(probe -> assertEquals("Incorrect dirname!", "test", probe.getLastString()));
+        try {
+            aggMutationState.save("test");
+            probes.forEach(probe -> assertEquals("Incorrect dirname!", "test", probe.getLastString()));
+        } catch (IOException e) {
+            fail("Unexpected exception!");
+        }
     }
 
 }

@@ -13,6 +13,7 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.function.Function;
 
 
@@ -59,6 +60,12 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
         return graph;
     }
 
+    @Override
+    public void saveModel(String fileName) throws IOException {
+        ModelAdapter.super.saveModel(fileName);
+        mutation.save(fileName);
+    }
+
     /**
      * Evolve the graph adapter
      *
@@ -71,11 +78,12 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
         final ComputationGraphConfiguration.GraphBuilder mutated = newMutationState.mutate(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
                         new NeuralNetConfiguration.Builder(graph.conf().clone())));
+        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph);
+
         final ComputationGraph newGraph = new ComputationGraph(mutated.build());
         newGraph.init();
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());
         newGraph.getConfiguration().setEpochCount(graph.getEpochCount());
-        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph);
         return new EvolvingGraphAdapter(parameterTransfer.transferWeightsTo(newGraph), newMutationState, parameterTransferFactory);
     }
 }
