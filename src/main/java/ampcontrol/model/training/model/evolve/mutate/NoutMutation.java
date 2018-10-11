@@ -90,7 +90,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
                         final long newNIn = newLayerConf.getNIn() - nNinDelta;
 
-                        log.info("Mutating nIn of layer " + newLayerConf.getLayerName() + "from " + newLayerConf.getNIn() + " to " + newNIn);
+                        log.info("Mutating nIn of layer " + newLayerConf.getLayerName() + " from " + newLayerConf.getNIn() + " to " + newNIn);
 
                         newLayerConf.setNIn(newNIn);
                         if (changeNinMeansChangeNout(newLayerConf)) {

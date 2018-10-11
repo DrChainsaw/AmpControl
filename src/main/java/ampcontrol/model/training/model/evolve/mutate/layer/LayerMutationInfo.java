@@ -95,7 +95,9 @@ public class LayerMutationInfo {
                         .map(inputNames -> inputNames.stream()
                                 .mapToLong(inputLayerName -> sumPrevSize(inputLayerName, graphBuilder, FeedForwardLayer::getNOut))
                                 .sum())
-                        .orElseThrow(() -> new IllegalStateException("No inputs found for " + layerName)));
+                        .orElseGet(() -> graphBuilder.getNetworkInputTypes().stream()
+                                .mapToLong(inputType -> inputType.getShape(false)[0])
+                                .sum()));
 
     }
 

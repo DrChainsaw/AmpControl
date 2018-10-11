@@ -253,8 +253,10 @@ public final class MutatingConv2dFactory {
             baseBuilder.buildGraph(); // Just to populate mutationLayers...
 
             final SharedSynchronizedState<MutationLayerState> initialState = new SharedSynchronizedState<>(mutationLayerState);
-            final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState = view ->
-                    view.update(view.get().clone()).copy();
+            final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState = view -> {
+                allNoutMutationLayers.addAll(view.get().getMutateNout());
+                return view.update(view.get().clone()).copy();
+            };
 
             allNoutMutationLayers.addAll(mutateNoutLayers);
             final Random seedGenNout = new Random(candInd);
@@ -267,7 +269,12 @@ public final class MutatingConv2dFactory {
                                 new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                                 return gb;
                             }))
-                            .second(new GenericMutationState<>(
+                            .andThen(new GenericMutationState<>(
+                                    initialState.view(),
+                                    copyState,
+                                    (str, set) -> {/* TBD */},
+                                    state -> createRemoveLayersMutation(state.get().getRemoveLayers(), state.get(), seedRemoveLayer.nextInt())))
+                            .andThen(new GenericMutationState<>(
                                     initialState.view(),
                                     copyState,
                                     (str, set) -> {/* TBD */},
@@ -277,11 +284,6 @@ public final class MutatingConv2dFactory {
                                     copyState,
                                     (str, set) -> {/* TBD */},
                                     state -> createKernelSizeMutation(state.get().getMutateKernelSize(), seedGenKs.nextInt())))
-                            .andThen(new GenericMutationState<>(
-                                    initialState.view(),
-                                    copyState,
-                                    (str, set) -> {/* TBD */},
-                                    state -> createRemoveLayersMutation(state.get().getRemoveLayers(), state.get(), seedRemoveLayer.nextInt())))
                             .andThen(new GenericMutationState<>(
                                     initialState.view(),
                                     copyState,
@@ -345,7 +347,7 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .andThen((adapter, consumer) -> {
                                             final Set<String> existingLayers = new LinkedHashSet<>(mutateNoutLayers);
-                                            existingLayers.retainAll(((ComputationGraph)adapter.asModel()).getConfiguration().getVertices().keySet());
+                                            existingLayers.retainAll(((ComputationGraph) adapter.asModel()).getConfiguration().getVertices().keySet());
                                             for (String layerName : existingLayers) {
                                                 final ActivationContributionComparator comparator = new ActivationContributionComparator();
                                                 adapter.asModel().addListeners(new ActivationContribution(layerName, comparator));
@@ -454,7 +456,7 @@ public final class MutatingConv2dFactory {
                 .mutation(graphBuilder -> {
                     final Map<String, List<String>> validVertexes = graphBuilder.getVertexInputs().entrySet().stream()
                             // Skip spy vertexes as this will break Activation contribution
-                            .filter(vertexInfo -> !vertexInfo.getKey().contains("spy"))
+                            .filter(vertexInfo -> !vertexInfo.getKey().matches("^spy.*"))
                             // Skip vertexes which are not input to any other vertex (i.e they are output layers)
                             .filter(vertexInfo -> graphBuilder.getVertexInputs().values().stream()
                                     .flatMap(Collection::stream)
@@ -522,7 +524,6 @@ public final class MutatingConv2dFactory {
                 .map(name -> createUniqueVertexName("_" + name, graphBuilder))
                 .findAny()
                 .orElse(wantedName);
-
     }
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createRemoveLayersMutation(
@@ -535,22 +536,25 @@ public final class MutatingConv2dFactory {
                 .peek(vertexToRemove -> log.info("Attempt to remove " + vertexToRemove))
                 // Collect subset to avoid that the removeListener causes ConcurrentModificationExceptions
                 .collect(Collectors.toSet()).stream()
-                .peek(removeListener)
                 .map(vertexToRemove -> GraphMutation.GraphMutationDescription.builder()
                         .mutation(graphBuilder -> {
 
+                            if (graphBuilder.getVertexInputs().get(vertexToRemove).stream()
+                                    .anyMatch(inputName -> graphBuilder.getNetworkInputs().contains(inputName))) {
+                                return GraphMutation.InputsAndOutputNames.builder().build();
+                            }
 
-                            final GraphMutation.InputsAndOutputNames toRet = new RemoveLayerFunction(vertexToRemove).apply(graphBuilder);
                             // Remove any spy vertices as well since they don't to anything useful by themselves
                             graphBuilder.getVertexInputs().entrySet().stream()
                                     .filter(vertexInfo -> vertexInfo.getValue().contains(vertexToRemove))
-                                    .filter(vertexInfo -> vertexInfo.getKey().contains("spy"))
+                                    .filter(vertexInfo -> vertexInfo.getKey().matches("^spy.*"))
                                     .map(Map.Entry::getKey)
                                     .collect(Collectors.toList())
                                     .forEach(spyVertexName ->
                                             new RemoveLayerFunction(spyVertexName).apply(graphBuilder)
                                     );
-                            return toRet;
+                            removeListener.accept(vertexToRemove);
+                            return new RemoveLayerFunction(vertexToRemove).apply(graphBuilder);
                         })
                         .build()));
     }
@@ -607,5 +611,4 @@ public final class MutatingConv2dFactory {
         mutated.init();
         return mutated;
     }
-
 }

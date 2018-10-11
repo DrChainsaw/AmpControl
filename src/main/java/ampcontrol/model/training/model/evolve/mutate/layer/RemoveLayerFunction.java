@@ -5,6 +5,7 @@ import org.deeplearning4j.nn.conf.layers.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,15 +31,25 @@ public class RemoveLayerFunction implements Function<ComputationGraphConfigurati
     @Override
     public GraphMutation.InputsAndOutputNames apply(ComputationGraphConfiguration.GraphBuilder graphBuilder) {
 
+        // WTF is this about? graphBuilder.removeVertex(vertexName, true) will go through all vertexInputs and
+        // remove vertexToRemove from the list of inputs. However, this list is typically created by Array.asList
+        // which returns an immutable list. Here we replace that list with a mutable instance.
+        graphBuilder.getVertexInputs().entrySet().stream()
+                .filter(entry -> entry.getValue().contains(vertexNameToRemove))
+                .forEach(entry -> graphBuilder.getVertexInputs().put(entry.getKey(), new ArrayList<>(entry.getValue())));
+
         final List<String> outputNames = graphBuilder.getVertexInputs().entrySet().stream()
                 .filter(entry -> entry.getValue().contains(vertexNameToRemove))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
 
-        final List<String> inputNames = graphBuilder.getVertexInputs().get(vertexNameToRemove);
+        final List<String> inputNames = new ArrayList<>(graphBuilder.getVertexInputs().get(vertexNameToRemove));
 
         final long nOut = LayerMutationInfo.getOutputSize(vertexNameToRemove, graphBuilder);
         final long nIn = LayerMutationInfo.getInputSize(vertexNameToRemove, graphBuilder);
+        log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
+                " nIn: " + nIn + " nOut: " + nOut);
+
         graphBuilder.removeVertex(vertexNameToRemove, true);
 
         outputNames.forEach(outputName ->
@@ -46,8 +57,6 @@ public class RemoveLayerFunction implements Function<ComputationGraphConfigurati
                         outputName,
                         graphBuilder.getVertices().get(outputName),
                         inputNames.toArray(new String[0])));
-
-        log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames + " nOut: " + nOut);
 
         // Not possible to change network inputs (e.g. image size)
         final boolean isAnyLayerInputNetworkInput = graphBuilder.getNetworkInputs().stream()
