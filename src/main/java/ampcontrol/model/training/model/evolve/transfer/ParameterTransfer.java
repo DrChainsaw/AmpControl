@@ -8,6 +8,9 @@ import org.deeplearning4j.nn.params.BatchNormalizationParamInitializer;
 import org.deeplearning4j.nn.params.CenterLossParamInitializer;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -90,7 +93,16 @@ public class ParameterTransfer {
             } else {
                 transferAllParameters(registry, layerName, sourceParams, targetParams);
             }
+        } else {
+            // Set weights to ID mapping (if possible) for new layers
+            // TODO This decision does not really belong to this class!
+            targetVertexMaybe
+                    .map(vertex -> vertex.paramTable(false))
+                    .filter(parMap -> parMap.containsKey(W))
+                    .map(parMap -> parMap.get(W))
+                    .ifPresent(ParameterTransfer::setIdentityMapping);
         }
+
     }
 
     private TransferTask.ListBuilder initReshapeListBuilder(
@@ -248,6 +260,25 @@ public class ParameterTransfer {
             firstTaskBuilder.build().execute();
         });
 
+    }
+
+    private static void setIdentityMapping(INDArray weights) {
+        if (weights.size(0) != weights.size(1)) {
+            // ID mapping not possible?
+            return;
+        }
+
+        if (weights.shape().length == 2) {
+            weights.assign(Nd4j.eye(weights.size(0)));
+        } else if (weights.shape().length == 4 && weights.size(2) % 2 == 1 && weights.size(3) % 2 == 1) {
+            weights.assign(Nd4j.zeros(weights.shape()));
+            final long centerH = weights.size(2) / 2;
+            final long centerW = weights.size(3) / 2;
+            for (int i = 0; i < weights.size(0); i++) {
+                weights.put(new INDArrayIndex[]{NDArrayIndex.point(i), NDArrayIndex.point(i), NDArrayIndex.point(centerH), NDArrayIndex.point(centerW)},
+                        Nd4j.ones(1));
+            }
+        }
     }
 
     /**

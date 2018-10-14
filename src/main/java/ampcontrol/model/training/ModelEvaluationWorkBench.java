@@ -13,7 +13,7 @@ import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutatio
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
 import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
-import ampcontrol.model.training.model.layerblocks.Conv2DBatchNormAfter;
+import ampcontrol.model.training.model.layerblocks.Conv2D;
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
@@ -24,12 +24,8 @@ import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.INDArrayIndex;
-import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +56,7 @@ class ModelEvaluationWorkBench {
 
     public void evalute(final ComputationGraph graph, final String layer) {
 
-         evalBaseline(graph);
+        evalBaseline(graph);
 
         evalAddConvBlock(graph, layer);
 
@@ -88,7 +84,7 @@ class ModelEvaluationWorkBench {
                                                 new BlockMutationFunction(
                                                         nOut ->
                                                                 //new ResBlock().setBlockConfig(
-                                                                        new Conv2DBatchNormAfter()
+                                                                        new Conv2D()
                                                                                 .setConvolutionMode(ConvolutionMode.Same)
                                                                                 .setKernelSize(3)
                                                                                 .setNrofKernels(nOut.intValue())
@@ -98,16 +94,6 @@ class ModelEvaluationWorkBench {
                                         .build())
                         ))
                         .build())).evolve();
-        final ComputationGraph newGraph = (ComputationGraph) addConvBlock.asModel();
-        final INDArray weigths = newGraph.getLayer("mut_0").paramTable().get(DefaultParamInitializer.WEIGHT_KEY);
-        weigths.assign(Nd4j.zeros(weigths.shape()));
-        for (int i = 0; i < weigths.size(0); i++) {
-            weigths.put(new INDArrayIndex[]{NDArrayIndex.point(i), NDArrayIndex.point(i), NDArrayIndex.all(), NDArrayIndex.all()},
-                    Nd4j.create(new double[][]{
-                            {0, 0, 0},
-                            {0, 1, 0},
-                            {0, 0, 0}}));
-        }
         evaluateExperiment(addConvBlock, "addConvBlock: ");
     }
 

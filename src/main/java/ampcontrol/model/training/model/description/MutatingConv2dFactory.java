@@ -432,18 +432,18 @@ public final class MutatingConv2dFactory {
                 nOut -> new Conv2DBatchNormAfter()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(5))
-                        .setKernelSize_h(1 + rng.nextInt(5)),
+                        .setKernelSize_w(1 + rng.nextInt(10)/2)
+                        .setKernelSize_h(1 + rng.nextInt(10)/2),
                 nOut -> new Conv2DBatchNormBefore()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(5))
-                        .setKernelSize_h(1 + rng.nextInt(5)),
+                        .setKernelSize_w(1 + rng.nextInt(10)/2)
+                        .setKernelSize_h(1 + rng.nextInt(10)/2),
                 nOut -> new Conv2DBatchNormBetween()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(5))
-                        .setKernelSize_h(1 + rng.nextInt(5)));
+                        .setKernelSize_w(1 + rng.nextInt(10)/2)
+                        .setKernelSize_h(1 + rng.nextInt(10)/2));
 
         final List<Function<Long, LayerBlockConfig>> afterGpBlocks = Arrays.asList(
                 nOut -> new Dense().setHiddenWidth(nOut.intValue()));
