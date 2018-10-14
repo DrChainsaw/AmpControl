@@ -36,7 +36,7 @@ public class FitnessPolicyTraining<T extends ModelAdapter> implements FitnessPol
                 scoreSum += score;
                 cnt++;
                 if (cnt == nrofItersToAccumulate) {
-                    final double scoreContrib = Math.round(scoreSum * 1e2 / cnt) / 1e2;
+                    final double scoreContrib = Math.round(scoreSum * 1e3 / cnt) / 1e3;
                     final double paramContrib = candidate.asModel().numParams() / 1e10;
                     log.info("score: " + (scoreSum / cnt) + " contrib: " + scoreContrib);
                     log.info("params: " + candidate.asModel().numParams() + " contrib: " + paramContrib);

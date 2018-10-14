@@ -3,13 +3,13 @@ package ampcontrol.model.training.model.layerblocks.graph;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
-import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
+import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 
 import java.util.function.UnaryOperator;
 
 /**
- * Allows for spying on information about added layers through a {@link GraphSpyAdapter.LayerSpy}.
+ * Allows for spying on information about added layers through a {@link LayerSpyAdapter.LayerSpy}.
  *
  * @author Christian Skärby
  */

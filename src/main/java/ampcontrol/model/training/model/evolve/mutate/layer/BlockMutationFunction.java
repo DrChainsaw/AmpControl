@@ -1,9 +1,11 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
-import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
+import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
+import ampcontrol.model.training.model.layerblocks.adapters.VertexSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.slf4j.Logger;
@@ -31,12 +33,12 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
     private final String[] inputNames;
     private final Function<String, String> nameMapping;
 
-    private final static class FirstLayersSpy implements GraphSpyAdapter.LayerSpy {
+    private final static class InputLayersSpy implements LayerSpyAdapter.LayerSpy {
 
         private final Set<String> blockInputs;
         private final Set<String> firstLayers = new HashSet<>();
 
-        private FirstLayersSpy(Set<String> blockInputs) {
+        private InputLayersSpy(Set<String> blockInputs) {
             this.blockInputs = blockInputs;
         }
 
@@ -44,6 +46,23 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
         public void accept(String layerName, Layer layer, String... layerInputs) {
             if (Stream.of(layerInputs).anyMatch(blockInputs::contains)) {
                 firstLayers.add(layerName);
+            }
+        }
+    }
+
+    private final static class InputVerticesSpy implements VertexSpyAdapter.VertexSpy {
+
+        private final Set<String> blockInputs;
+        private final Set<String> firstLayers = new HashSet<>();
+
+        private InputVerticesSpy (Set<String> blockInputs) {
+            this.blockInputs = blockInputs;
+        }
+
+        @Override
+        public void accept(String vertexName, GraphVertex vertex, String... vertexInputs) {
+            if (Stream.of(vertexInputs).anyMatch(blockInputs::contains)) {
+                firstLayers.add(vertexName);
             }
         }
     }
@@ -76,8 +95,6 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
                 .setPrevNrofOutputs((int) nIn)
                 .build();
 
-        final FirstLayersSpy spy = new FirstLayersSpy(Stream.of(inputNames).collect(Collectors.toSet()));
-
         final long nOut = Stream.of(inputNames)
                 .flatMap(inputName -> graphBuilder.getVertexInputs().entrySet()
                         .stream()
@@ -86,8 +103,12 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
                 .mapToLong(layerName -> getInputSizeForward(layerName, graphBuilder))
                 .sum();
 
+        final InputLayersSpy layersSpy = new InputLayersSpy(Stream.of(inputNames).collect(Collectors.toSet()));
+        final InputVerticesSpy verticesSpy = new InputVerticesSpy(Stream.of(inputNames).collect(Collectors.toSet()));
+
+
         final LayerBlockConfig conf = new SpyBlock(blockConfigFactory.apply(nOut))
-                .setFactory(adapter -> new GraphSpyAdapter(spy, adapter));
+                .setFactory(adapter -> new LayerSpyAdapter(layersSpy, new VertexSpyAdapter(verticesSpy, adapter)));
         log.info("Adding " + conf.name() + " to " + Arrays.toString(inputNames));
 
         final LayerBlockConfig.BlockInfo outinfo = conf.addLayers(graphBuilder, blockInfo);
@@ -95,7 +116,7 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
         return GraphMutation.InputsAndOutputNames.builder()
                 .outputName(outinfo.getInputsNames()[0])
                 .inputNames(Arrays.asList(inputNames))
-                .keepInputConnection(spy.firstLayers::contains)
+                .keepInputConnection(name -> layersSpy.firstLayers.contains(name) ||verticesSpy.firstLayers.contains(name))
                 .build();
     }
 

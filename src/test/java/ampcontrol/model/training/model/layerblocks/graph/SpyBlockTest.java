@@ -2,8 +2,8 @@ package ampcontrol.model.training.model.layerblocks.graph;
 
 import ampcontrol.model.training.model.layerblocks.Dense;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
-import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
-import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapterTest;
+import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
+import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapterTest;
 import ampcontrol.model.training.model.layerblocks.adapters.ProbeAdapter;
 import org.junit.Test;
 
@@ -23,9 +23,9 @@ public class SpyBlockTest {
     @Test
     public void addLayers() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        final GraphSpyAdapterTest.ProbeSpy probeSpy = new GraphSpyAdapterTest.ProbeSpy();
+        final LayerSpyAdapterTest.ProbeSpy probeSpy = new LayerSpyAdapterTest.ProbeSpy();
         new SpyBlock(new Dense())
-                .setFactory(graphBuilderAdapter -> new GraphSpyAdapter(probeSpy, graphBuilderAdapter))
+                .setFactory(graphBuilderAdapter -> new LayerSpyAdapter(probeSpy, graphBuilderAdapter))
                 .addLayers(probeAdapter, new LayerBlockConfig.SimpleBlockInfo.Builder()
                         .setInputs(new String[]{"666", "addLayer2"})
                         .setPrevLayerInd(666)

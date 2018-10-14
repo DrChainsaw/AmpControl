@@ -186,11 +186,11 @@ public class TrainingDescription {
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
 
-        new MutatingConv2dFactory(trainIter,evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
+        new MutatingConv2dFactory(trainIter, evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
 
 //        try {
-//            final ComputationGraph graph = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("-1332796625_best\\5")), true);
-//            new ModelEvaluationWorkBench(trainIter, evalIter).evalute(graph, "3");
+//            final ComputationGraph graph = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("-245743825_best\\0")), true);
+//            new ModelEvaluationWorkBench(trainIter, evalIter).evalute(graph, "4");
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }

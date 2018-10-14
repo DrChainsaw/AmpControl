@@ -128,11 +128,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         }
 
 
+        return layerVertex.getLayerConf().getLayer() instanceof BatchNormalization;
 
-        if (layerVertex.getLayerConf().getLayer() instanceof BatchNormalization) {
-            return true;
-        }
-
-        return false;
     }
 }

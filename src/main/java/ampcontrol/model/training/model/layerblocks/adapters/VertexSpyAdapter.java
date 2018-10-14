@@ -5,46 +5,41 @@ import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.layers.Layer;
 
 /**
- * Allows for spying on information about added layers through a {@link LayerSpy}.
+ * Allows for spying on information about added vertices through a {@link VertexSpy}.
  *
  * @author Christian Skärby
  */
-public class GraphSpyAdapter implements GraphBuilderAdapter {
+public class VertexSpyAdapter implements GraphBuilderAdapter {
 
     private final GraphBuilderAdapter adapter;
-    private final LayerSpy spy;
+    private final VertexSpy vertexSpy;
 
     /**
-     * Constructor
-     * @param spy Will be notified of added layers
-     * @param adapter {@link GraphBuilderAdapter} to spy on
+     * Interface from which vertex info is obtained.
      */
-    public GraphSpyAdapter(LayerSpy spy, GraphBuilderAdapter adapter) {
-        this.adapter = adapter;
-        this.spy = spy;
-    }
-
-    /**
-     * Interface from which layer info is obtained.
-     */
-    public interface LayerSpy {
+    public interface VertexSpy {
         /**
          * Obtain information about added layers
-         * @param layerName Name of added layer
-         * @param layer {@link Layer} to add
-         * @param layerInputs names ofinputs to said layer
+         * @param vertexName Name of added layer
+         * @param vertex {@link Layer} to add
+         * @param vertexInputs names of inputs to said layer
          */
-        void accept(String layerName, Layer layer, String... layerInputs);
+        void accept(String vertexName, GraphVertex vertex, String... vertexInputs);
+    }
+
+    public VertexSpyAdapter(VertexSpy vertexSpy, GraphBuilderAdapter adapter) {
+        this.adapter = adapter;
+        this.vertexSpy = vertexSpy;
     }
 
     @Override
     public GraphBuilderAdapter addLayer(String layerName, Layer layer, String... layerInputs) {
-        spy.accept(layerName, layer, layerInputs);
         return adapter.addLayer(layerName, layer, layerInputs);
     }
 
     @Override
     public GraphBuilderAdapter addVertex(String vertexName, GraphVertex vertex, String... vertexInputs) {
+        vertexSpy.accept(vertexName, vertex, vertexInputs);
         return adapter.addVertex(vertexName, vertex, vertexInputs);
     }
 
@@ -55,9 +50,6 @@ public class GraphSpyAdapter implements GraphBuilderAdapter {
 
     @Override
     public LayerBlockConfig.BlockInfo layer(LayerBlockConfig.BlockInfo info, Layer layer) {
-        final String[] inputs = info.getInputsNames();
-        final LayerBlockConfig.BlockInfo outInfo = adapter.layer(info, layer);
-        spy.accept(outInfo.getInputsNames()[0], layer, inputs);
-        return outInfo;
+        return adapter.layer(info, layer);
     }
 }

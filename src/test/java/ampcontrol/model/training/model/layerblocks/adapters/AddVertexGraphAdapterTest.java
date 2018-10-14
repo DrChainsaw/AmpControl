@@ -10,11 +10,11 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
 /**
- * Test cases for {@link VertexSpyGraphAdapter}
+ * Test cases for {@link AddVertexGraphAdapter}
  *
  * @author Christian Skärby
  */
-public class VertexSpyGraphAdapterTest {
+public class AddVertexGraphAdapterTest {
 
     /**
      * Test that no spy operation is transparent.
@@ -22,7 +22,7 @@ public class VertexSpyGraphAdapterTest {
     @Test
     public void addLayerNoSpy() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> false, probeAdapter).addLayer("addLayer",
+        new AddVertexGraphAdapter(new EpsilonSpyVertex(), layername -> false, probeAdapter).addLayer("addLayer",
                 new DenseLayer.Builder().build(),
                 "addLayerInput1", "addLayerInput2");
         assertEquals("Adapter did not get input!", 3, probeAdapter.inputs.size());
@@ -34,7 +34,7 @@ public class VertexSpyGraphAdapterTest {
     @Test(expected = IllegalArgumentException.class)
     public void addLayer() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> true, probeAdapter).addLayer("addLayer",
+        new AddVertexGraphAdapter(new EpsilonSpyVertex(), layername -> true, probeAdapter).addLayer("addLayer",
                 new DenseLayer.Builder().build(),
                 "addLayerInput1", "addLayerInput2");
     }
@@ -45,7 +45,7 @@ public class VertexSpyGraphAdapterTest {
     @Test
     public void addVertexNoSpy() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> false, probeAdapter).addVertex("addVertex",
+        new AddVertexGraphAdapter(new EpsilonSpyVertex(), layername -> false, probeAdapter).addVertex("addVertex",
                 new ScaleVertex(2),
                 "addVertexInput1", "addVertexInput2");
         assertEquals("Adapter did not get input!", 3, probeAdapter.inputs.size());
@@ -57,7 +57,7 @@ public class VertexSpyGraphAdapterTest {
     @Test(expected = IllegalArgumentException.class)
     public void addVertexSpy() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername -> true, probeAdapter).addVertex("addVertex",
+        new AddVertexGraphAdapter(new EpsilonSpyVertex(), layername -> true, probeAdapter).addVertex("addVertex",
                 new ScaleVertex(2),
                 "addVertexInput1", "addVertexInput2"); // exception!
     }
@@ -68,7 +68,7 @@ public class VertexSpyGraphAdapterTest {
     @Test
     public void mergeIfMultiple() {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
-        new VertexSpyGraphAdapter(new EpsilonSpyVertex(), layername->true, probeAdapter).mergeIfMultiple("mergeIf",
+        new AddVertexGraphAdapter(new EpsilonSpyVertex(), layername->true, probeAdapter).mergeIfMultiple("mergeIf",
                 new String[]{"mergeIf1", "mergeIf2"});
         assertEquals("Incorrect data to adapter", 2, probeAdapter.inputs.size());
     }
@@ -78,7 +78,7 @@ public class VertexSpyGraphAdapterTest {
         final ProbeAdapter probeAdapter = new ProbeAdapter();
         final String layerName = "666";
         final String spyPrefix = "spy_";
-        new VertexSpyGraphAdapter(probeAdapter, new EpsilonSpyVertex(), layerName::equals, spyPrefix).layer(new LayerBlockConfig.SimpleBlockInfo.Builder()
+        new AddVertexGraphAdapter(probeAdapter, new EpsilonSpyVertex(), layerName::equals, spyPrefix).layer(new LayerBlockConfig.SimpleBlockInfo.Builder()
                         .setPrevLayerInd(666)
                         .setInputs(new String[]{layerName})
                         .build(),

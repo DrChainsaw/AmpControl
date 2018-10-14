@@ -22,6 +22,14 @@ import java.util.function.Function;
 @Getter
 public class LayerMutationInfo {
 
+    private final String layerName;
+
+    private final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Long> outputSizeMapping =
+            LayerMutationInfo::getOutputSize;
+
+    final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Long> inputSizeMapping =
+            LayerMutationInfo::getInputSize;
+
     /**
      * Returns a {@link LayerVertex} with the given name if one exists in the {@link ComputationGraphConfiguration.GraphBuilder}.
      * Would very much prefer to do this some other way, but the API does not seem allow for it
@@ -100,13 +108,4 @@ public class LayerMutationInfo {
                                 .sum()));
 
     }
-
-
-    private final String layerName;
-
-    private final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Long> outputSizeMapping =
-            LayerMutationInfo::getOutputSize;
-
-    final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Long> inputSizeMapping =
-            LayerMutationInfo::getInputSize;
 }

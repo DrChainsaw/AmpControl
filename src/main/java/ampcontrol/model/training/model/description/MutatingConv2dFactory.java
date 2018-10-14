@@ -23,9 +23,9 @@ import ampcontrol.model.training.model.evolve.mutate.state.*;
 import ampcontrol.model.training.model.evolve.selection.*;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
+import ampcontrol.model.training.model.layerblocks.adapters.AddVertexGraphAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
-import ampcontrol.model.training.model.layerblocks.adapters.GraphSpyAdapter;
-import ampcontrol.model.training.model.layerblocks.adapters.VertexSpyGraphAdapter;
+import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import ampcontrol.model.training.model.naming.AddSuffix;
 import ampcontrol.model.training.model.naming.FileNamePolicy;
@@ -167,7 +167,7 @@ public final class MutatingConv2dFactory {
 
         @Override
         public GraphBuilderAdapter apply(GraphBuilderAdapter graphBuilderAdapter) {
-            final GraphSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
+            final LayerSpyAdapter.LayerSpy nOutSpy = (layerName, layer, layerInputs) -> {
                 if (layer instanceof ConvolutionLayer) {
                     state.mutateNout.add(layerName);
                 } else if (layer instanceof DenseLayer) {
@@ -175,22 +175,22 @@ public final class MutatingConv2dFactory {
                 }
             };
 
-            final GraphSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
+            final LayerSpyAdapter.LayerSpy kernelSizeSpy = (layerName, layer, layerInputs) -> {
                 if (layer instanceof ConvolutionLayer) {
                     state.mutateKernelSize.add(layerName);
                 }
             };
 
-            final GraphSpyAdapter.LayerSpy removeVertexSpy = (layerName, layer, layerInputs) -> {
+            final LayerSpyAdapter.LayerSpy removeVertexSpy = (layerName, layer, layerInputs) -> {
                 if (!(layer instanceof OutputLayer)) {
                     state.removeLayers.add(layerName);
                 }
             };
 
-            return new VertexSpyGraphAdapter(new EpsilonSpyVertex(), state.mutateNout::contains,
-                    new GraphSpyAdapter(nOutSpy,
-                            new GraphSpyAdapter(kernelSizeSpy,
-                                    new GraphSpyAdapter(removeVertexSpy,
+            return new AddVertexGraphAdapter(new EpsilonSpyVertex(), state.mutateNout::contains,
+                    new LayerSpyAdapter(nOutSpy,
+                            new LayerSpyAdapter(kernelSizeSpy,
+                                    new LayerSpyAdapter(removeVertexSpy,
                                             graphBuilderAdapter))));
 
         }
