@@ -5,6 +5,7 @@ import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -173,6 +174,7 @@ public class ParameterTransferNoutMutationTest {
 
     /**
      * Test to decrease nOut in a residual conv layer followed by batchnorm and another residual conv layer.
+     * Smoke test since more or less all layers are touched so checking would be beyond painful.
      */
     @Test
     public void decreaseResNet() {
@@ -180,8 +182,6 @@ public class ParameterTransferNoutMutationTest {
         final String mutationName = "secondResConvToMutate";
         final String afterName = "afterMutate";
         final ComputationGraph graph = GraphUtils.getResNet(firstName, mutationName, afterName);
-
-        graph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
 
         final long newNout = 5;
         final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
@@ -198,8 +198,19 @@ public class ParameterTransferNoutMutationTest {
         newGraph.init();
         newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
 
-       // final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
-       // mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+        final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        Stream.of(mutatedGraph.getVertices())
+                .filter(GraphVertex::hasLayer)
+                .map(GraphVertex::getLayer)
+                .filter(layer -> layer.numParams() > 0)
+                .forEach(layer ->
+                    assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
+                            graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
+                            layer.params().meanNumber())
+                );
+
     }
 
     @NotNull

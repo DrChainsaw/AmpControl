@@ -8,13 +8,14 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
-import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -52,13 +53,13 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         }
 
         private void addInput(String name) {
-            if(!input.add(name)) {
+            if (!input.add(name)) {
                 throw new IllegalStateException("Visited " + name + " twice!");
             }
         }
 
         private void addOutput(String name) {
-            if(!output.add(name)) {
+            if (!output.add(name)) {
                 throw new IllegalStateException("Visited " + name + " twice!");
             }
         }
@@ -93,36 +94,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         return builder;
     }
 
-    private void updateNinOfOutputLayer(
-            GraphBuilder builder,
-            String layerName) {
-        final Map<String, List<String>> vertexInputss = new LinkedHashMap<>(builder.getVertexInputs());
-        vertexInputss.entrySet().stream().filter(entry -> entry.getValue().contains(layerName))
-                .map(Map.Entry::getKey)
-                .forEachOrdered(outputName -> {
-
-                    final GraphVertex graphVertex = builder.getVertices().get(outputName);
-                    if (graphVertex instanceof LayerVertex && ((LayerVertex) graphVertex).getLayerConf().getLayer() instanceof FeedForwardLayer) { // Layer for which it is possible to set inputs
-
-
-                        final FeedForwardLayer layerConf = (FeedForwardLayer) ((LayerVertex) graphVertex).getLayerConf().getLayer();
-
-                        final long newNIn = calculatePreviousNout(outputName, builder);
-
-                        log.info("Mutating nIn of layer " + layerConf.getLayerName() + " from " + layerConf.getNIn() + " to " + newNIn);
-
-                        layerConf.setNIn(newNIn);
-                        if (changeNinMeansChangeNout(layerConf)) {
-                            layerConf.setNOut(newNIn);
-                        }
-
-                    }
-                    if (doesSizeChangePropagate(graphVertex)) {
-                        updateNinOfOutputLayer(builder, outputName);
-                    }
-                });
-    }
-
     private void propagateNOutChange(
             HasVistited visited,
             GraphBuilder builder,
@@ -130,7 +101,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             long newSize) {
 
         //System.out.println("Handle NOut change " + layerName);
-        if(builder.getNetworkInputs().contains(layerName)) {
+        if (builder.getNetworkInputs().contains(layerName)) {
             return;
         }
 
@@ -139,7 +110,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet())) {
 
-            if(visited.output(outputName)) {
+            if (visited.output(outputName)) {
                 continue;
             }
 
@@ -153,13 +124,13 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                     .ifPresent(layer -> {
                         //System.out.println("\t Set nIn of layer " + outputName);
                         layer.setNIn(newSize);
-                        if(changeNinMeansChangeNout(layer)) {
+                        if (changeNinMeansChangeNout(layer)) {
                             layer.setNOut(newSize);
                         }
                     });
             final GraphVertex vertex = builder.getVertices().get(outputName);
 
-            if(doesSizeChangePropagate(vertex)) {
+            if (doesSizeChangePropagate(vertex)) {
                 propagateNOutChange(
                         visited,
                         builder,
@@ -167,7 +138,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                         newSize);
             }
 
-            if(doesNOutChangePropagateToInputs(vertex)) {
+            if (doesNOutChangePropagateToInputs(vertex)) {
                 propagateNOutChangeToInputs(
                         visited,
                         builder,
@@ -186,14 +157,14 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             long newSize) {
 
         //System.out.println("Handle NOut change backwards " + layerName);
-        if(builder.getNetworkInputs().contains(layerName)) {
+        if (builder.getNetworkInputs().contains(layerName)) {
             return;
         }
 
         for (String inputName : builder.getVertexInputs().get(layerName)) {
 
-            if(visited.input(inputName)) {
-               continue;
+            if (visited.input(inputName)) {
+                continue;
             }
 
             //System.out.println("\t Handle input layer " + inputName + " in context of " + layerName);
@@ -227,44 +198,11 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         //System.out.println("Done with NOut change backwards " + layerName);
     }
 
-    private long calculatePreviousNout(String layerName, GraphBuilder builder) {
-
-
-        LongSummaryStatistics accumulator = new LongSummaryStatistics();
-        for(String inputName: builder.getVertexInputs().get(layerName)) {
-
-            if(builder.getNetworkInputs().contains(layerName)) {
-                accumulator.accept(builder.getNetworkInputTypes().get(builder.getNetworkInputs().indexOf(layerName)).getShape(false)[0]);
-            }
-
-            final Optional<LayerVertex> asLayerVertex = LayerMutationInfo.vertexAsLayerVertex.apply(inputName, builder);
-
-            accumulator.accept(LayerMutationInfo.layerVertexAsFeedForward.apply(inputName, asLayerVertex)
-                    .map(FeedForwardLayer::getNOut)
-                    .orElseGet(() -> calculatePreviousNout(inputName, builder)));
-
-        }
-        final GraphVertex vertex = builder.getVertices().get(layerName);
-        if(vertex instanceof ElementWiseVertex) {
-            if(accumulator.getMax() != accumulator.getMin()) {
-                throw new IllegalStateException("Must have same size for ElementWiseVertex! Got sizes: "
-                        + accumulator.getMin() + " and " + accumulator.getMax() + "! Inputs: "
-                        + builder.getVertexInputs().get(layerName));
-            }
-            return accumulator.getMin();
-        }
-
-        if(vertex instanceof MergeVertex) {
-            return accumulator.getSum();
-        }
-
-        if(accumulator.getCount() != 1) {
-            throw new IllegalArgumentException("Unknown vertex with more than one input: " + vertex);
-        }
-
-        return accumulator.getMin();
-    }
-
+    /**
+     * Returns true if the given layer is of a type where NIn and NOut must both be set to the same value
+     * @param layer Layer to check
+     * @return true if the given layer is of a type where NIn and NOut must both be set to the same value
+     */
     private static boolean changeNinMeansChangeNout(FeedForwardLayer layer) {
 
         // Is there any parameter which can tell this instead of hardcoding it to types like this?
@@ -280,12 +218,12 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
      * @return true if size change propagates
      */
     private static boolean doesSizeChangePropagate(GraphVertex vertex) {
-        if(!(vertex instanceof LayerVertex)) {
+        if (!(vertex instanceof LayerVertex)) {
             return true;
         }
-        LayerVertex layerVertex = (LayerVertex)vertex;
+        LayerVertex layerVertex = (LayerVertex) vertex;
 
-        if(layerVertex.numParams(false) == 0) {
+        if (layerVertex.numParams(false) == 0) {
             return true;
         }
 
@@ -298,6 +236,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
      * Return true if a change in NOut propagates the NIn of all input layers.
      * Example of this is ElementWiseVertex: If one of the layers which is input
      * changes its NOut, the other input layer must also change its NOut
+     *
      * @param vertex Vertex to check
      * @return True if change in NOut propagates to input layers
      */

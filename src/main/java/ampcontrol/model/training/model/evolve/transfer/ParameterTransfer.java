@@ -32,6 +32,7 @@ public class ParameterTransfer {
     private final ComputationGraph graph;
     private final Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory;
     private final Set<String> nInTransferredFromPreviousNoutLayers = new HashSet<>();
+    private final TransferRegistry registry;
 
     public ParameterTransfer(ComputationGraph graph) {
         this(graph, str -> Optional.empty());
@@ -40,6 +41,7 @@ public class ParameterTransfer {
     public ParameterTransfer(ComputationGraph graph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
         this.graph = graph;
         this.compFactory = compFactory;
+        this.registry = new TransferRegistry();
     }
 
     /**
@@ -50,14 +52,11 @@ public class ParameterTransfer {
      */
     public ComputationGraph transferWeightsTo(ComputationGraph newGraph) {
 
-        nInTransferredFromPreviousNoutLayers.clear();
-
-        final TransferRegistry registry = new TransferRegistry();
         final int[] topologicalOrder = newGraph.topologicalSortOrder();
         final GraphVertex[] vertices = newGraph.getVertices();
         //set params from orig graph as necessary to new graph
         for (int vertexIndex : topologicalOrder) {
-            transferParameters(registry, newGraph, vertices[vertexIndex].getVertexName());
+            transferParameters(newGraph, vertices[vertexIndex].getVertexName());
         }
         registry.commit();
         return newGraph;
@@ -71,7 +70,7 @@ public class ParameterTransfer {
                 .findAny();
     }
 
-    private void transferParameters(TransferRegistry registry, ComputationGraph newGraph, String layerName) {
+    private void transferParameters(ComputationGraph newGraph, String layerName) {
         Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
         Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
 
@@ -79,20 +78,20 @@ public class ParameterTransfer {
             final GraphVertex sourceVertex = sourceVertexMaybe.get();
             final GraphVertex targetVertex = targetVertexMaybe.get();
 
-           // System.out.println("Transfer start at " + layerName);
+            //System.out.println("Transfer start at " + layerName + " nInTransferred: " + nInTransferredFromPreviousNoutLayers);
             // log.info("Transfer parameters from " + sourceVertex.getVertexName());
 
             final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
             final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
 
             if (sourceVertex.getLayer().paramTable().containsKey(W)) {
-                TransferTask.ListBuilder taskBuilder = initReshapeListBuilder(registry, layerName, sourceParams, targetParams);
+                TransferTask.ListBuilder taskBuilder = initReshapeListBuilder(layerName, sourceParams, targetParams);
                 if (sourceParams.get(W).size(outputDim(sourceParams)) != targetParams.get(W).size(outputDim(targetParams))) {
-                    transferOutputParameters(inputDim(sourceParams), registry, newGraph, targetVertex, taskBuilder);
+                    transferOutputParameters(inputDim(sourceParams), newGraph, targetVertex, taskBuilder);
                 }
                 taskBuilder.build().execute();
             } else {
-                transferAllParameters(registry, layerName, sourceParams, targetParams);
+                transferAllParameters(layerName, sourceParams, targetParams);
             }
         } else {
             // Set weights to ID mapping (if possible) for new layers
@@ -107,7 +106,6 @@ public class ParameterTransfer {
     }
 
     private TransferTask.ListBuilder initReshapeListBuilder(
-            TransferRegistry registry,
             String layerName,
             Map<String, INDArray> sourceParams,
             Map<String, INDArray> targetParams) {
@@ -167,7 +165,6 @@ public class ParameterTransfer {
 
     private void transferOutputParameters(
             int prevInputDim,
-            TransferRegistry registry,
             ComputationGraph newGraph,
             GraphVertex rootNode,
             TransferTask.ListBuilder taskListBuilder) {
@@ -188,7 +185,7 @@ public class ParameterTransfer {
                         final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
                         final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
 
-                        addTasksFor(registry, task -> taskListBuilder.addDependentTask(task
+                        addTasksFor(task -> taskListBuilder.addDependentTask(task
                                 .maskDim(prevInputDim)
                                 .maskDim(2) // Always things like kernel size which does not transfer
                                 .maskDim(3) // Always things like kernel size which does not transfer
@@ -196,19 +193,20 @@ public class ParameterTransfer {
                         ), layerName, sourceParams, targetParams);
                     }
                     if (doesNinPropagateToNext(vertex)) {
-                        transferOutputParameters(prevInputDim, registry, newGraph, vertex, taskListBuilder);
+                        transferOutputParameters(prevInputDim, newGraph, vertex, taskListBuilder);
                     }
                 });
     }
 
     private void addTasksFor(
-            TransferRegistry registry,
             Consumer<SingleTransferTask.Builder> taskConsumer,
             String layerName,
             Map<String, INDArray> sourceParams,
             Map<String, INDArray> targetParams) {
 
-        nInTransferredFromPreviousNoutLayers.add(layerName);
+        if(!nInTransferredFromPreviousNoutLayers.add(layerName)) {
+            return;
+        }
         for (String parKey : sourceParams.keySet()) {
             outputToInputDimMapping(parKey, sourceParams.get(parKey).shape().length).ifPresent(dimMapper -> {
 
@@ -235,8 +233,7 @@ public class ParameterTransfer {
         }
     }
 
-    private void transferAllParameters(TransferRegistry registry,
-                                       String layerName,
+    private void transferAllParameters(String layerName,
                                        Map<String, INDArray> sourceParams,
                                        Map<String, INDArray> targetParams) {
 

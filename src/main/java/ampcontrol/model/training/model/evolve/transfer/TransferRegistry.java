@@ -22,7 +22,6 @@ class TransferRegistry {
 
     private final Map<INDArray, ArrayEntry> registry = new HashMap<>();
     private final Map<ArrayEntry, Runnable> actions = new LinkedHashMap<>();
-    private int runningNr = 0;
 
     class ArrayEntry {
 
@@ -181,7 +180,7 @@ class TransferRegistry {
     }
 
     ArrayEntry register(INDArray array) {
-        return register(array, String.valueOf(runningNr++));
+        return register(array, String.valueOf(registry.size()));
     }
 
     ArrayEntry register(INDArray array, String debugName) {
@@ -190,5 +189,9 @@ class TransferRegistry {
 
     void commit() {
         actions.values().forEach(Runnable::run);
+        actions.clear();
+        registry.clear();
     }
+
+
 }

@@ -199,6 +199,7 @@ public class GraphUtils {
         final int resNout = 7;
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .weightInit(new ConstantDistribution(666))
+                .biasInit(666)
                 .graphBuilder()
                 .addInputs(inputName)
                 .setOutputs(outputName)
