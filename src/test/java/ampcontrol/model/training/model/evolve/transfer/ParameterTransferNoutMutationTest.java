@@ -33,7 +33,7 @@ public class ParameterTransferNoutMutationTest {
      * Test to decrease nOut in a conv layer which is input to another conv layer and see that weights get transferred.
      */
     @Test
-    public void decreaseNoutCnnToCnn() {
+    public void decreaseNoutConvToConv() {
         final String mutationName = "toMutate";
         final String nextMutationName = "toMutateToo";
         final String afterName = "afterMutate";
@@ -51,7 +51,7 @@ public class ParameterTransferNoutMutationTest {
      * Test one layer increases while the other one increases and see that weights are transferred.
      */
     @Test
-    public void increaseDecreaseNoutCnnToCnn() {
+    public void increaseDecreaseNoutConvToConv() {
         final String mutationName = "toMutate";
         final String nextMutationName = "toMutateToo";
         final String afterName = "afterMutate";
@@ -169,6 +169,37 @@ public class ParameterTransferNoutMutationTest {
         final ComputationGraph mutatedGraph = decreaseIncreaseNout(
                 mutationName, nextMutationName, afterName, graph, outputDim, outputDimNext, inputDim);
         mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
+    }
+
+    /**
+     * Test to decrease nOut in a residual conv layer followed by batchnorm and another residual conv layer.
+     */
+    @Test
+    public void decreaseResNet() {
+        final String firstName = "firstResConv";
+        final String mutationName = "secondResConvToMutate";
+        final String afterName = "afterMutate";
+        final ComputationGraph graph = GraphUtils.getResNet(firstName, mutationName, afterName);
+
+        graph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        final long newNout = 5;
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName(mutationName)
+                                .mutateNout(nOut -> newNout)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+       // final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
+       // mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
 
     @NotNull

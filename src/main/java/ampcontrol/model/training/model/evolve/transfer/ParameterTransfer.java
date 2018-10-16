@@ -79,6 +79,7 @@ public class ParameterTransfer {
             final GraphVertex sourceVertex = sourceVertexMaybe.get();
             final GraphVertex targetVertex = targetVertexMaybe.get();
 
+           // System.out.println("Transfer start at " + layerName);
             // log.info("Transfer parameters from " + sourceVertex.getVertexName());
 
             final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
@@ -213,6 +214,10 @@ public class ParameterTransfer {
 
                 final INDArray sourceParam = sourceParams.get(parKey);
                 final INDArray targetParam = targetParams.get(parKey);
+
+//                if(parKey.equals(W)) {
+//                    System.out.println("\tTransfer dependent output: " + layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
+//                }
 
                 if (sourceParam.size(0) != targetParam.size(0)
                         || sourceParam.size(1) != targetParam.size(1)) {

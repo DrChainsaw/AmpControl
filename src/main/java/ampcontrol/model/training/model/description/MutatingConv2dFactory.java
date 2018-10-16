@@ -432,18 +432,21 @@ public final class MutatingConv2dFactory {
                 nOut -> new Conv2DBatchNormAfter()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(10)/2)
-                        .setKernelSize_h(1 + rng.nextInt(10)/2),
+                        .setKernelSize_w(1 + rng.nextInt(10) / 2)
+                        .setKernelSize_h(1 + rng.nextInt(10) / 2)
+                        .setActivation(new ActivationReLU()),
                 nOut -> new Conv2DBatchNormBefore()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(10)/2)
-                        .setKernelSize_h(1 + rng.nextInt(10)/2),
+                        .setKernelSize_w(1 + rng.nextInt(10) / 2)
+                        .setKernelSize_h(1 + rng.nextInt(10) / 2)
+                        .setActivation(new ActivationReLU()),
                 nOut -> new Conv2DBatchNormBetween()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(10)/2)
-                        .setKernelSize_h(1 + rng.nextInt(10)/2));
+                        .setKernelSize_w(1 + rng.nextInt(10) / 2)
+                        .setKernelSize_h(1 + rng.nextInt(10) / 2)
+                        .setActivation(new ActivationReLU()));
 
         final List<Function<Long, LayerBlockConfig>> afterGpBlocks = Arrays.asList(
                 nOut -> new Dense().setHiddenWidth(nOut.intValue()));
@@ -574,18 +577,21 @@ public final class MutatingConv2dFactory {
                 .setNamePrefix(namePrefix)
                 .first(new ConvType(inputShape))
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
+                        .setActivation(new ActivationReLU())
                         .setKernelSize(3)
                         .setNrofKernels(24))
                         .setFactory(spyFactory))
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
+                        .setActivation(new ActivationReLU())
                         .setKernelSize(2)
                         .setNrofKernels(49))
                         .setFactory(spyFactory))
                 .andThen(pool)
 
                 .andThen(new SpyBlock(new Conv2DBatchNormAfter()
+                        .setActivation(new ActivationReLU())
                         .setKernelSize_h(1)
                         .setKernelSize_w(4)
                         .setNrofKernels(48))

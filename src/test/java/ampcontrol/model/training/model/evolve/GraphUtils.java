@@ -1,7 +1,9 @@
 package ampcontrol.model.training.model.evolve;
 
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -78,7 +80,8 @@ public class GraphUtils {
 
 
     /**
-     *  Returns a graph with only dense layers
+     * Returns a graph with only dense layers
+     *
      * @param name1 name of first dense layer
      * @param name2 name of second dense layer
      * @param name3 name of third dense layer
@@ -115,7 +118,8 @@ public class GraphUtils {
     }
 
     /**
-     *  Returns a graph with only dense layers where the last named layer is a {@link CenterLossOutputLayer}.
+     * Returns a graph with only dense layers where the last named layer is a {@link CenterLossOutputLayer}.
+     *
      * @param name1 name of first dense layer
      * @param name2 name of second dense layer
      * @param name3 name of the output layer
@@ -149,7 +153,8 @@ public class GraphUtils {
     }
 
     /**
-     *  Returns a graph with only dense layers
+     * Returns a graph with only dense layers
+     *
      * @param name1 name of first (conv) layer
      * @param name2 name of second (dense) layer
      * @param name3 name of third (dense) layer
@@ -163,7 +168,7 @@ public class GraphUtils {
                 .addInputs(inputName)
                 .setOutputs(outputName)
                 .setInputTypes(InputType.convolutional(9, 9, 3))
-                .addLayer(name1, new ConvolutionLayer.Builder(3,3)
+                .addLayer(name1, new ConvolutionLayer.Builder(3, 3)
                         .nOut(10)
                         .build(), inputName)
                 .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), name1)
@@ -183,6 +188,51 @@ public class GraphUtils {
         setToLinspace(graph.getLayer(name1).getParam(B), false);
         setToLinspace(graph.getLayer(name2).getParam(W), false);
         setToLinspace(graph.getLayer(name2).getParam(B), true);
+        return graph;
+    }
+
+    public static ComputationGraph getResNet(String name1, String name2, String name3) {
+        final String convIn = "convIn";
+        final String rbAdd0 = "rbAdd0";
+        final String rbAdd1 = "rbAdd1";
+        final String rbAdd2 = "rbAdd2";
+        final int resNout = 7;
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .weightInit(new ConstantDistribution(666))
+                .graphBuilder()
+                .addInputs(inputName)
+                .setOutputs(outputName)
+                .setInputTypes(InputType.convolutional(33, 33, 3))
+                .addLayer(convIn, new Convolution2D.Builder(1, 1)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(resNout)
+                        .build(), inputName)
+                .addLayer(name1, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(resNout)
+                        .build(), convIn)
+                .addLayer(batchNormName, new BatchNormalization.Builder().build(), name1)
+                .addVertex(rbAdd0, new ElementWiseVertex(ElementWiseVertex.Op.Add), batchNormName, convIn)
+                .addLayer(name2, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(resNout)
+                        .build(), rbAdd0)
+                .addVertex(rbAdd1, new ElementWiseVertex(ElementWiseVertex.Op.Add), rbAdd0, name2)
+                .addLayer(poolName, new SubsamplingLayer.Builder().build(), rbAdd1)
+                .addLayer(name3, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(resNout)
+                        .build(), poolName)
+                .addVertex(rbAdd2, new ElementWiseVertex(ElementWiseVertex.Op.Add), poolName, name3)
+                .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), rbAdd2)
+                .addLayer(denseName, new DenseLayer.Builder()
+                        .nOut(9)
+                        .build(), globPoolName)
+                .addLayer(outputName, new OutputLayer.Builder()
+                        .nOut(2)
+                        .build(), denseName)
+                .build());
+        graph.init();
         return graph;
     }
 
