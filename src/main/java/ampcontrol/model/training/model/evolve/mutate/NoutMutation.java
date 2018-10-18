@@ -123,6 +123,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                     .apply(outputName, builder)
                     .ifPresent(layer -> {
                         //  System.out.println("\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
+                        log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
                         layer.setNIn(layer.getNIn() - deltaSize);
                         if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
                             layer.setNOut(layer.getNOut() - deltaSize);
@@ -177,6 +178,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                     .apply(inputName, builder)
                     .ifPresent(layer -> {
                         // System.out.println("\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - deltaSize));
+                        log.info("Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - deltaSize));
                         layer.setNOut(layer.getNOut() - deltaSize);
                         if (changeNinMeansChangeNout(layer) && !visited.output(inputName)) {
                             layer.setNIn(layer.getNIn() - deltaSize);

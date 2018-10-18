@@ -37,6 +37,39 @@ public class ParameterTransfer {
     private final Set<String> nOutTransferredToNextNinLayers = new HashSet<>();
     private final TransferRegistry registry;
 
+    private static final class TransferContext {
+        private final long[] sourceShape;
+        private final long[] targetShape;
+        private final int inputDimension;
+        private final int outputDimension;
+
+        private TransferContext(long[] sourceShape, long[] targetShape, int inputDimension, int outputDimension) {
+            this.sourceShape = sourceShape;
+            this.targetShape = targetShape;
+            this.inputDimension = inputDimension;
+            this.outputDimension = outputDimension;
+        }
+
+        private boolean shallPropagate() {
+            return sourceShape[outputDimension] != targetShape[outputDimension];
+        }
+    }
+
+    private static final class ParamPair {
+        private final String layerName;
+        private final Map<String, INDArray> source;
+        private final Map<String, INDArray> target;
+
+        private ParamPair(
+                String layerName,
+                Map<String, INDArray> source,
+                Map<String, INDArray> target) {
+            this.layerName = layerName;
+            this.source = source;
+            this.target = target;
+        }
+    }
+
     public ParameterTransfer(ComputationGraph graph) {
         this(graph, str -> Optional.empty());
     }
@@ -76,33 +109,33 @@ public class ParameterTransfer {
     private void transferParameters(
             ComputationGraph newGraph,
             String layerName) {
-        Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
-        Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
-
-        if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
-            final GraphVertex sourceVertex = sourceVertexMaybe.get();
-            final GraphVertex targetVertex = targetVertexMaybe.get();
+        Optional<ParamPair> paramPairOpt = getParams(layerName, graph, newGraph);
+        paramPairOpt.ifPresent(paramPair -> {
 
             //System.out.println("Transfer start at " + layerName + " nInTransferred: " + nInTransferredFromPreviousNoutLayers);
-            // log.info("Transfer parameters from " + sourceVertex.getVertexName());
 
-            final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
-            final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
+            if (paramPair.source.containsKey(W)) {
+                final TransferContext transferContext = new TransferContext(
+                        paramPair.source.get(W).shape(),
+                        paramPair.target.get(W).shape(),
+                        inputDim(paramPair.source),
+                        outputDim(paramPair.source));
 
-            if (sourceVertex.getLayer().paramTable().containsKey(W)) {
-                TransferTask.ListBuilder taskBuilder = initReshapeListBuilder(layerName, sourceParams, targetParams);
-                if (sourceParams.get(W).size(outputDim(sourceParams)) != targetParams.get(W).size(outputDim(targetParams))) {
+                //System.out.println("\t source " + Arrays.toString(transferContext.sourceShape) + " target " + Arrays.toString(transferContext.targetShape));
+                TransferTask.ListBuilder taskBuilder = initTransfer(transferContext, paramPair);
+                if(transferContext.shallPropagate()) {
                     nOutTransferredToNextNinLayers.add(layerName);
-                    transferOutputParameters(inputDim(sourceParams), newGraph, targetVertex, taskBuilder);
+                    transferOutputParameters(transferContext, newGraph, newGraph.getVertex(layerName), taskBuilder);
                 }
                 taskBuilder.build().execute();
             } else {
-                transferAllParameters(layerName, sourceParams, targetParams);
+                transferAllParameters(layerName, paramPair);
             }
-        } else if (targetVertexMaybe.isPresent()) {
+        });
+    if (!paramPairOpt.isPresent()) {
             // Set weights to ID mapping (if possible) for new layers
             // TODO This decision does not really belong to this class!
-            targetVertexMaybe
+            findLayerVertex(layerName, newGraph)
                     .map(vertex -> vertex.paramTable(false))
                     .filter(parMap -> parMap.containsKey(W))
                     .map(parMap -> parMap.get(W))
@@ -151,57 +184,56 @@ public class ParameterTransfer {
 
     }
 
-    private TransferTask.ListBuilder initReshapeListBuilder(
-            String layerName,
-            Map<String, INDArray> sourceParams,
-            Map<String, INDArray> targetParams) {
+    private TransferTask.ListBuilder initTransfer(
+            TransferContext transferContext,
+            ParamPair paramPair) {
 
         final SingleTransferTask.Builder firstTaskBuilder = SingleTransferTask.builder();
-        if (nInTransferredFromPreviousNoutLayers.contains(layerName)) {
+        if (nInTransferredFromPreviousNoutLayers.contains(paramPair.layerName)) {
             firstTaskBuilder
-                    .maskDim(inputDim(sourceParams));
+                    .maskDim(transferContext.inputDimension);
         }
 
         firstTaskBuilder
                 .source(SingleTransferTask.IndMapping.builder()
-                        .entry(registry.register(sourceParams.get(W), layerName + "_source_W"))
+                        .entry(registry.register(paramPair.source.get(W), paramPair.layerName + "_source_W"))
                         .build())
                 .target(SingleTransferTask.IndMapping.builder()
-                        .entry(registry.register(targetParams.get(W), layerName + "_target_W"))
+                        .entry(registry.register(paramPair.target.get(W), paramPair.layerName + "_target_W"))
                         .build());
 
-        compFactory.apply(layerName)
+        compFactory.apply(paramPair.layerName)
                 .ifPresent(firstTaskBuilder::compFactory);
 
-        if (sourceParams.containsKey(DefaultParamInitializer.BIAS_KEY)) {
+        if (paramPair.source.containsKey(DefaultParamInitializer.BIAS_KEY)) {
             firstTaskBuilder
                     .addDependentTask(SingleTransferTask.builder()
-                            .maskDim(inputDim(sourceParams))
+                            .maskDim(transferContext.inputDimension)
                             .maskDim(2)
                             .maskDim(3)
                             .maskDim(4)
                             .source(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(sourceParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_source_b"))
+                                    .entry(registry.register(paramPair.source.get(DefaultParamInitializer.BIAS_KEY), paramPair.layerName + "_source_b"))
                                     .dimensionMapper(dim -> 1) // Always 1 for bias!
                                     .build())
                             .target(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(targetParams.get(DefaultParamInitializer.BIAS_KEY), layerName + "_target_b"))
+                                    .entry(registry.register(paramPair.target.get(DefaultParamInitializer.BIAS_KEY), paramPair.layerName + "_target_b"))
                                     .dimensionMapper(dim -> 1) // Always 1 for bias!
                                     .build())
                     );
         }
-        if (sourceParams.containsKey(CenterLossParamInitializer.CENTER_KEY)) {
+        if (paramPair.source.containsKey(CenterLossParamInitializer.CENTER_KEY)) {
             firstTaskBuilder
                     .addDependentTask(SingleTransferTask.builder()
                             .maskDim(2)
                             .maskDim(3)
                             .maskDim(4)
                             .source(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(sourceParams.get(CenterLossParamInitializer.CENTER_KEY), layerName + "_source_b"))
+                                    .entry(registry.register(paramPair.source.get(CenterLossParamInitializer.CENTER_KEY), paramPair.layerName + "_source_cl"))
                                     .dimensionMapper(dim -> 1) // Always 1 for centerloss!
                                     .build())
                             .target(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(targetParams.get(CenterLossParamInitializer.CENTER_KEY), layerName + "_target_b"))
+                                    .entry(registry.register(paramPair.target.get(CenterLossParamInitializer.CENTER_KEY), paramPair.layerName + "_target_cl"))
                                     .dimensionMapper(dim -> 1) // Always 1 for centerloss!
                                     .build())
                     );
@@ -210,7 +242,7 @@ public class ParameterTransfer {
     }
 
     private void transferOutputParameters(
-            int prevInputDim,
+            TransferContext transferContext,
             ComputationGraph newGraph,
             GraphVertex rootNode,
             TransferTask.ListBuilder taskListBuilder) {
@@ -218,60 +250,51 @@ public class ParameterTransfer {
         Stream.of(Optional.ofNullable(rootNode.getOutputVertices()).orElse(new VertexIndices[0]))
                 .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
                 .forEachOrdered(vertex -> {
-                    final String layerName = vertex.getVertexName();
-
-                    Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
-                    Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
-
-                    if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
-                        final GraphVertex sourceVertex = sourceVertexMaybe.get();
-                        final GraphVertex targetVertex = targetVertexMaybe.get();
-
-                        //log.info("Transfer output parameters of " + layerName);
-                        final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
-                        final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
+                    getParams(vertex.getVertexName(), graph, newGraph)
+                            .filter(paramPair -> canTransferNoutToNin(transferContext, paramPair))
+                            .ifPresent(paramPair ->
 
                         addTasksFor(task -> taskListBuilder.addDependentTask(task
-                                .maskDim(prevInputDim)
+                                .maskDim(transferContext.inputDimension) // If the root task has changed inputs we don't want to transfer that
                                 .maskDim(2) // Always things like kernel size which does not transfer
                                 .maskDim(3) // Always things like kernel size which does not transfer
                                 .maskDim(4) // Always things like kernel size which does not transfer
-                        ), layerName, sourceParams, targetParams);
-                    }
+                        ), paramPair)
+                    );
                     if (doesNinPropagateToNext(vertex)) {
-                        transferOutputParameters(prevInputDim, newGraph, vertex, taskListBuilder);
+                        transferOutputParameters(transferContext, newGraph, vertex, taskListBuilder);
                     }
                 });
     }
 
     private void addTasksFor(
             Consumer<SingleTransferTask.Builder> taskConsumer,
-            String layerName,
-            Map<String, INDArray> sourceParams,
-            Map<String, INDArray> targetParams) {
+            ParamPair paramPair) {
 
-        if (!nInTransferredFromPreviousNoutLayers.add(layerName)) {
+        if (!nInTransferredFromPreviousNoutLayers.add(paramPair.layerName)) {
             return;
         }
-        for (String parKey : sourceParams.keySet()) {
-            outputToInputDimMapping(parKey, sourceParams.get(parKey).shape().length).ifPresent(dimMapper -> {
+        //boolean[] first = {true};
+        for (String parKey : paramPair.source.keySet()) {
+            outputToInputDimMapping(parKey, paramPair.source.get(parKey).shape().length).ifPresent(dimMapper -> {
 
-                final INDArray sourceParam = sourceParams.get(parKey);
-                final INDArray targetParam = targetParams.get(parKey);
+                final INDArray sourceParam = paramPair.source.get(parKey);
+                final INDArray targetParam = paramPair.target.get(parKey);
 
-//                if (parKey.equals(W)) {
-//                    System.out.println("\tTransfer dependent output: " + layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
+//                if (first[0]) {
+//                    System.out.println("\tTransfer dependent output: " + paramPair.layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
+//                    first[0] = false;
 //                }
 
                 if (sourceParam.size(0) != targetParam.size(0)
                         || sourceParam.size(1) != targetParam.size(1)) {
                     taskConsumer.accept(SingleTransferTask.builder()
                             .source(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(sourceParam, layerName + "_source_" + parKey))
+                                    .entry(registry.register(sourceParam, paramPair.layerName + "_source_" + parKey))
                                     .dimensionMapper(dimMapper)
                                     .build())
                             .target(SingleTransferTask.IndMapping.builder()
-                                    .entry(registry.register(targetParam, layerName + "_target_" + parKey))
+                                    .entry(registry.register(targetParam, paramPair.layerName + "_target_" + parKey))
                                     .dimensionMapper(dimMapper)
                                     .build()));
                 }
@@ -280,34 +303,62 @@ public class ParameterTransfer {
     }
 
     private void transferAllParameters(String layerName,
-                                       Map<String, INDArray> sourceParams,
-                                       Map<String, INDArray> targetParams) {
+                                       ParamPair paramPair) {
 
         // TODO Which key is most important?
-        sourceParams.keySet().stream().sorted().findFirst().ifPresent(startKey -> {
+        paramPair.source.keySet().stream().sorted().findFirst().ifPresent(startKey -> {
             final SingleTransferTask.Builder firstTaskBuilder = SingleTransferTask.builder()
                     .source(SingleTransferTask.IndMapping.builder()
-                            .entry(registry.register(sourceParams.get(startKey), layerName + "_source_" + startKey))
+                            .entry(registry.register(paramPair.source.get(startKey), layerName + "_source_" + startKey))
                             .build())
                     .target(SingleTransferTask.IndMapping.builder()
-                            .entry(registry.register(targetParams.get(startKey), layerName + "_target_" + startKey))
+                            .entry(registry.register(paramPair.target.get(startKey), layerName + "_target_" + startKey))
                             .build());
 
             compFactory.apply(layerName)
                     .ifPresent(firstTaskBuilder::compFactory);
-            sourceParams.keySet().stream().filter(par -> !par.equals(startKey)).forEach(parKey -> {
+            paramPair.source.keySet().stream().filter(par -> !par.equals(startKey)).forEach(parKey -> {
                 firstTaskBuilder
                         .addDependentTask(SingleTransferTask.builder()
                                 .source(SingleTransferTask.IndMapping.builder()
-                                        .entry(registry.register(sourceParams.get(parKey), layerName + "_source_" + parKey))
+                                        .entry(registry.register(paramPair.source.get(parKey), layerName + "_source_" + parKey))
                                         .build())
                                 .target(SingleTransferTask.IndMapping.builder()
-                                        .entry(registry.register(targetParams.get(parKey), layerName + "_target_" + parKey))
+                                        .entry(registry.register(paramPair.target.get(parKey), layerName + "_target_" + parKey))
                                         .build()));
             });
             firstTaskBuilder.build().execute();
         });
+    }
 
+    private boolean canTransferNoutToNin(TransferContext tc, ParamPair paramPair) {
+        if(!paramPair.source.containsKey(W)) {
+            return false;
+        }
+
+        final int inputDim = inputDim(paramPair.source);
+        return tc.sourceShape[tc.outputDimension] == paramPair.source.get(W).size(inputDim)
+                && tc.targetShape[tc.outputDimension] == paramPair.target.get(W).size(inputDim);
+    }
+
+    private Optional<ParamPair> getParams(
+            String layerName,
+            ComputationGraph sourceGraph,
+            ComputationGraph targetGraph) {
+
+        final Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, sourceGraph);
+        final Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, targetGraph);
+
+        if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
+            final GraphVertex sourceVertex = sourceVertexMaybe.get();
+            final GraphVertex targetVertex = targetVertexMaybe.get();
+
+            return Optional.of(new ParamPair(
+                    layerName,
+                    sourceVertex.paramTable(false),
+                    targetVertex.paramTable(false)));
+        }
+        return Optional.empty();
     }
 
     private static void setIdentityMapping(INDArray weights) {
@@ -383,8 +434,11 @@ public class ParameterTransfer {
     }
 
     private static int inputDim(Map<String, INDArray> params) {
-        // 1 for conv, 0 for dense ?? for recurrent
-        return params.get(W).shape().length == 4 ? 1 : 0;
+        if(params.containsKey(W)) {
+            // 1 for conv, 0 for dense ?? for recurrent
+            return params.get(W).shape().length == 4 ? 1 : 0;
+        }
+        return 1;
     }
 
     private static int outputDim(Map<String, INDArray> params) {
