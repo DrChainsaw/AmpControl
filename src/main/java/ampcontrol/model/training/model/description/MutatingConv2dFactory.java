@@ -243,6 +243,7 @@ public final class MutatingConv2dFactory {
 
             try {
                 final ComputationGraph graph = builder.buildGraph(); // Will also populate mutation layers in case graph is new.
+
                 final String baseName = candNamePolicy.toFileName(builder.name());
                 final SharedSynchronizedState<MutationLayerState> initialState = new SharedSynchronizedState<>(MutationLayerState.builder()
                         .removeLayers(new PersistentSet<>(baseName + removeName, mutationLayerState.getRemoveLayers()).get())
@@ -285,7 +286,7 @@ public final class MutatingConv2dFactory {
                                         initialState.view(),
                                         copyState,
                                         (str, state) -> {/* Not needed? Maybe seed... */},
-                                        state -> createGraphMutation(new GraphSpyAppender(state.get()), seedGenGraphAdd.nextInt())))
+                                        state -> createAddBlockMutation(new GraphSpyAppender(state.get()), seedGenGraphAdd.nextInt())))
 
                                 .build();
 
@@ -421,7 +422,7 @@ public final class MutatingConv2dFactory {
         );
     }
 
-    private Mutation<ComputationGraphConfiguration.GraphBuilder> createGraphMutation(
+    private Mutation<ComputationGraphConfiguration.GraphBuilder> createAddBlockMutation(
             UnaryOperator<GraphBuilderAdapter> spyFactory,
             int seed) {
         final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
@@ -429,23 +430,29 @@ public final class MutatingConv2dFactory {
 
         final Random rng = new Random(seed);
         final List<Function<Long, LayerBlockConfig>> beforeGpBlocks = Arrays.asList(
+                nOut -> new Conv2D()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
+                        .setActivation(new ActivationReLU()),
                 nOut -> new Conv2DBatchNormAfter()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(10) / 2)
-                        .setKernelSize_h(1 + rng.nextInt(10) / 2)
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
                         .setActivation(new ActivationReLU()),
                 nOut -> new Conv2DBatchNormBefore()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(10) / 2)
-                        .setKernelSize_h(1 + rng.nextInt(10) / 2)
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
                         .setActivation(new ActivationReLU()),
                 nOut -> new Conv2DBatchNormBetween()
                         .setConvolutionMode(ConvolutionMode.Same)
                         .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(10) / 2)
-                        .setKernelSize_h(1 + rng.nextInt(10) / 2)
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
                         .setActivation(new ActivationReLU()));
 
         final List<Function<Long, LayerBlockConfig>> afterGpBlocks = Arrays.asList(
@@ -498,7 +505,7 @@ public final class MutatingConv2dFactory {
 
                 }).build()
         )
-                .filter(mut -> rng.nextDouble() < 0.05));
+                .filter(mut -> rng.nextDouble() < 0.03));
     }
 
     private static boolean isAfterGlobPool(String vertexName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {

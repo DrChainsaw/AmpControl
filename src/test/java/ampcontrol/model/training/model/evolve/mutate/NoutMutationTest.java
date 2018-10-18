@@ -58,14 +58,15 @@ public class NoutMutationTest {
         final long newNoutSecond = 9;
         final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
                 () -> Stream.of(
-                        NoutMutation.NoutMutationDescription.builder()
-                                .layerName(mut1)
-                                .mutateNout(nOut -> newNoutFirst)
-                                .build(),
+//                        NoutMutation.NoutMutationDescription.builder()
+//                                .layerName(mut1)
+//                                .mutateNout(nOut -> newNoutFirst)
+//                                .build(),
                         NoutMutation.NoutMutationDescription.builder()
                                 .layerName(mut2)
                                 .mutateNout(nOut -> newNoutSecond)
-                                .build()))
+                                .build()
+                ))
                 .mutate(
                         new ComputationGraphConfiguration.GraphBuilder(
                                 graph.getConfiguration(),
@@ -76,6 +77,38 @@ public class NoutMutationTest {
         assertEquals("Incorrect nOut!", newNoutSecond, newGraph.layerSize(mut1));
         assertEquals("Incorrect nOut!", newNoutSecond, newGraph.layerSize(mut2));
         assertEquals("Incorrect nOut!", newNoutSecond, newGraph.layerSize(noMut));
+
+        graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+    }
+
+    /**
+     * Test to decrease nOut in a convolution layer which is part of a fork.
+     */
+    @Test
+    public void mutateForkNet() {
+        final String beforeFork = "beforeFork";
+        final String afterFork = "afterFork";
+        final String fork1 = "fork1";
+        final String fork2ToMutate = "fork2ToMutate";
+        final String fork3 = "fork3";
+        final ComputationGraph graph = GraphUtils.getForkNet(beforeFork, afterFork, fork1, fork2ToMutate, fork3);
+
+        final long newNoutSecond = 9;
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName(fork2ToMutate)
+                                .mutateNout(nOut -> newNoutSecond)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+
+        assertEquals("Incorrect nOut!", newNoutSecond, newGraph.layerSize(fork2ToMutate));
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));

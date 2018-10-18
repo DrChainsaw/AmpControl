@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
@@ -16,6 +17,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -32,6 +34,7 @@ public class ParameterTransfer {
     private final ComputationGraph graph;
     private final Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory;
     private final Set<String> nInTransferredFromPreviousNoutLayers = new HashSet<>();
+    private final Set<String> nOutTransferredToNextNinLayers = new HashSet<>();
     private final TransferRegistry registry;
 
     public ParameterTransfer(ComputationGraph graph) {
@@ -70,7 +73,9 @@ public class ParameterTransfer {
                 .findAny();
     }
 
-    private void transferParameters(ComputationGraph newGraph, String layerName) {
+    private void transferParameters(
+            ComputationGraph newGraph,
+            String layerName) {
         Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, graph);
         Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, newGraph);
 
@@ -87,13 +92,14 @@ public class ParameterTransfer {
             if (sourceVertex.getLayer().paramTable().containsKey(W)) {
                 TransferTask.ListBuilder taskBuilder = initReshapeListBuilder(layerName, sourceParams, targetParams);
                 if (sourceParams.get(W).size(outputDim(sourceParams)) != targetParams.get(W).size(outputDim(targetParams))) {
+                    nOutTransferredToNextNinLayers.add(layerName);
                     transferOutputParameters(inputDim(sourceParams), newGraph, targetVertex, taskBuilder);
                 }
                 taskBuilder.build().execute();
             } else {
                 transferAllParameters(layerName, sourceParams, targetParams);
             }
-        } else {
+        } else if (targetVertexMaybe.isPresent()) {
             // Set weights to ID mapping (if possible) for new layers
             // TODO This decision does not really belong to this class!
             targetVertexMaybe
@@ -101,6 +107,46 @@ public class ParameterTransfer {
                     .filter(parMap -> parMap.containsKey(W))
                     .map(parMap -> parMap.get(W))
                     .ifPresent(ParameterTransfer::setIdentityMapping);
+        }
+
+        if (newGraph.getConfiguration().getVertices().get(layerName) instanceof MergeVertex) {
+            // Must transfer inputs from previous to next in case next is "touched"
+            // Assumption: MergeVertex will always come after all its inputs in the topological order of a graph
+            // meaning that all transfers which affect the next layer through the MergeVertex has already been
+            // registered at this point.
+            final GraphVertex vertex = newGraph.getVertex(layerName);
+            List<String> notTransferredLayers = (Stream.of(vertex.getInputVertices())
+                    .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
+                    .map(GraphVertex::getVertexName)
+                    .filter(vertexName -> !nOutTransferredToNextNinLayers.contains(vertexName)))
+                    .collect(Collectors.toList());
+            // if at least one of the inputs has transferred to next layer
+            if (notTransferredLayers.size() < vertex.getInputVertices().length) {
+                final List<String> outputNames = Stream.of(vertex.getOutputVertices())
+                        .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
+                        .map(GraphVertex::getVertexName)
+                        .filter(nInTransferredFromPreviousNoutLayers::contains)
+                        .collect(Collectors.toList());
+
+                // Perhaps a less workable solution as this will attempt to transfer all parameters...
+//                for(String outputName: outputNames) {
+//                    nInTransferredFromPreviousNoutLayers.removeAll(outputNames);
+//                    transferParameters(newGraph, outputName);
+//                }
+//                // Should be done by transferParameters above, but just in case
+//                nInTransferredFromPreviousNoutLayers.addAll(outputNames);
+
+                // Perhaps a less workable solution as SingleTransferTask will ignore dimensions with an equal number of
+                // elements in source and taget. If SingleTransferTask was to be modified then it might be enough to just
+                // not add layers to nInTransferredFromPreviousNoutLayers in case they have a mergevertex as input or
+                // alternatively count the number of times on can transfer nIn (once per input or something).
+//                for(String outputName: outputNames) {
+//                    nInTransferredFromPreviousNoutLayers.removeAll(outputNames);
+//                    transferParameters(newGraph, outputName);
+//                }
+//                // Should be done by transferParameters above, but just in case
+//                nInTransferredFromPreviousNoutLayers.addAll(outputNames);
+            }
         }
 
     }
@@ -181,7 +227,7 @@ public class ParameterTransfer {
                         final GraphVertex sourceVertex = sourceVertexMaybe.get();
                         final GraphVertex targetVertex = targetVertexMaybe.get();
 
-                        // log.info("Transfer output parameters of " + layerName);
+                        //log.info("Transfer output parameters of " + layerName);
                         final Map<String, INDArray> sourceParams = sourceVertex.paramTable(false);
                         final Map<String, INDArray> targetParams = targetVertex.paramTable(false);
 
@@ -204,7 +250,7 @@ public class ParameterTransfer {
             Map<String, INDArray> sourceParams,
             Map<String, INDArray> targetParams) {
 
-        if(!nInTransferredFromPreviousNoutLayers.add(layerName)) {
+        if (!nInTransferredFromPreviousNoutLayers.add(layerName)) {
             return;
         }
         for (String parKey : sourceParams.keySet()) {
@@ -213,7 +259,7 @@ public class ParameterTransfer {
                 final INDArray sourceParam = sourceParams.get(parKey);
                 final INDArray targetParam = targetParams.get(parKey);
 
-//                if(parKey.equals(W)) {
+//                if (parKey.equals(W)) {
 //                    System.out.println("\tTransfer dependent output: " + layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
 //                }
 

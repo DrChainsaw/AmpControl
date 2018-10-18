@@ -210,7 +210,47 @@ public class ParameterTransferNoutMutationTest {
                             graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
                             layer.params().meanNumber())
                 );
+    }
 
+    /**
+     * Test to decrease nOut in a residual conv layer followed by batchnorm and another residual conv layer.
+     * Smoke test since other test check parameter transfer in detail
+     */
+    @Test
+    public void decreaseForkedConv() {
+        final String firstName = "firstConv";
+        final String afterName = "afterMutate";
+        final String fork1NameToMutate = "fork1ToMutate";
+        final String fork2Name = "fork2";
+        final ComputationGraph graph = GraphUtils.getForkNet(firstName, afterName, fork1NameToMutate, fork2Name);
+
+        final long newNout = 5;
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName(fork1NameToMutate)
+                                .mutateNout(nOut -> newNout)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        Stream.of(mutatedGraph.getVertices())
+                .filter(GraphVertex::hasLayer)
+                .map(GraphVertex::getLayer)
+                .filter(layer -> layer.numParams() > 0)
+                .forEach(layer ->
+                        assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
+                                graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
+                                layer.params().meanNumber())
+                );
     }
 
     @NotNull

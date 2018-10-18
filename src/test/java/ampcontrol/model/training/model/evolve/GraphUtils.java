@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve;
 
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
@@ -191,6 +192,14 @@ public class GraphUtils {
         return graph;
     }
 
+    /**
+     * Create a model with residual convolution layers
+     *
+     * @param name1 Name of first layer
+     * @param name2 NAme of second layer
+     * @param name3 Name of third layer
+     * @return a {@link ComputationGraph}
+     */
     public static ComputationGraph getResNet(String name1, String name2, String name3) {
         final String convIn = "convIn";
         final String rbAdd0 = "rbAdd0";
@@ -226,6 +235,53 @@ public class GraphUtils {
                         .build(), poolName)
                 .addVertex(rbAdd2, new ElementWiseVertex(ElementWiseVertex.Op.Add), poolName, name3)
                 .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), rbAdd2)
+                .addLayer(denseName, new DenseLayer.Builder()
+                        .nOut(9)
+                        .build(), globPoolName)
+                .addLayer(outputName, new OutputLayer.Builder()
+                        .nOut(2)
+                        .build(), denseName)
+                .build());
+        graph.init();
+        return graph;
+    }
+
+    /**
+     * Returns a {@link ComputationGraph} convolution layers in a forked connection
+     *
+     * @param beforeFork Name of layer before fork
+     * @param afterFork  Name of layer after fork
+     * @param forkNames  Names of layers in fork (one path per layer)
+     * @return A {@link ComputationGraph}
+     */
+    public static ComputationGraph getForkNet(String beforeFork, String afterFork, String... forkNames) {
+        final int forkNoutStart = 7;
+        final ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
+                .weightInit(new ConstantDistribution(666))
+                .biasInit(666)
+                .graphBuilder()
+                .addInputs(inputName)
+                .setOutputs(outputName)
+                .setInputTypes(InputType.convolutional(33, 33, 3))
+                .addLayer(beforeFork, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(4)
+                        .build(), inputName)
+                .addLayer(batchNormName, new BatchNormalization.Builder().build(), beforeFork);
+
+        for (int i = 0; i < forkNames.length; i++) {
+            builder.addLayer(forkNames[i], new Convolution2D.Builder(forkNames.length - i, 1 + i)
+                    .convolutionMode(ConvolutionMode.Same)
+                    .nOut(forkNoutStart + i)
+                    .build(), batchNormName);
+        }
+
+        final ComputationGraph graph = new ComputationGraph(builder
+                .addLayer(afterFork, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(3)
+                        .build(), forkNames)
+                .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), afterFork)
                 .addLayer(denseName, new DenseLayer.Builder()
                         .nOut(9)
                         .build(), globPoolName)
