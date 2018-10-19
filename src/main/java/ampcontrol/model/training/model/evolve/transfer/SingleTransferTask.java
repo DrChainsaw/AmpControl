@@ -99,9 +99,7 @@ public class SingleTransferTask implements TransferTask {
                         .toArray();
 
                 addWantedElementsFromSource(tensorDim, wantedElements);
-            }
-
-            if (targetShape[i] > sourceShape[i]) {
+            } else if (targetShape[i] > sourceShape[i]) {
                 addWantedNrofElementsFromTarget(i, (int) sourceShape[i]);
             }
         }

@@ -15,9 +15,7 @@ import ampcontrol.model.training.model.evolve.fitness.AddListener;
 import ampcontrol.model.training.model.evolve.fitness.AggPolicy;
 import ampcontrol.model.training.model.evolve.fitness.ClearListeners;
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicyTraining;
-import ampcontrol.model.training.model.evolve.mutate.Mutation;
-import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
-import ampcontrol.model.training.model.evolve.mutate.PersistentSet;
+import ampcontrol.model.training.model.evolve.mutate.*;
 import ampcontrol.model.training.model.evolve.mutate.layer.*;
 import ampcontrol.model.training.model.evolve.mutate.state.*;
 import ampcontrol.model.training.model.evolve.selection.*;
@@ -136,6 +134,10 @@ public final class MutatingConv2dFactory {
         @Builder.Default
         final Set<String> removeLayers = new LinkedHashSet<>();
 
+        private final static String removeName = "_mutRemoveLayers.json";
+        private final static String nOutName = "_mutNOutLayers.json";
+        private final static String kernelSizeName = "_mutKernelSizeLayers.json";
+
         /**
          * Accept a layer name to remove
          *
@@ -154,6 +156,20 @@ public final class MutatingConv2dFactory {
                     .mutateKernelSize(new LinkedHashSet<>(mutateKernelSize))
                     .removeLayers(new LinkedHashSet<>(removeLayers))
                     .build();
+        }
+
+        static MutationLayerState fromFile(String baseName, MutationLayerState mutationLayerState) throws IOException {
+            return MutationLayerState.builder()
+                    .removeLayers(new PersistentSet<>(baseName + removeName, mutationLayerState.getRemoveLayers()).get())
+                    .mutateNout(new PersistentSet<>(baseName + nOutName, mutationLayerState.getMutateNout()).get())
+                    .mutateKernelSize(new PersistentSet<>(baseName + kernelSizeName, mutationLayerState.getMutateKernelSize()).get())
+                    .build();
+        }
+
+        public void save(String fileName) throws IOException {
+            new ObjectMapper().writeValue(new File(fileName + removeName), removeLayers);
+            new ObjectMapper().writeValue(new File(fileName + nOutName), mutateNout);
+            new ObjectMapper().writeValue(new File(fileName + kernelSizeName), mutateKernelSize);
         }
     }
 
@@ -215,11 +231,12 @@ public final class MutatingConv2dFactory {
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
         // TODO: Some other way to do this please...
+        // Bug caused by this sloppy implementation:
+        //  model A gets mutated so that layer named X is conv layer -> X added to mutateNoutLayers
+        //  model B gets mutated so that layer named X is batchnorm layer
+        //  When adding ActivationContributions to all new models (in createPopulation) also model B will get it
+        //  for layer named X -> crash as no epsilon spy was added after it.
         final Set<String> allNoutMutationLayers = new LinkedHashSet<>();
-
-        final String removeName = "_mutRemoveLayers.json";
-        final String nOutName = "_mutNOutLayers.json";
-        final String kernelSizeName = "_mutKernelSizeLayers.json";
 
         // Create model population
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
@@ -241,68 +258,25 @@ public final class MutatingConv2dFactory {
                     candNamePolicy,
                     baseBuilder);
 
-            try {
-                final ComputationGraph graph = builder.buildGraph(); // Will also populate mutation layers in case graph is new.
+            final ComputationGraph graph = builder.buildGraph(); // Will also populate mutation layers in case graph is new.
 
-                final String baseName = candNamePolicy.toFileName(builder.name());
-                final SharedSynchronizedState<MutationLayerState> initialState = new SharedSynchronizedState<>(MutationLayerState.builder()
-                        .removeLayers(new PersistentSet<>(baseName + removeName, mutationLayerState.getRemoveLayers()).get())
-                        .mutateNout(new PersistentSet<>(baseName + nOutName, mutationLayerState.getMutateNout()).get())
-                        .mutateKernelSize(new PersistentSet<>(baseName + kernelSizeName, mutationLayerState.getMutateKernelSize()).get())
-                        .build());
+            final String baseName = candNamePolicy.toFileName(builder.name());
+            final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation = createMutation(
+                    allNoutMutationLayers,
+                    candInd,
+                    mutationLayerState,
+                    baseName);
 
-                final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState = view -> {
-                    allNoutMutationLayers.addAll(view.get().getMutateNout());
-                    return view.update(view.get().clone()).copy();
-                };
+            final EvolvingGraphAdapter adapter = candInd == 0 || graph.getIterationCount() > 0 ?
+                    new EvolvingGraphAdapter(graph, mutation,
+                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
+                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
+                    new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
+                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
+                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
 
-                allNoutMutationLayers.addAll(initialState.view().get().getMutateNout());
-                final Random seedGenNout = new Random(candInd);
-                final Random seedGenKs = new Random(-candInd);
-                final Random seedGenGraphAdd = new Random(candInd + 100);
-                final Random seedRemoveLayer = new Random(-candInd - 100);
-                final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation =
-                        AggMutationState.<ComputationGraphConfiguration.GraphBuilder>builder()
-                                .first(new NoMutationStateWapper<>(gb -> {
-                                    new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
-                                    return gb;
-                                }))
-                                .andThen(new GenericMutationState<>(
-                                        initialState.view(),
-                                        copyState,
-                                        (str, state) -> new ObjectMapper().writeValue(new File(str + removeName), state.get().getRemoveLayers()),
-                                        state -> createRemoveLayersMutation(state.get().getRemoveLayers(), state.get(), seedRemoveLayer.nextInt())))
-                                .andThen(new GenericMutationState<>(
-                                        initialState.view(),
-                                        copyState,
-                                        (str, state) -> new ObjectMapper().writeValue(new File(str + nOutName), state.get().getMutateNout()),
-                                        state -> createNoutMutation(state.get().getMutateNout(), seedGenNout.nextInt())))
-                                .andThen(new GenericMutationState<>(
-                                        initialState.view(),
-                                        copyState,
-                                        (str, state) -> new ObjectMapper().writeValue(new File(str + kernelSizeName), state.get().getMutateKernelSize()),
-                                        state -> createKernelSizeMutation(state.get().getMutateKernelSize(), seedGenKs.nextInt())))
-                                .andThen(new GenericMutationState<>(
-                                        initialState.view(),
-                                        copyState,
-                                        (str, state) -> {/* Not needed? Maybe seed... */},
-                                        state -> createAddBlockMutation(new GraphSpyAppender(state.get()), seedGenGraphAdd.nextInt())))
+            initialPopulation.add(adapter);
 
-                                .build();
-
-                final EvolvingGraphAdapter adapter = candInd == 0 || graph.getIterationCount() > 0 ?
-                        new EvolvingGraphAdapter(graph, mutation,
-                                graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                        Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
-                        new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
-                                graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                        Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
-
-                initialPopulation.add(adapter);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         });
         // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
         if (Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
@@ -319,6 +293,68 @@ public final class MutatingConv2dFactory {
                                 baseBuilder).buildGraph()),
                 referenceSuffix.toFileName(baseBuilder.name())));
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
+    }
+
+    private MutationState<ComputationGraphConfiguration.GraphBuilder> createMutation(
+            Set<String> allNoutMutationLayers,
+            int mutationBaseSeed,
+            MutationLayerState mutationLayerState,
+            String baseName) {
+        try {
+
+            final SharedSynchronizedState<MutationLayerState> initialState =
+                    new SharedSynchronizedState<>(MutationLayerState.fromFile(baseName, mutationLayerState));
+
+            log.info("Remove layers size: " + initialState.view().get().getRemoveLayers().size());
+            final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState = view -> {
+                allNoutMutationLayers.addAll(view.get().getMutateNout());
+                return view.copy().update(view.get().clone());
+            };
+
+            allNoutMutationLayers.addAll(initialState.view().get().getMutateNout());
+            final Random seedGenNout = new Random(mutationBaseSeed);
+            final Random seedGenKs = new Random(-mutationBaseSeed);
+            final Random seedGenGraphAdd = new Random(mutationBaseSeed + 100);
+            final Random seedRemoveLayer = new Random(-mutationBaseSeed - 100);
+            final Random memUsageRng = new Random(mutationBaseSeed + 1000);
+
+            return AggMutationState.<ComputationGraphConfiguration.GraphBuilder>builder()
+                    .first(new NoMutationStateWapper<>(gb -> {
+                        new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
+                        return gb;
+                    }))
+                    .andThen(new GenericMutationState<>(
+                            initialState.view(),
+                            copyState,
+                            (str, state) -> state.get().save(str),
+                            state -> new MemoryAwareMutation<>(memUsage -> {
+                                if (memUsage + 0.3 > memUsageRng.nextDouble()) {
+                                    // Use SuppliedMutation to be able to create mutations after RemoveLayersMutation has done its thing
+                                    // Why not remove last? Issue with size of weights when remove happens after nout mutation.
+                                    return AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
+                                            .andThen(new SuppliedMutation<>(
+                                                    () -> createRemoveLayersMutation(state.get().getRemoveLayers(), state.get(), seedRemoveLayer.nextInt())))
+                                            .andThen(new SuppliedMutation<>(
+                                                    () -> createNoutMutation(state.get().getMutateNout(), seedGenNout.nextInt(), 1)))
+                                            .andThen(new SuppliedMutation<>(
+                                                    () -> createKernelSizeMutation(state.get().getMutateKernelSize(), seedGenKs.nextInt(), -1)))
+                                            .build();
+                                } else {
+                                    return AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
+                                            .first(new SuppliedMutation<>(() ->
+                                                    createNoutMutation(state.get().getMutateNout(), seedGenNout.nextInt(),0)))
+                                            .andThen(new SuppliedMutation<>(() ->
+                                                    createKernelSizeMutation(state.get().getMutateKernelSize(), seedGenKs.nextInt(), 1)))
+                                            .andThen(new SuppliedMutation<>(() ->
+                                                    createAddBlockMutation(new GraphSpyAppender(state.get()), seedGenGraphAdd.nextInt())))
+                                            .build();
+                                }
+                            })
+                    ))
+                    .build();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to create mutation!", e);
+        }
     }
 
     @NotNull
@@ -383,12 +419,15 @@ public final class MutatingConv2dFactory {
         return population;
     }
 
-    private Mutation<ComputationGraphConfiguration.GraphBuilder> createNoutMutation(final Set<String> mutationLayers, int seed) {
+    private Mutation<ComputationGraphConfiguration.GraphBuilder> createNoutMutation(
+            final Set<String> mutationLayers,
+            int seed,
+            double rngOffset) {
         final Random rng = new Random(seed);
         final Set<NoutMutation.NoutMutationDescription> nOutMutationSet = mutationLayers.stream()
                 .map(str -> NoutMutation.NoutMutationDescription.builder()
                         .layerName(str)
-                        .mutateNout(nOut -> (long) Math.max(4, nOut + Math.max(nOut, 10) * 0.5 * (rng.nextDouble() - 0.5)))
+                        .mutateNout(nOut -> (long) Math.max(4, nOut + Math.max(nOut, 10) * 0.1 * (rng.nextDouble() - rngOffset)))
                         .build())
                 .collect(Collectors.toSet());
         return new NoutMutation(
@@ -397,10 +436,11 @@ public final class MutatingConv2dFactory {
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createKernelSizeMutation(
             final Set<String> mutationLayers,
-            int seed) {
+            int seed,
+            int rngSign) {
         final Random rng = new Random(seed);
         return new LayerContainedMutation(
-                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.1)
+                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.05)
                         .map(layerName ->
                                 LayerContainedMutation.LayerMutation.builder()
                                         .mutationInfo(
@@ -413,7 +453,7 @@ public final class MutatingConv2dFactory {
                                                 .map(layerConf -> (ConvolutionLayer) layerConf)
                                                 .map(convConf -> {
                                                     convConf.setKernelSize(IntStream.of(convConf.getKernelSize())
-                                                            .map(orgSize -> Math.min(10, Math.max(1, orgSize + 1 - rng.nextInt(3))))
+                                                            .map(orgSize -> Math.min(10, Math.max(1, orgSize + rngSign * rng.nextInt(2))))
                                                             .toArray());
                                                     return convConf;
                                                 })
@@ -542,7 +582,7 @@ public final class MutatingConv2dFactory {
             int seed) {
         Random rng = new Random(seed);
         return new GraphMutation(() -> mutationLayers.stream()
-                .filter(str -> rng.nextDouble() < 0.05 / mutationLayers.size())
+                .filter(str -> rng.nextDouble() < 0.08 / mutationLayers.size())
                 .peek(vertexToRemove -> log.info("Attempt to remove " + vertexToRemove))
                 // Collect subset to avoid that the removeListener causes ConcurrentModificationExceptions
                 .collect(Collectors.toSet()).stream()
@@ -613,7 +653,7 @@ public final class MutatingConv2dFactory {
                         .setFactory(spyFactory))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
-                        .setLambda(0.003));
+                        .setLambda(0.0031));
     }
 
     @NotNull
