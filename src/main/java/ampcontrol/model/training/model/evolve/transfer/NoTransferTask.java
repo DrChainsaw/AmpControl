@@ -13,6 +13,11 @@ public class NoTransferTask implements TransferTask {
     }
 
     @Override
+    public void addWantedElementsFromTarget(int dim, int[] indexes) {
+        // Ignore
+    }
+
+    @Override
     public void addWantedNrofElementsFromTarget(int dim, int nrofElements) {
         // Ignore
     }

@@ -34,7 +34,7 @@ public class MemoryAwareMutation<T> implements Mutation<T> {
 
         @Override
         public double getUsage() {
-            return NativeOpsHolder.getInstance().getDeviceNativeOps().getDeviceFreeMemory(devicePointer) / totalMemory;
+            return (totalMemory - NativeOpsHolder.getInstance().getDeviceNativeOps().getDeviceFreeMemory(devicePointer)) / totalMemory;
         }
     }
 

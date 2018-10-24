@@ -66,6 +66,14 @@ public class SingleTransferTask implements TransferTask {
     }
 
     @Override
+    public void addWantedElementsFromTarget(int dim, int[] indexes) {
+        if (!dimensionMask.contains(dim)) {
+            target.addWantedElements(dim,indexes);
+        }
+        dependentTask.addWantedElementsFromTarget(dim, indexes);
+    }
+
+    @Override
     public void addWantedNrofElementsFromTarget(int dim, int nrofElements) {
         if (!dimensionMask.contains(dim)) {
             target.addWantedNrofElements(dim, nrofElements);

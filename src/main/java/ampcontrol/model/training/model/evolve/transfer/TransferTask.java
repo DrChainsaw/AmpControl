@@ -34,6 +34,14 @@ public interface TransferTask {
 
     /**
      * Adds element indexes in a given dimension which shall be assigned in a target.
+     *
+     * @param dim     dimension from which elements are wanted
+     * @param indexes wanted element indexes in given dimension
+     */
+    void addWantedElementsFromTarget(int dim, int[] indexes);
+
+    /**
+     * Adds element indexes in a given dimension which shall be assigned in a target.
      * TODO: Update method signature to use int[] when updating dl4j to include fix for #6327
      *
      * @param dim     dimension from which elements are wanted

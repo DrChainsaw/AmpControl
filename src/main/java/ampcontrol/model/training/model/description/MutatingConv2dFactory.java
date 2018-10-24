@@ -305,7 +305,6 @@ public final class MutatingConv2dFactory {
             final SharedSynchronizedState<MutationLayerState> initialState =
                     new SharedSynchronizedState<>(MutationLayerState.fromFile(baseName, mutationLayerState));
 
-            log.info("Remove layers size: " + initialState.view().get().getRemoveLayers().size());
             final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState = view -> {
                 allNoutMutationLayers.addAll(view.get().getMutateNout());
                 return view.copy().update(view.get().clone());
@@ -328,7 +327,8 @@ public final class MutatingConv2dFactory {
                             copyState,
                             (str, state) -> state.get().save(str),
                             state -> new MemoryAwareMutation<>(memUsage -> {
-                                if (memUsage + 0.3 > memUsageRng.nextDouble()) {
+                                log.info("Create mutation from memusage: " + memUsage);
+                                if (memUsage + 0.2 > memUsageRng.nextDouble()) {
                                     // Use SuppliedMutation to be able to create mutations after RemoveLayersMutation has done its thing
                                     // Why not remove last? Issue with size of weights when remove happens after nout mutation.
                                     return AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
@@ -545,7 +545,7 @@ public final class MutatingConv2dFactory {
 
                 }).build()
         )
-                .filter(mut -> rng.nextDouble() < 0.03));
+                .filter(mut -> rng.nextDouble() < 0.05));
     }
 
     private static boolean isAfterGlobPool(String vertexName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {

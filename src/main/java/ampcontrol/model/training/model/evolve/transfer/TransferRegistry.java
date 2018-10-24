@@ -1,9 +1,13 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
+import org.nd4j.linalg.api.iter.NdIndexIterator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.exception.ND4JIllegalStateException;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
+import org.nd4j.linalg.indexing.PointIndex;
+import org.nd4j.linalg.indexing.SpecifiedIndex;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -121,7 +125,7 @@ class TransferRegistry {
                     return;
                 }
 
-                array.put(asIndArray(), anotherArray);
+                TransferRegistry.put(asIndArray(), array, anotherArray);
             } catch (ND4JIllegalStateException e) {
                 throw new ND4JIllegalStateException("Could not set array " + debugName + "! Tried to put array of shape "
                         + Arrays.toString(anotherArray.shape()) + " into target array of shape "
@@ -191,6 +195,71 @@ class TransferRegistry {
         actions.values().forEach(Runnable::run);
         actions.clear();
         registry.clear();
+    }
+
+    /**
+     * Workaround for nd4j 1.0.0-beta2 not being able to do INDArray#put(INDArrayIndex[] indices, INDArray element)
+     * when one of indices is of type SpecifiedIndex. Method is copy pasted from BaseNDArray SNAPSHOT 2018-10-24.
+     * @param indices the indices to put the ndarray in to
+     * @param target the nrarray to put source to in indices
+     * @param source the ndarray to put
+     * @return target (after modification)
+     */
+    public static INDArray put(INDArrayIndex[] indices, INDArray target, INDArray source) {
+        Nd4j.getCompressor().autoDecompress(target);
+        boolean isSpecifiedIndex = false;
+        for(INDArrayIndex idx : indices){
+            if(idx instanceof SpecifiedIndex){
+                isSpecifiedIndex = true;
+                break;
+            }
+        }
+
+        if(!isSpecifiedIndex){
+            return target.put(indices, source);
+        } else {
+            //Can't get a view, so we'll do it in subsets instead
+            // This is inefficient, but it is correct...
+            int numSpecified = 0;
+            List<long[]> specifiedIdxs = new ArrayList<>();
+            List<Integer> specifiedIdxDims = new ArrayList<>();
+
+            INDArrayIndex[] destinationIndices = indices.clone();  //Shallow clone
+            INDArrayIndex[] sourceIndices = indices.clone();
+            for( int i=0; i<indices.length; i++){
+                INDArrayIndex idx = indices[i];
+                if(idx instanceof SpecifiedIndex){
+                    numSpecified++;
+                    long[] idxs = ((SpecifiedIndex) idx).getIndexes();
+                    specifiedIdxs.add(idxs);
+                    specifiedIdxDims.add(i);
+                } else if(idx instanceof PointIndex){
+                    //Example: [2,3,3].put(point(1), ..., [1,x,y]) -> can't use point(1) on [1,x,y]
+                    sourceIndices[i] = NDArrayIndex.point(0);
+                }
+            }
+            int[] counts = new int[specifiedIdxs.size()];
+            int[] dims = new int[specifiedIdxDims.size()];
+            for( int i=0; i<specifiedIdxs.size(); i++ ){
+                counts[i] = specifiedIdxs.get(i).length;
+                dims[i] = specifiedIdxDims.get(i);
+            }
+
+            NdIndexIterator iter = new NdIndexIterator(counts);
+            while(iter.hasNext()){
+                long[] iterationIdxs = iter.next();
+                for(int i=0; i<iterationIdxs.length; i++ ){
+                    long[] indicesForDim = specifiedIdxs.get(i);
+                    destinationIndices[dims[i]] = NDArrayIndex.point(indicesForDim[(int)iterationIdxs[i]]);
+                    sourceIndices[dims[i]] = NDArrayIndex.point(iterationIdxs[i]);
+                }
+
+                INDArray sourceView = source.get(sourceIndices);
+                INDArray destinationView = target.get(destinationIndices);
+                destinationView.assign(sourceView);
+            }
+        }
+        return target;
     }
 
 
