@@ -6,7 +6,7 @@ import java.util.stream.IntStream;
 
 /**
  * {@link TransferTask} with callback for when wanted elements are added. Main use case is to break circular dependencies
- * in {@link MergeTransferTask}.
+ * in {@link MergeTransferBuffer}.
  *
  * @author Christian Skärby
  */

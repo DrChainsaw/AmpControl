@@ -5,11 +5,20 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * {@link TransferTask} used when outputs are merged for dependent tasks.
+ * Buffers transferred indexes from several inputs and merges the result into a dependent {@link TransferTask}. Inputs
+ * must be added in the same order as which they are concatenated.
+ * <br><br>
+ * For example, if A and B are both inputs to C so that input to C is [A, B], then {@link TransferTask.ListBuilder} for
+ * A must be added before {@link TransferTask.ListBuilder} for B. The {@link TransferTask} for C is the dependent
+ * {@link TransferTask}.
  *
  * @author Christian Skärby
  */
-public final class MergeTransferTask implements TransferTask {
+public final class MergeTransferBuffer {
+
+    private final TransferTask dependentTask;
+    private final List<DimIndexBuffer> sourceIndexBuffer;
+    private final List<DimIndexBuffer> targetIndexBuffer;
 
     private final static class DimIndexBuffer {
         private final int dimension;
@@ -49,11 +58,6 @@ public final class MergeTransferTask implements TransferTask {
         }
     }
 
-    private final List<TransferTask> tasksToMerge;
-    private final TransferTask dependentTask;
-    private final List<DimIndexBuffer> sourceIndexBuffer;
-    private final List<DimIndexBuffer> targetIndexBuffer;
-
     /**
      * Create a builder for this class
      *
@@ -64,36 +68,13 @@ public final class MergeTransferTask implements TransferTask {
     }
 
 
-    public MergeTransferTask(
-            List<TransferTask> tasksToMerge,
+    public MergeTransferBuffer(
             List<DimIndexBuffer> sourceIndexBuffer,
             List<DimIndexBuffer> targetIndexBuffer,
             TransferTask dependentTask) {
-        this.tasksToMerge = tasksToMerge;
         this.dependentTask = dependentTask;
         this.sourceIndexBuffer = sourceIndexBuffer;
         this.targetIndexBuffer = targetIndexBuffer;
-    }
-
-    @Override
-    public void addWantedElementsFromSource(int dim, int[] indexes) {
-        throw new UnsupportedOperationException("Dependent task mode not supported!");
-    }
-
-    @Override
-    public void addWantedElementsFromTarget(int dim, int[] indexes) {
-        throw new UnsupportedOperationException("Dependent task mode not supported!");
-    }
-
-    @Override
-    public void addWantedNrofElementsFromTarget(int dim, int nrofElements) {
-        throw new UnsupportedOperationException("Dependent task mode not supported!");
-    }
-
-    @Override
-    public void execute() {
-        tasksToMerge.forEach(TransferTask::execute);
-        transferBufferedIndexes();
     }
 
     public void transferBufferedIndexes() {
@@ -109,12 +90,12 @@ public final class MergeTransferTask implements TransferTask {
         targetIndexBuffer.forEach(DimIndexBuffer::reset);
     }
 
-    public static class Builder implements ListBuilder {
+    public static class Builder {
 
-        private final List<TransferTask.ListBuilder> mergedInputs = new ArrayList<>();
+        private int ordinal = 0;
         private List<DimIndexBuffer> sourceShapes;
         private List<DimIndexBuffer> targetShapes;
-        private Optional<ListBuilder> dependentTaskBuilder = Optional.empty();
+        private TransferTask.ListBuilder dependentTaskBuilder = NoTransferTask.builder();
 
 
         /**
@@ -126,7 +107,6 @@ public final class MergeTransferTask implements TransferTask {
          * @return This Builder
          */
         Builder addInput(long[] sourceShape, long[] targetShape, TransferTask.ListBuilder inputBuilder) {
-            final int ordinal = mergedInputs.size();
             if (ordinal == 0) {
                 sourceShapes = IntStream.range(0, sourceShape.length)
                         .mapToObj(DimIndexBuffer::new)
@@ -135,36 +115,28 @@ public final class MergeTransferTask implements TransferTask {
                         .mapToObj(DimIndexBuffer::new)
                         .collect(Collectors.toList());
             }
-
             IntStream.range(0, sourceShape.length).forEach(dim -> sourceShapes.get(dim).addOffset(sourceShape[dim]));
             IntStream.range(0, targetShape.length).forEach(dim -> targetShapes.get(dim).addOffset(targetShape[dim]));
 
+            final int thisOrdinal = ordinal;
             final CallbackTransferTask.Builder bufferingBuilder = CallbackTransferTask.builder()
-                    .setSourceCallback((dim, indexes) -> sourceShapes.get(dim).addIndexes(ordinal, indexes))
-                    .setTargetCallback((dim, indexes) -> targetShapes.get(dim).addIndexes(ordinal, indexes));
+                    .setSourceCallback((dim, indexes) -> sourceShapes.get(dim).addIndexes(thisOrdinal, indexes))
+                    .setTargetCallback((dim, indexes) -> targetShapes.get(dim).addIndexes(thisOrdinal, indexes));
             inputBuilder.addDependentTask(bufferingBuilder);
-            mergedInputs.add(inputBuilder);
+            ordinal++;
             return this;
         }
 
-        @Override
-        public Builder addDependentTask(ListBuilder dependentTaskBuilder) {
-            if (!this.dependentTaskBuilder.isPresent()) {
-                this.dependentTaskBuilder = Optional.of(dependentTaskBuilder);
-            } else {
-                this.dependentTaskBuilder.get().addDependentTask(dependentTaskBuilder);
-            }
+        public Builder addDependentTask(TransferTask.ListBuilder dependentTaskBuilder) {
+            this.dependentTaskBuilder = this.dependentTaskBuilder.addDependentTask(dependentTaskBuilder);
             return this;
         }
 
-        @Override
-        public MergeTransferTask build() {
-
-            return new MergeTransferTask(
-                    mergedInputs.stream().map(ListBuilder::build).collect(Collectors.toList()),
+        public MergeTransferBuffer build() {
+            return new MergeTransferBuffer(
                     sourceShapes,
                     targetShapes,
-                    dependentTaskBuilder.map(ListBuilder::build).orElse(new NoTransferTask()));
+                    dependentTaskBuilder.build());
         }
     }
 }

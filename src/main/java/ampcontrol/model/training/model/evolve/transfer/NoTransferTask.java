@@ -10,7 +10,7 @@ public class NoTransferTask implements TransferTask {
     /**
      * Create a builder for this class
      *
-     * @return a new {@link MergeTransferTask.Builder} instance.
+     * @return a new {@link MergeTransferBuffer.Builder} instance.
      */
     public static Builder builder() {
         return new Builder();

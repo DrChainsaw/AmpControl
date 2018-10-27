@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
+import lombok.AllArgsConstructor;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
@@ -34,81 +35,70 @@ public class ParameterTransfer {
     private final ComputationGraph graph;
     private final Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory;
     private final Set<String> nInTransferredFromPreviousNoutLayers = new HashSet<>();
-    private final Set<String> nOutTransferredToNextNinLayers = new HashSet<>();
     private final TransferRegistry registry;
     private final Map<String, MergeContext> mergeTasks = new LinkedHashMap<>();
 
+    @AllArgsConstructor
     private static final class TransferContext {
         private final long[] sourceShape;
         private final long[] targetShape;
         private final int inputDimension;
         private final int outputDimension;
-
-        private TransferContext(long[] sourceShape, long[] targetShape, int inputDimension, int outputDimension) {
-            this.sourceShape = sourceShape;
-            this.targetShape = targetShape;
-            this.inputDimension = inputDimension;
-            this.outputDimension = outputDimension;
-        }
-
-        private boolean shallPropagate() {
-            return sourceShape[outputDimension] != targetShape[outputDimension];
-        }
     }
-    
+
     private static final class MergeContext {
         private final List<TransferContext> contexts = new ArrayList<>();
-        private final MergeTransferTask.Builder builder;
-        
+        private final MergeTransferBuffer.Builder builder;
+
         private MergeContext() {
-            this.builder = MergeTransferTask.builder();
+            this.builder = MergeTransferBuffer.builder();
         }
-        
+
         private void add(TransferContext context, TransferTask.ListBuilder inputBuilder) {
             // Validate input
             contexts.forEach(otherContext -> {
-                if(otherContext.sourceShape.length != context.sourceShape.length) {
+                if (otherContext.sourceShape.length != context.sourceShape.length) {
                     throw new IllegalArgumentException("Incorrect source shape! other: " +
                             Arrays.toString(otherContext.sourceShape) + " new  " +
                             Arrays.toString(context.sourceShape));
                 }
-                
-                if(otherContext.targetShape.length != context.targetShape.length) {
-                    throw new IllegalArgumentException("Incorrect target shape! other: " + 
-                            Arrays.toString(otherContext.targetShape) + " new  " + 
+
+                if (otherContext.targetShape.length != context.targetShape.length) {
+                    throw new IllegalArgumentException("Incorrect target shape! other: " +
+                            Arrays.toString(otherContext.targetShape) + " new  " +
                             Arrays.toString(context.targetShape));
                 }
-                
-                
-                if(otherContext.inputDimension != context.inputDimension) {
-                    throw new IllegalArgumentException("Incorrect input dimension! other: " + 
+
+
+                if (otherContext.inputDimension != context.inputDimension) {
+                    throw new IllegalArgumentException("Incorrect input dimension! other: " +
                             otherContext.inputDimension + " new: " + context.inputDimension);
                 }
 
-                if(otherContext.outputDimension != context.outputDimension) {
+                if (otherContext.outputDimension != context.outputDimension) {
                     throw new IllegalArgumentException("Incorrect output dimension! other: " +
                             otherContext.outputDimension + " new: " + context.outputDimension);
                 }
-                
+
             });
             contexts.add(context);
             builder.addInput(context.sourceShape, context.targetShape, inputBuilder);
         }
 
         private TransferContext toTransferContext() {
-            return contexts.stream().reduce((tc1,tc2) ->
-                new TransferContext(
-                        elemsum(tc1.sourceShape, tc2.sourceShape),
-                        elemsum(tc1.targetShape, tc2.targetShape),
-                        tc1.inputDimension,
-                        tc2.outputDimension))
+            return contexts.stream().reduce((tc1, tc2) ->
+                    new TransferContext(
+                            elemsum(tc1.sourceShape, tc2.sourceShape),
+                            elemsum(tc1.targetShape, tc2.targetShape),
+                            tc1.inputDimension,
+                            tc2.outputDimension))
                     .orElseThrow(() -> new IllegalStateException("Must have at least one context!"));
         }
 
         private static long[] elemsum(long[] a, long[] b) {
             return IntStream.range(0, a.length).mapToLong(i -> a[i] + b[i]).toArray();
         }
-        
+
     }
 
     private static final class ParamPair {
@@ -151,9 +141,9 @@ public class ParameterTransfer {
         for (int vertexIndex : topologicalOrder) {
             builders.add(transferParameters(newGraph, vertices[vertexIndex].getVertexName()));
         }
-        final List<MergeTransferTask> mergeTransferTasks = mergeTasks.values().stream().map(mc -> mc.builder.build()).collect(Collectors.toList());
+        final List<MergeTransferBuffer> mergeTransferBuffers = mergeTasks.values().stream().map(mc -> mc.builder.build()).collect(Collectors.toList());
         builders.stream().map(TransferTask.ListBuilder::build).forEachOrdered(TransferTask::execute);
-        mergeTransferTasks.forEach(MergeTransferTask::transferBufferedIndexes);
+        mergeTransferBuffers.forEach(MergeTransferBuffer::transferBufferedIndexes);
         registry.commit();
         return newGraph;
     }
@@ -172,7 +162,7 @@ public class ParameterTransfer {
         Optional<ParamPair> paramPairOpt = getParams(layerName, graph, newGraph);
         return paramPairOpt.map(paramPair -> {
 
-            System.out.println("Transfer start at " + layerName + " nInTransferred: " + nInTransferredFromPreviousNoutLayers);
+            //System.out.println("Transfer start at " + layerName + " nInTransferred: " + nInTransferredFromPreviousNoutLayers);
 
             if (paramPair.source.containsKey(W)) {
                 final TransferContext transferContext = new TransferContext(
@@ -183,22 +173,16 @@ public class ParameterTransfer {
 
                 //System.out.println("\t source " + Arrays.toString(transferContext.sourceShape) + " target " + Arrays.toString(transferContext.targetShape));
                 TransferTask.ListBuilder taskBuilder = initTransfer(transferContext, paramPair);
-              //  if (transferContext.shallPropagate()) {
-                    nOutTransferredToNextNinLayers.add(layerName);
-                    taskBuilder.addDependentTask(transferOutputParameters(
-                            transferContext,
-                            newGraph,
-                            newGraph.getVertex(layerName),
-                            taskBuilder));
-             //   }
-                //taskBuilder.build().execute();
+                taskBuilder.addDependentTask(transferOutputParameters(
+                        transferContext,
+                        newGraph,
+                        newGraph.getVertex(layerName)));
                 return taskBuilder;
             } else {
                 transferAllParameters(layerName, paramPair);
                 return NoTransferTask.builder();
             }
         }).orElseGet(() -> {
-            //if (!paramPairOpt.isPresent()) {
             // Set weights to ID mapping (if possible) for new layers
             // TODO This decision does not really belong to this class!
             findLayerVertex(layerName, newGraph)
@@ -206,7 +190,6 @@ public class ParameterTransfer {
                     .filter(parMap -> parMap.containsKey(W))
                     .map(parMap -> parMap.get(W))
                     .ifPresent(ParameterTransfer::setIdentityMapping);
-            //   }
 
             return NoTransferTask.builder();
         });
@@ -272,8 +255,7 @@ public class ParameterTransfer {
     private TransferTask.ListBuilder transferOutputParameters(
             TransferContext transferContext,
             ComputationGraph newGraph,
-            GraphVertex inputVertex,
-            TransferTask.ListBuilder taskListBuilder) {
+            GraphVertex inputVertex) {
 
         final TransferTask.ListBuilder builder = new DependentTaskBuilder(); //handleMergeVertex(newGraph, inputVertex, taskListBuilder);
 
@@ -281,120 +263,32 @@ public class ParameterTransfer {
                 .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
                 .forEachOrdered(vertex -> {
 
-                    System.out.println("\t Check transfer for " + vertex.getVertexName());
+                    //System.out.println("\t Check transfer for " + vertex.getVertexName());
                     getParams(vertex.getVertexName(), graph, newGraph)
                             .filter(paramPair -> canTransferNoutToNin(transferContext, paramPair))
                             .ifPresent(paramPair -> builder.addDependentTask(addTasksFor(transferContext, paramPair)));
 
                     if (vertex instanceof MergeVertex) {
-                        System.out.println(inputVertex.getVertexName() + " hit a mergevertex " + vertex.getVertexName() + "! contexts: " + mergeTasks);
+                        //System.out.println("\t" + inputVertex.getVertexName() + " hit a mergevertex " + vertex.getVertexName() + "! contexts: " + mergeTasks);
                         MergeContext mergeContext = mergeTasks.computeIfAbsent(vertex.getVertexName(),
                                 name -> new MergeContext());
                         mergeContext.add(transferContext, builder);
                         // Check if we have all inputs, then proceed further down the graph as we now have the right
                         // source and target shapes to pass the canTransferNoutToNin check above
-                        if(vertex.getInputVertices().length == mergeContext.contexts.size()) {
-                            System.out.println("Proceed with mergevertex!");
+                        if (vertex.getInputVertices().length == mergeContext.contexts.size()) {
+                            //System.out.println("\tProceed with mergevertex!");
                             mergeContext.builder.addDependentTask(transferOutputParameters(
                                     mergeContext.toTransferContext(),
                                     newGraph,
-                                    vertex,
-                                    mergeContext.builder));
+                                    vertex));
                         }
 
                     } else if (doesNinPropagateToNext(vertex)) {
-                        builder.addDependentTask(transferOutputParameters(transferContext, newGraph, vertex, builder));
+                        builder.addDependentTask(transferOutputParameters(transferContext, newGraph, vertex));
                     }
 
                 });
         return builder;
-    }
-
-    private TransferTask.ListBuilder handleMergeVertex(ComputationGraph newGraph,
-                                                       GraphVertex inputVertex,
-                                                       TransferTask.ListBuilder taskListBuilder) {
-
-
-//        List<TransferTask.ListBuilder> mergeVertices = Stream.of(Optional.ofNullable(inputVertex.getOutputVertices()).orElse(new VertexIndices[0]))
-//                .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
-//                .filter(graphVertex -> graphVertex instanceof MergeVertex)
-//                .map(graphVertex -> (MergeVertex)graphVertex)
-//                .map(mergeVertex -> inputsToMergeVertex(newGraph, mergeVertex, inputVertex, taskListBuilder))
-//                .collect(Collectors.toList());
-
-
-        return new DependentTaskBuilder();
-    }
-
-    private TransferTask.ListBuilder inputsToMergeVertex(ComputationGraph newGraph,
-                                                         MergeVertex mergeVertex,
-                                                         GraphVertex inputVertex,
-                                                         TransferTask.ListBuilder taskListBuilder) {
-
-        final MergeTransferTask.Builder mergeBuilder = MergeTransferTask.builder();
-        Stream.of(Optional.ofNullable(mergeVertex.getInputVertices()).orElse(new VertexIndices[0]))
-                .sequential()
-                .map(vertexIndex -> newGraph.getVertices()[vertexIndex.getVertexIndex()])
-                .forEachOrdered(graphVertex -> {
-
-                    System.out.println("InputsToMergeVertex:  " + graphVertex.getVertexName());
-
-                    final TransferTask.ListBuilder inputBuilder;
-                    if (graphVertex == inputVertex) {
-                        inputBuilder = taskListBuilder;
-                    } else {
-                        inputBuilder = inputTo(newGraph, graphVertex);
-                    }
-
-                    // Problem!! mergeBuilder assumes only one INDArray per input, but there are typically (at least) two: Bias and Weight
-                    // Bias it typically a dependent transfer task while weights is the primary. Probably need to get this info from either
-                    // Builder (don't want to) or from method calls (bleh!)...
-                    // Not correct! Must have whatever GraphVertex/layername inputTo finds...
-                    getParams(graphVertex.getVertexName(), graph, newGraph).ifPresent(
-                            pp -> pp.source.keySet().forEach(key -> {
-                                mergeBuilder.addInput(pp.source.get(key).shape(), pp.target.get(key).shape(), inputBuilder);
-                            })
-                    );
-                });
-
-
-        return mergeBuilder;
-    }
-
-    private TransferTask.ListBuilder inputTo(ComputationGraph newGraph,
-                                             GraphVertex outputVertex) {
-
-        System.out.println("InputsTo:  " + outputVertex.getVertexName());
-        final String layerName = outputVertex.getVertexName();
-        return getParams(layerName, graph, newGraph)
-                .filter(paramPair -> paramPair.source.containsKey(W))
-                .map(paramPair -> {
-                    final TransferContext transferContext = new TransferContext(
-                            paramPair.source.get(W).shape(),
-                            paramPair.target.get(W).shape(),
-                            inputDim(paramPair.source),
-                            outputDim(paramPair.source));
-
-                    //System.out.println("\t source " + Arrays.toString(transferContext.sourceShape) + " target " + Arrays.toString(transferContext.targetShape));
-                    TransferTask.ListBuilder taskBuilder = initTransfer(transferContext, paramPair);
-                    if (transferContext.shallPropagate()) {
-                        nOutTransferredToNextNinLayers.add(layerName);
-                        taskBuilder.addDependentTask(transferOutputParameters(
-                                transferContext,
-                                newGraph,
-                                newGraph.getVertex(layerName),
-                                taskBuilder));
-                    }
-                    return taskBuilder;
-                })
-                .orElseGet(() -> {
-                    if (outputVertex instanceof MergeVertex) {
-                        return inputsToMergeVertex(newGraph, (MergeVertex) outputVertex, null, null);
-                    }
-
-                    return inputTo(newGraph, newGraph.getVertices()[outputVertex.getInputVertices()[0].getVertexIndex()]);
-                });
-
     }
 
     private TransferTask.ListBuilder addTasksFor(
@@ -405,17 +299,17 @@ public class ParameterTransfer {
         if (!nInTransferredFromPreviousNoutLayers.add(paramPair.layerName)) {
             return taskBuilder;
         }
-        boolean[] first = {true};
+       // boolean[] first = {true};
         for (String parKey : paramPair.source.keySet()) {
             outputToInputDimMapping(parKey, paramPair.source.get(parKey).shape().length).ifPresent(dimMapper -> {
 
                 final INDArray sourceParam = paramPair.source.get(parKey);
                 final INDArray targetParam = paramPair.target.get(parKey);
 
-                if (first[0]) {
-                    System.out.println("\tTransfer dependent output: " + paramPair.layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
-                    first[0] = false;
-                }
+//                if (first[0]) {
+//                    System.out.println("\tTransfer dependent output: " + paramPair.layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
+//                    first[0] = false;
+//                }
 
                 if (sourceParam.size(0) != targetParam.size(0)
                         || sourceParam.size(1) != targetParam.size(1)) {
@@ -453,7 +347,7 @@ public class ParameterTransfer {
 
             compFactory.apply(layerName)
                     .ifPresent(firstTaskBuilder::compFactory);
-            paramPair.source.keySet().stream().filter(par -> !par.equals(startKey)).forEach(parKey -> {
+            paramPair.source.keySet().stream().filter(par -> !par.equals(startKey)).forEach(parKey ->
                 firstTaskBuilder
                         .addDependentTask(SingleTransferTask.builder()
                                 .source(SingleTransferTask.IndMapping.builder()
@@ -461,8 +355,8 @@ public class ParameterTransfer {
                                         .build())
                                 .target(SingleTransferTask.IndMapping.builder()
                                         .entry(registry.register(paramPair.target.get(parKey), layerName + "_target_" + parKey))
-                                        .build()));
-            });
+                                        .build()))
+            );
             firstTaskBuilder.build().execute();
         });
     }
@@ -473,9 +367,9 @@ public class ParameterTransfer {
         }
 
         final int inputDim = inputDim(paramPair.source);
-        System.out.println("\t Test can transfer. Sources: " + tc.sourceShape[tc.outputDimension] + " vs " +
-                paramPair.source.get(W).size(inputDim) + " targets: " + tc.targetShape[tc.outputDimension] + " vs " +
-                paramPair.target.get(W).size(inputDim));
+//        System.out.println("\t Test can transfer. Sources: " + tc.sourceShape[tc.outputDimension] + " vs " +
+//                paramPair.source.get(W).size(inputDim) + " targets: " + tc.targetShape[tc.outputDimension] + " vs " +
+//                paramPair.target.get(W).size(inputDim));
         return tc.sourceShape[tc.outputDimension] == paramPair.source.get(W).size(inputDim)
                 && tc.targetShape[tc.outputDimension] == paramPair.target.get(W).size(inputDim);
     }
