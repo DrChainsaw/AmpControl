@@ -290,6 +290,16 @@ public class GraphUtils {
                         .build(), denseName)
                 .build());
         graph.init();
+
+        setToLinspace(graph.getLayer(beforeFork).getParam(W), true);
+        setToLinspace(graph.getLayer(beforeFork).getParam(B), false);
+        setToLinspace(graph.getLayer(afterFork).getParam(W), false);
+        setToLinspace(graph.getLayer(afterFork).getParam(B), true);
+        for(int i = 0; i < forkNames.length; i++) {
+            setToLinspace(graph.getLayer(forkNames[i]).getParam(W), i % 2 == 0);
+            setToLinspace(graph.getLayer(forkNames[i]).getParam(B), (i+1) % 2 == 0);
+        }
+
         return graph;
     }
 

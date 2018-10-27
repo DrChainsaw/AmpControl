@@ -93,7 +93,10 @@ public final class MergeTransferTask implements TransferTask {
     @Override
     public void execute() {
         tasksToMerge.forEach(TransferTask::execute);
+        transferBufferedIndexes();
+    }
 
+    public void transferBufferedIndexes() {
         sourceIndexBuffer.forEach(
                 dimIndexBuffer -> dimIndexBuffer.getAllIndexes()
                         .ifPresent(indexes -> dependentTask.addWantedElementsFromSource(dimIndexBuffer.dimension, indexes)));
