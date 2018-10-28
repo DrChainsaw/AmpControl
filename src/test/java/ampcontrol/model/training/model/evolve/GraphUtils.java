@@ -5,6 +5,7 @@ import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -15,6 +16,9 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Utils for doing testing on Compu
@@ -247,7 +251,7 @@ public class GraphUtils {
     }
 
     /**
-     * Returns a {@link ComputationGraph} convolution layers in a forked connection
+     * Returns a {@link ComputationGraph} with convolution layers in a forked connection
      *
      * @param beforeFork Name of layer before fork
      * @param afterFork  Name of layer after fork
@@ -269,18 +273,23 @@ public class GraphUtils {
                         .build(), inputName)
                 .addLayer(batchNormName, new BatchNormalization.Builder().build(), beforeFork);
 
+        final String[] forkBatchNormNames = Stream.of(forkNames).map(name -> name + batchNormName)
+                .collect(Collectors.toList()).toArray(new String[forkNames.length]);
         for (int i = 0; i < forkNames.length; i++) {
             builder.addLayer(forkNames[i], new Convolution2D.Builder(forkNames.length - i, 1 + i)
                     .convolutionMode(ConvolutionMode.Same)
                     .nOut(forkNoutStart + i)
                     .build(), batchNormName);
+
+            builder.addLayer(
+                    forkBatchNormNames[i], new BatchNormalization.Builder().build(), forkNames[i]);
         }
 
         final ComputationGraph graph = new ComputationGraph(builder
                 .addLayer(afterFork, new Convolution2D.Builder(3, 3)
                         .convolutionMode(ConvolutionMode.Same)
                         .nOut(3)
-                        .build(), forkNames)
+                        .build(), forkBatchNormNames)
                 .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), afterFork)
                 .addLayer(denseName, new DenseLayer.Builder()
                         .nOut(9)
@@ -295,11 +304,153 @@ public class GraphUtils {
         setToLinspace(graph.getLayer(beforeFork).getParam(B), false);
         setToLinspace(graph.getLayer(afterFork).getParam(W), false);
         setToLinspace(graph.getLayer(afterFork).getParam(B), true);
-        for(int i = 0; i < forkNames.length; i++) {
+        for (int i = 0; i < forkNames.length; i++) {
             setToLinspace(graph.getLayer(forkNames[i]).getParam(W), i % 2 == 0);
-            setToLinspace(graph.getLayer(forkNames[i]).getParam(B), (i+1) % 2 == 0);
+            setToLinspace(graph.getLayer(forkNames[i]).getParam(B), (i + 1) % 2 == 0);
+        }
+        return graph;
+    }
+
+    /**
+     * Returns a {@link ComputationGraph} with a residual block consisting of convolution layers in a forked connection
+     *
+     * @param beforeFork Name of layer before fork
+     * @param afterFork  Name of layer after fork
+     * @param forkNames  Names of layers in fork (one path per layer)
+     * @return A {@link ComputationGraph}
+     */
+    public static ComputationGraph getForkResNet(String beforeFork, String afterFork, String... forkNames) {
+        final int[] forkNouts = IntStream.range(0, forkNames.length).map(i -> i + 5).toArray();
+        final ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
+                .weightInit(new ConstantDistribution(666))
+                .biasInit(666)
+                .graphBuilder()
+                .addInputs(inputName)
+                .setOutputs(outputName)
+                .setInputTypes(InputType.convolutional(33, 33, 3))
+                .addLayer(beforeFork, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(IntStream.of(forkNouts).sum())
+                        .build(), inputName);
+
+        for (int i = 0; i < forkNames.length; i++) {
+            final String bnName = forkNames[i] + batchNormName;
+            builder
+                    .addLayer(bnName, new BatchNormalization.Builder().build(), beforeFork)
+                    .addLayer(forkNames[i], new Convolution2D.Builder(forkNames.length - i, 1 + i)
+                            .convolutionMode(ConvolutionMode.Same)
+                            .nOut(forkNouts[i])
+                            .build(), bnName);
+
         }
 
+        final String mergeName = "mergeFork";
+        builder.addVertex(mergeName, new MergeVertex(), forkNames);
+
+        final String elemAddName = "addMergeAndBeforeFork";
+        builder.addVertex(elemAddName, new ElementWiseVertex(ElementWiseVertex.Op.Add), mergeName, beforeFork);
+
+        final ComputationGraph graph = new ComputationGraph(builder
+                .addLayer(afterFork, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(3)
+                        .build(), elemAddName)
+                .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), afterFork)
+                .addLayer(denseName, new DenseLayer.Builder()
+                        .nOut(9)
+                        .build(), globPoolName)
+                .addLayer(outputName, new OutputLayer.Builder()
+                        .nOut(2)
+                        .build(), denseName)
+                .build());
+        graph.init();
+
+        setToLinspace(graph.getLayer(beforeFork).getParam(W), true);
+        setToLinspace(graph.getLayer(beforeFork).getParam(B), false);
+        setToLinspace(graph.getLayer(afterFork).getParam(W), false);
+        setToLinspace(graph.getLayer(afterFork).getParam(B), true);
+        for (int i = 0; i < forkNames.length; i++) {
+            setToLinspace(graph.getLayer(forkNames[i]).getParam(W), i % 2 == 0);
+            setToLinspace(graph.getLayer(forkNames[i]).getParam(B), (i + 1) % 2 == 0);
+        }
+        return graph;
+    }
+
+    /**
+     * Returns a {@link ComputationGraph} with a complex structure for stress testing
+     *
+     * @param beforeFork Name of layer before first fork
+     * @param afterFork  Name of layer after last fork
+     * @param fork1Names Names of layers in first fork (one path per layer)
+     * @param fork2Names Names of layers in first fork (one path per layer)
+     * @return A {@link ComputationGraph}
+     */
+    public static ComputationGraph getForkResOuterInnerNet(String beforeFork, String afterFork, String[] fork1Names, String[] fork2Names) {
+
+        final int[] fork1Nouts = IntStream.range(0, fork1Names.length).map(i -> 7 + i).toArray();
+        final int[] fork2Nouts = IntStream.range(0, fork1Names.length).map(i -> 3 + i).toArray();
+        final ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
+                .weightInit(new ConstantDistribution(666))
+                .biasInit(666)
+                .graphBuilder()
+                .addInputs(inputName)
+                .setOutputs(outputName)
+                .setInputTypes(InputType.convolutional(33, 33, 3))
+                .addLayer(beforeFork, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(IntStream.of(fork1Nouts).sum())
+                        .build(), inputName)
+                .addLayer(batchNormName, new BatchNormalization.Builder().build(), beforeFork);
+
+        for (int i = 0; i < fork1Names.length; i++) {
+            builder.addLayer(fork1Names[i], new Convolution2D.Builder(2, 2)
+                    .convolutionMode(ConvolutionMode.Same)
+                    .nOut(fork1Nouts[i])
+                    .build(), batchNormName);
+        }
+
+        final String fork1MergeName = "fork1Merge";
+        builder.addVertex(fork1MergeName, new MergeVertex(), fork1Names);
+
+        final String elemAdd1Name = "elemAdd1";
+        builder.addVertex(elemAdd1Name, new ElementWiseVertex(ElementWiseVertex.Op.Add), fork1MergeName, batchNormName);
+
+        // Not handled: Leads to double change in afterFork2 if anything which touches elemAdd1 is changed
+        //final String fork1AndInputMergeName = "fork1AndInputMerge";
+        //builder.addVertex(fork1AndInputMergeName, new MergeVertex(), fork1MergeName, batchNormName);
+
+        final String[] fork2ElemAdds = Stream.of(fork2Names).map(name -> name + "Add")
+                .collect(Collectors.toList()).toArray(new String[fork2Names.length]);
+        for (int i = 0; i < fork2Names.length; i++) {
+
+            final String fork2ResName = "res" + fork2Names[i];
+            builder.addLayer(fork2Names[i], new Convolution2D.Builder(1, 1)
+                    .convolutionMode(ConvolutionMode.Same)
+                    .nOut(fork2Nouts[i])
+                    .build(), fork1MergeName)
+                    .addLayer(fork2ResName, new Convolution2D.Builder(3, 3)
+                    .convolutionMode(ConvolutionMode.Same)
+                    .nOut(fork2Nouts[i])
+                    .build(), fork2Names[i])
+                    .addVertex(fork2ElemAdds[i], new ElementWiseVertex(ElementWiseVertex.Op.Add), fork2Names[i], fork2ResName);
+        }
+        final String[] afterFork2 = Stream.concat(Stream.of(elemAdd1Name), Stream.of(fork2ElemAdds))
+                .collect(Collectors.toList()).toArray(new String[fork2Names.length + 1]);
+
+        final ComputationGraph graph = new ComputationGraph(builder
+                .addLayer(afterFork, new Convolution2D.Builder(3, 3)
+                        .convolutionMode(ConvolutionMode.Same)
+                        .nOut(3)
+                        .build(), afterFork2)
+                .addLayer(globPoolName, new GlobalPoolingLayer.Builder().build(), afterFork)
+                .addLayer(denseName, new DenseLayer.Builder()
+                        .nOut(9)
+                        .build(), globPoolName)
+                .addLayer(outputName, new OutputLayer.Builder()
+                        .nOut(2)
+                        .build(), denseName)
+                .build());
+        graph.init();
         return graph;
     }
 

@@ -171,7 +171,7 @@ public class ParameterTransfer {
                         inputDim(paramPair.source),
                         outputDim(paramPair.source));
 
-                //System.out.println("\t source " + Arrays.toString(transferContext.sourceShape) + " target " + Arrays.toString(transferContext.targetShape));
+                ////System.out.println("\t source " + Arrays.toString(transferContext.sourceShape) + " target " + Arrays.toString(transferContext.targetShape));
                 TransferTask.ListBuilder taskBuilder = initTransfer(transferContext, paramPair);
                 taskBuilder.addDependentTask(transferOutputParameters(
                         transferContext,
@@ -299,17 +299,17 @@ public class ParameterTransfer {
         if (!nInTransferredFromPreviousNoutLayers.add(paramPair.layerName)) {
             return taskBuilder;
         }
-       // boolean[] first = {true};
+        boolean[] first = {true};
         for (String parKey : paramPair.source.keySet()) {
             outputToInputDimMapping(parKey, paramPair.source.get(parKey).shape().length).ifPresent(dimMapper -> {
 
                 final INDArray sourceParam = paramPair.source.get(parKey);
                 final INDArray targetParam = paramPair.target.get(parKey);
 
-//                if (first[0]) {
-//                    System.out.println("\tTransfer dependent output: " + paramPair.layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
-//                    first[0] = false;
-//                }
+                if (first[0]) {
+                    //System.out.println("\tTransfer dependent output: " + paramPair.layerName + " source " + Arrays.toString(sourceParam.shape()) + " target: " + Arrays.toString(targetParam.shape()));
+                    first[0] = false;
+                }
 
                 if (sourceParam.size(0) != targetParam.size(0)
                         || sourceParam.size(1) != targetParam.size(1)) {
@@ -367,7 +367,7 @@ public class ParameterTransfer {
         }
 
         final int inputDim = inputDim(paramPair.source);
-//        System.out.println("\t Test can transfer. Sources: " + tc.sourceShape[tc.outputDimension] + " vs " +
+//        //System.out.println("\t Test can transfer. Sources: " + tc.sourceShape[tc.outputDimension] + " vs " +
 //                paramPair.source.get(W).size(inputDim) + " targets: " + tc.targetShape[tc.outputDimension] + " vs " +
 //                paramPair.target.get(W).size(inputDim));
         return tc.sourceShape[tc.outputDimension] == paramPair.source.get(W).size(inputDim)

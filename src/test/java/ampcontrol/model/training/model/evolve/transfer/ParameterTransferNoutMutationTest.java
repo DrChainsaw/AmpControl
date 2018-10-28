@@ -206,9 +206,9 @@ public class ParameterTransferNoutMutationTest {
                 .map(GraphVertex::getLayer)
                 .filter(layer -> layer.numParams() > 0)
                 .forEach(layer ->
-                    assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
-                            graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
-                            layer.params().meanNumber())
+                        assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
+                                graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
+                                layer.params().meanNumber())
                 );
     }
 
@@ -240,11 +240,11 @@ public class ParameterTransferNoutMutationTest {
         newGraph.init();
         newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
 
-        final int oldNout =  graph.layerSize(fork1NameToMutate);
+        final int oldNout = graph.layerSize(fork1NameToMutate);
 
         // Drop the first oldNout - newNout elements from fork1NameToMutate
         final int[] orderToKeep = IntStream.range(0, oldNout)
-                .map(i -> (i - (int)newNout))
+                .map(i -> (i - (int) newNout))
                 .map(i -> i + oldNout)
                 .map(i -> i % oldNout).toArray();
         final Map<String, Function<Integer, Comparator<Integer>>> comparatorMap = new HashMap<>();
@@ -253,16 +253,6 @@ public class ParameterTransferNoutMutationTest {
         final ComputationGraph mutatedGraph = new ParameterTransfer(graph
                 , name -> Optional.ofNullable(comparatorMap.get(name))).transferWeightsTo(newGraph);
         mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
-
-//        Stream.of(mutatedGraph.getVertices())
-//                .filter(GraphVertex::hasLayer)
-//                .map(GraphVertex::getLayer)
-//                .filter(layer -> layer.numParams() > 0)
-//                .forEach(layer ->
-//                        assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
-//                                graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
-//                                layer.params().meanNumber())
-//                );
 
         final INDArray source = graph.getLayer(fork1NameToMutate).getParam(GraphUtils.W);
         final INDArray target = mutatedGraph.getLayer(fork1NameToMutate).getParam(GraphUtils.W);
@@ -274,8 +264,60 @@ public class ParameterTransferNoutMutationTest {
         final INDArray sourceAfter = graph.getLayer(afterName).getParam(GraphUtils.W);
         final INDArray targetAfter = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
         assertDims(1, expectedToKeep, sourceAfter, targetAfter);
-
     }
+
+
+    /**
+     * Test to decrease one layer and increase another in a complex graph with merges and element wise operatations
+     * Just a smoke test due to pain of checking each individual weight transfer
+     */
+    @Test
+    public void decreaseIncreaseMazeConv() {
+        final String firstName = "firstConv";
+        final String afterName = "after";
+        final String fork1NameToMutate = "fork1ToMutate";
+        final String fork2NameToMutate = "fork2ToMutate";
+        final String[] fork1Names = {"f1_1", fork1NameToMutate, "f1_3"};
+        final String[] fork2Names = {"f2_1", fork2NameToMutate};
+        final ComputationGraph graph = GraphUtils.getForkResOuterInnerNet(firstName, afterName, fork1Names, fork2Names);
+
+        graph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        final long newNout1 = 5;
+        final long newNout2 = 7;
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName(fork1NameToMutate)
+                                .mutateNout(nOut -> newNout1)
+                                .build(),
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName(fork2NameToMutate)
+                                .mutateNout(nOut -> newNout2)
+                                .build()
+                ))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        Stream.of(mutatedGraph.getVertices())
+                .filter(GraphVertex::hasLayer)
+                .map(GraphVertex::getLayer)
+                .filter(layer -> layer.numParams() > 0)
+                .forEach(layer ->
+                        assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
+                                graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
+                                layer.params().meanNumber())
+                );
+    }
+
 
     @NotNull
     ComputationGraph decreaseDecreaseNout(
