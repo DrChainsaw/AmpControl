@@ -200,7 +200,7 @@ public class GraphUtils {
      * Create a model with residual convolution layers
      *
      * @param name1 Name of first layer
-     * @param name2 NAme of second layer
+     * @param name2 Name of second layer
      * @param name3 Name of third layer
      * @return a {@link ComputationGraph}
      */

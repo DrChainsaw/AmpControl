@@ -3,7 +3,7 @@ package ampcontrol.model.training.model.evolve.transfer;
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
-import ampcontrol.model.training.model.evolve.mutate.layer.RemoveLayerFunction;
+import ampcontrol.model.training.model.evolve.mutate.layer.RemoveVertexFunction;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
@@ -19,7 +19,7 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 
 /**
- * Test cases for {@link ParameterTransfer} with {@link GraphMutation} and {@link RemoveLayerFunction}
+ * Test cases for {@link ParameterTransfer} with {@link GraphMutation} and {@link RemoveVertexFunction}
  *
  * @author Christian Skärby
  */
@@ -145,7 +145,7 @@ public class ParameterTransferRemoveLayerTest {
             ComputationGraphConfiguration.GraphBuilder builder,
             String layerName) {
         return new GraphMutation(() -> Stream.of(GraphMutation.GraphMutationDescription.builder()
-                .mutation(new RemoveLayerFunction(layerName))
+                .mutation(new RemoveVertexFunction(layerName))
                 .build()))
                 .mutate(builder);
     }

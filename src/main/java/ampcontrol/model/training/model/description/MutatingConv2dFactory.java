@@ -601,10 +601,10 @@ public final class MutatingConv2dFactory {
                                     .map(Map.Entry::getKey)
                                     .collect(Collectors.toList())
                                     .forEach(spyVertexName ->
-                                            new RemoveLayerFunction(spyVertexName).apply(graphBuilder)
+                                            new RemoveVertexFunction(spyVertexName).apply(graphBuilder)
                                     );
                             removeListener.accept(vertexToRemove);
-                            return new RemoveLayerFunction(vertexToRemove).apply(graphBuilder);
+                            return new RemoveVertexFunction(vertexToRemove).apply(graphBuilder);
                         })
                         .build()));
     }

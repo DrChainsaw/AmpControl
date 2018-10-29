@@ -223,9 +223,4 @@ public class NoutMutationTest {
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
-
-
-    private void printNout(String beforeFork, ComputationGraph graph) {
-        System.out.println("graph " + beforeFork + " nOut: " + graph.layerSize(beforeFork));
-    }
 }
