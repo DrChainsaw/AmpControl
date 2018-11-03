@@ -1,9 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -26,9 +24,19 @@ public class TraverseBackward {
     public TraverseBackward(ComputationGraphConfiguration.GraphBuilder builder) {
         baseGraph = new BackwardOf(builder);
         traverseCondition = GraphBuilderUtil.changeSizePropagates(builder);
-        enterCondition = vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
-                .map(graphVertex -> graphVertex instanceof ElementWiseVertex)
-                .orElseThrow(() -> new IllegalArgumentException("Unkown vertex name: " + vertex + "!"));
+        enterCondition = GraphBuilderUtil.changeSizePropagatesBackwards(builder);
+    }
+
+    /**
+     * Sets a condition for traversal to be entered in the first place. Vertices not matching the condition will
+     * return an empty stream.
+     *
+     * @param enterCondition the condition
+     * @return the builder for fluent API
+     */
+    public TraverseBackward enterCondition(Predicate<String> enterCondition) {
+        this.enterCondition = enterCondition;
+        return this;
     }
 
     /**

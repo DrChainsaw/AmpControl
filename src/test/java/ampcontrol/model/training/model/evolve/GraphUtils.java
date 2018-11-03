@@ -397,13 +397,13 @@ public class GraphUtils {
                 .addLayer(beforeFork, new Convolution2D.Builder(3, 3)
                         .convolutionMode(ConvolutionMode.Same)
                         .nOut(forkSize)
-                        .build(), inputName)
-                .addLayer(batchNormName, new BatchNormalization(), beforeFork);
+                        .build(), inputName);
+               // .addLayer(batchNormName, new BatchNormalization(), beforeFork);
 
         for (int i = 0; i < forkNames.length; i++) {
-            final String bnName = forkNames[i] + batchNormName;
+            final String bnName = beforeFork;//forkNames[i] + batchNormName;
             builder
-                    .addLayer(bnName, new BatchNormalization.Builder().build(), batchNormName)
+                    //.addLayer(bnName, new BatchNormalization.Builder().build(), batchNormName)
                     .addLayer(forkNames[i], new Convolution2D.Builder(forkNames.length - i, 1 + i)
                             .convolutionMode(ConvolutionMode.Same)
                             .nOut(forkNouts[i])
@@ -413,21 +413,21 @@ public class GraphUtils {
         final String[] bnNames = new String[(int)Math.ceil(forkNames.length/2d)];
         for (int i = 0; i < bnNames.length; i++) {
             final int ind = i;
-            bnNames[i] = batchNormName + forkNames[ind];
             final String mergeNameInner = "mergeInner" + ind;
-            final String[] toMerge = IntStream.range(0,forkNames.length)
+            bnNames[i] = mergeNameInner;//batchNormName + forkNames[ind];
+            final String[] toMerge = IntStream.range(0, forkNames.length)
                     .filter(j -> j / 2 == ind)
                     .mapToObj(j -> forkNames[j])
-                    .collect(Collectors.toList()).toArray(new String[0]);
-            builder.addVertex(mergeNameInner, new MergeVertex(),  toMerge)
-                    .addLayer(bnNames[i], new BatchNormalization.Builder().build(), mergeNameInner);
+                    .toArray(String[]::new);
+            builder.addVertex(mergeNameInner, new MergeVertex(),  toMerge);
+                 //   .addLayer(bnNames[i], new BatchNormalization.Builder().build(), mergeNameInner);
         }
 
         final String mergeName = "mergeFork";
         builder.addVertex(mergeName, new MergeVertex(), bnNames);
 
         final String elemAddName = "addMergeAndBeforeFork";
-        builder.addVertex(elemAddName, new ElementWiseVertex(ElementWiseVertex.Op.Add), mergeName, batchNormName);
+        builder.addVertex(elemAddName, new ElementWiseVertex(ElementWiseVertex.Op.Add), mergeName,beforeFork); //batchNormName);
 
         final int nextForkNrofPaths = 4;
         final String[] nextFork = new String[nextForkNrofPaths];
@@ -447,8 +447,7 @@ public class GraphUtils {
         builder.addVertex(nextMergeName, new MergeVertex(), nextFork);
 
         final String nextElemAddName = "addNextMergeAndBeforeFork";
-        builder.addVertex(nextElemAddName, new ElementWiseVertex(ElementWiseVertex.Op.Add), nextMergeName, batchNormName);
-
+        builder.addVertex(nextElemAddName, new ElementWiseVertex(ElementWiseVertex.Op.Add), nextMergeName, beforeFork);//batchNormName);
 
         final ComputationGraph graph = new ComputationGraph(builder
                 .addLayer(afterFork, new Convolution2D.Builder(3, 3)
@@ -473,6 +472,7 @@ public class GraphUtils {
             setToLinspace(graph.getLayer(forkNames[i]).getParam(W), i % 2 == 0);
             setToLinspace(graph.getLayer(forkNames[i]).getParam(B), (i + 1) % 2 == 0);
         }
+        graph.outputSingle(Nd4j.randn(new long[] {1, 3, 33, 33}));
         return graph;
     }
 

@@ -223,4 +223,38 @@ public class NoutMutationTest {
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
+
+    /**
+     * Test to decrease nOut in a convolution layer which is part of a residual fork.
+     */
+    @Test
+    public void mutateDoubleForkResNet() {
+        final String beforeFork = "beforeFork";
+        final String afterFork = "afterFork";
+        final String fork1 = "fork1";
+        final String fork2ToMutate = "fork2ToMutate";
+        final String fork3 = "fork3";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet(beforeFork, afterFork, fork1, fork2ToMutate, fork3);
+
+        final long newNout = 4;
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName(fork2ToMutate)
+                                .mutateNout(nOut -> newNout)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+
+        assertEquals("Incorrect nOut!", graph.layerSize(fork1), newGraph.layerSize(fork1));
+        assertEquals("Incorrect nOut!", newNout, newGraph.layerSize(fork2ToMutate));
+        assertEquals("Incorrect nOut!", graph.layerSize(fork3), newGraph.layerSize(fork3));
+
+        graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+    }
 }

@@ -1,10 +1,12 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 
+import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
@@ -22,7 +24,15 @@ public class GraphBuilderUtil {
      * @return Predicate which is true if size change propagates
      */
     public static Predicate<String> changeSizePropagates(ComputationGraphConfiguration.GraphBuilder builder) {
-        return vertex -> doesSizeChangePropagate(builder.getVertices().get(vertex));
+        return vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
+                .map(GraphBuilderUtil::doesSizeChangePropagate)
+                .orElseThrow(() -> new IllegalArgumentException("Unkown vertex name: " + vertex + "!"));
+    }
+
+    public static Predicate<String> changeSizePropagatesBackwards(ComputationGraphConfiguration.GraphBuilder builder) {
+        return vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
+                .map(GraphBuilderUtil::doesNOutChangePropagateToInputs)
+                .orElseThrow(() -> new IllegalArgumentException("Unkown vertex name: " + vertex + "!"));
     }
 
     private static boolean doesSizeChangePropagate(GraphVertex vertex) {
@@ -37,5 +47,17 @@ public class GraphBuilderUtil {
 
 
         return layerVertex.getLayerConf().getLayer() instanceof BatchNormalization;
+    }
+
+    /**
+     * Return true if a change in NOut propagates the NIn of all input layers.
+     * Example of this is ElementWiseVertex: If one of the layers which is input
+     * changes its NOut, the other input layer must also change its NOut
+     *
+     * @param vertex Vertex to check
+     * @return True if change in NOut propagates to input layers
+     */
+    private static boolean doesNOutChangePropagateToInputs(GraphVertex vertex) {
+        return vertex instanceof ElementWiseVertex;
     }
 }
