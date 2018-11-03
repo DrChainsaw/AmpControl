@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
@@ -48,8 +49,8 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
 
         final List<String> inputNames = new ArrayList<>(graphBuilder.getVertexInputs().get(vertexNameToRemove));
 
-        final long nOut = LayerMutationInfo.getOutputSize(vertexNameToRemove, graphBuilder);
-        final long nIn = LayerMutationInfo.getInputSize(vertexNameToRemove, graphBuilder);
+        final long nOut = GraphBuilderUtil.getOutputSize(vertexNameToRemove, graphBuilder);
+        final long nIn = GraphBuilderUtil.getInputSize(vertexNameToRemove, graphBuilder);
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
@@ -257,8 +258,8 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
             String layerName,
             ComputationGraphConfiguration.GraphBuilder graphBuilder,
             long newNout) {
-        return LayerMutationInfo.vertexAsLayerVertex
-                .andThen(layerVertex -> LayerMutationInfo.layerVertexAsFeedForward.apply(layerName, layerVertex))
+        return GraphBuilderUtil.vertexAsLayerVertex
+                .andThen(layerVertex -> GraphBuilderUtil.layerVertexAsFeedForward.apply(layerName, layerVertex))
                 .apply(layerName, graphBuilder)
                 .filter(layer -> isSizeChangePossibleOrElseChange(layer, newNout))
                 .map(Optional::of)
@@ -274,8 +275,8 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
             String layerName,
             ComputationGraphConfiguration.GraphBuilder graphBuilder,
             long newNin) {
-        return LayerMutationInfo.vertexAsLayerVertex
-                .andThen(layerVertex -> LayerMutationInfo.layerVertexAsFeedForward.apply(layerName, layerVertex))
+        return GraphBuilderUtil.vertexAsLayerVertex
+                .andThen(layerVertex -> GraphBuilderUtil.layerVertexAsFeedForward.apply(layerName, layerVertex))
                 .apply(layerName, graphBuilder)
                 .filter(layer -> isSizeChangePossibleOrElseChange(layer, newNin))
                 .map(Optional::of)

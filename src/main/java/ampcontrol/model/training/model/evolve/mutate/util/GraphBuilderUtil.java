@@ -1,18 +1,42 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
+import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
  * Various hideous utility functions around {@link ComputationGraphConfiguration.GraphBuilder} to assist in traversal.
  */
 public class GraphBuilderUtil {
+
+    /**
+     * Returns a {@link LayerVertex} with the given name if one exists in the {@link ComputationGraphConfiguration.GraphBuilder}.
+     * Would very much prefer to do this some other way, but the API does not seem allow for it
+     */
+    public static final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Optional<LayerVertex>> vertexAsLayerVertex =
+            (layerName, graphBuilder) -> Optional.ofNullable(graphBuilder.getVertices().get(layerName))
+                    .filter(gv -> gv instanceof LayerVertex)
+                    .map(gv -> ((LayerVertex) gv));
+    /**
+     * Returns a {@link FeedForwardLayer} of a given {@link LayerVertex} if that is the type of layer it encapsulates
+     * Would very much prefer to do this some other way, but the API does not seem allow for it
+     */
+    public static final BiFunction<String, Optional<LayerVertex>, Optional<FeedForwardLayer>> layerVertexAsFeedForward =
+            (layerName, layerVertexOptional) -> layerVertexOptional
+                    .map(LayerVertex::getLayerConf)
+                    .map(NeuralNetConfiguration::getLayer)
+                    .filter(layer -> layer instanceof FeedForwardLayer)
+                    .map(layer -> (FeedForwardLayer) layer);
 
     /**
      * Returns true if a change of size (NOut or NIn) propagates to the (next or prev) layers (NIn or NOut).
@@ -29,10 +53,28 @@ public class GraphBuilderUtil {
                 .orElseThrow(() -> new IllegalArgumentException("Unkown vertex name: " + vertex + "!"));
     }
 
+    /**
+     * Returns true if the given vertex requires that all its inputs have the same size. So far, only the
+     * {@link ElementWiseVertex} is known to have this property.
+     * @param builder Configuration to check against
+     * @return Predicate which is true if size change propagates backwards
+     */
     public static Predicate<String> changeSizePropagatesBackwards(ComputationGraphConfiguration.GraphBuilder builder) {
         return vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
                 .map(GraphBuilderUtil::doesNOutChangePropagateToInputs)
                 .orElseThrow(() -> new IllegalArgumentException("Unkown vertex name: " + vertex + "!"));
+    }
+
+    /**
+     * Return the given vertex as a {@link FeedForwardLayer} if this is the type. Otherwise return empty.
+     * @param builder Configuration containing the sought vertex
+     * @return Function mapping a vertex name to an Optional FeedForwardLayer.
+     */
+    public static Function<String, Optional<FeedForwardLayer>> asFeedforwardLayer(ComputationGraphConfiguration.GraphBuilder builder) {
+        return vertex -> GraphBuilderUtil.vertexAsLayerVertex
+                .andThen(layerVertex -> GraphBuilderUtil
+                        .layerVertexAsFeedForward.apply(vertex, layerVertex))
+                .apply(vertex, builder);
     }
 
     private static boolean doesSizeChangePropagate(GraphVertex vertex) {
@@ -59,5 +101,64 @@ public class GraphBuilderUtil {
      */
     private static boolean doesNOutChangePropagateToInputs(GraphVertex vertex) {
         return vertex instanceof ElementWiseVertex;
+    }
+
+    /**
+     * Gets the output size of a named layer without building the graph. Will recurse up the graph until
+     * a {@link FeedForwardLayer} is found in case given layer is not of type {@link FeedForwardLayer}. Assumption made:
+     * Only {@link FeedForwardLayer}s have nIn != nOut.
+     *
+     * @param layerName    layer to determine output size for
+     * @param graphBuilder Builder to search
+     * @return the output size of the given layer
+     */
+    public static long getOutputSize(String layerName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+        return findNextSize(layerName, graphBuilder, FeedForwardLayer::getNOut);
+    }
+
+    private static long findNextSize(
+            String layerName,
+            ComputationGraphConfiguration.GraphBuilder graphBuilder,
+            Function<FeedForwardLayer, Long> sizeMapping) {
+        return vertexAsLayerVertex
+                .andThen(layerVertex -> layerVertexAsFeedForward.apply(layerName, layerVertex))
+                .apply(layerName, graphBuilder)
+                .map(sizeMapping)
+                .orElseGet(() -> graphBuilder.getVertexInputs().entrySet().stream()
+                        .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(layerName))
+                        .map(Map.Entry::getKey)
+                        .mapToLong(inputLayerName -> findNextSize(inputLayerName, graphBuilder, FeedForwardLayer::getNIn))
+                        .findAny()
+                        .orElseThrow(() -> new IllegalStateException("Could not find any feedforward layers after " + layerName)));
+    }
+
+    /**
+     * Gets the input size of a named layer without building the graph. Will recurse down the graph until
+     * and sum up nOut of all found {@link FeedForwardLayer} in case given layer is not of type {@link FeedForwardLayer}.
+     * Assumption made: Only {@link FeedForwardLayer}s have nIn != nOut.
+     *
+     * @param layerName    layer to determine input size for
+     * @param graphBuilder Builder to search
+     * @return the input size of the given layer
+     */
+    public static long getInputSize(String layerName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+        return sumPrevSize(layerName, graphBuilder, FeedForwardLayer::getNIn);
+    }
+
+    private static long sumPrevSize(String layerName,
+                                    ComputationGraphConfiguration.GraphBuilder graphBuilder,
+                                    Function<FeedForwardLayer, Long> sizeMapping) {
+        return vertexAsLayerVertex
+                .andThen(layerVertex -> layerVertexAsFeedForward.apply(layerName, layerVertex))
+                .apply(layerName, graphBuilder)
+                .map(sizeMapping)
+                .orElseGet(() -> Optional.ofNullable(graphBuilder.getVertexInputs().get(layerName))
+                        .map(inputNames -> inputNames.stream()
+                                .mapToLong(inputLayerName -> sumPrevSize(inputLayerName, graphBuilder, FeedForwardLayer::getNOut))
+                                .sum())
+                        .orElseGet(() -> graphBuilder.getNetworkInputTypes().stream()
+                                .mapToLong(inputType -> inputType.getShape(false)[0])
+                                .sum()));
+
     }
 }

@@ -2,6 +2,7 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import ampcontrol.model.training.model.layerblocks.AggBlock;
 import ampcontrol.model.training.model.layerblocks.Conv2DBatchNormAfter;
 import ampcontrol.model.training.model.layerblocks.Conv2DBatchNormBefore;
@@ -41,8 +42,8 @@ public class GraphMutationTest {
                         .mutation(graphBuilder -> {
                             graphBuilder.addLayer(toInsert,
                                     new Convolution2D.Builder(5, 5)
-                                            .nOut(LayerMutationInfo.getInputSize(mut2, graphBuilder))
-                                            .nIn(LayerMutationInfo.getOutputSize(mut1, graphBuilder))
+                                            .nOut(GraphBuilderUtil.getInputSize(mut2, graphBuilder))
+                                            .nIn(GraphBuilderUtil.getOutputSize(mut1, graphBuilder))
                                             .build(), mut1);
                             return GraphMutation.InputsAndOutputNames.builder()
                                     .inputName(mut1)

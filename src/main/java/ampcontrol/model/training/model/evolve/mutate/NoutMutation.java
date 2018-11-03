@@ -1,6 +1,5 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
-import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
 import ampcontrol.model.training.model.evolve.mutate.util.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,24 +38,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
     public static class NoutMutationDescription {
         private final String layerName;
         private final UnaryOperator<Long> mutateNout;
-    }
-
-    private static class SizeChanges {
-        private final Map<String, Long> oldSizes = new HashMap<>();
-
-        private void add(String name, long oldSize) {
-            if (oldSizes.containsKey(name)) {
-                throw new IllegalStateException("Visited " + name + " twice!");
-            }
-            oldSizes.put(name, oldSize);
-        }
-
-        private OptionalLong old(String name) {
-            if (!oldSizes.containsKey(name)) {
-                return OptionalLong.empty();
-            }
-            return OptionalLong.of(oldSizes.get(name));
-        }
     }
 
     private static class HasVistited {
@@ -132,16 +114,15 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             String layerName,
             final long deltaSize) {
 
+        final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
+
         final Graph<String> forwardGraph = new TraverseForward(builder)
 //                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
 //                        .filter(entry -> entry.getValue().contains(vertex))
 //                        .map(Map.Entry::getKey)
 //                        .collect(Collectors.toSet())))
 //                .leaveListener(vertex -> System.out.println("\tDone with NOut change " + vertex))
-                .visitListener(outputName -> LayerMutationInfo.vertexAsLayerVertex
-                        .andThen(layerVertex -> LayerMutationInfo
-                                .layerVertexAsFeedForward.apply(outputName, layerVertex))
-                        .apply(outputName, builder)
+                .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
  //                           System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
@@ -155,10 +136,11 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
 
         final Map<String, Long> deltas = new HashMap<>();
+        deltas.put(layerName, deltaSize);
         final Graph<String> backwardGraph = new TraverseBackward(builder)
                 .enterListener(vertex -> {
                    // System.out.println("\tHandle NOut change backwards " + vertex + " with inputs: " + builder.getVertexInputs().get(vertex));
-                    deltas.putAll(calcInputLayerDeltas(visited, builder, vertex, deltas.getOrDefault(vertex, deltaSize)));
+                    deltas.putAll(calcInputLayerDeltas(deltas, builder, vertex, deltas.getOrDefault(vertex, deltaSize)));
                 })
                 //.leaveListener(vertex -> System.out.println("\tDone with NOut change backwards " + vertex))
                 // nOutDelta == 0 below might mask shortcoming of alg:
@@ -169,16 +151,14 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .visitCondition(inputName -> !visited.input(inputName) && deltas.get(inputName) != 0)
                 .visitListener(inputName ->
                 {
-                    final long nOutDelta = deltas.get(inputName);
                     //System.out.println("\t\t Handle input layer " + inputName + " in context of " + layerName + " visited: " + visited.input(inputName) + " delta: " + nOutDelta);
-                    LayerMutationInfo.vertexAsLayerVertex
-                            .andThen(layerVertex -> LayerMutationInfo
-                                    .layerVertexAsFeedForward.apply(inputName, layerVertex))
-                            .apply(inputName, builder)
+                    asFf.apply(inputName)
                             .ifPresent(layer -> {
+                                final long nOutDelta = deltas.get(inputName);
                                 //System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 log.info("Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
-                                visited.setPrevNOut(inputName, layer.getNOut());
+                                //visited.setPrevNOut(inputName, layer.getNOut());
+                                visited.addInput(inputName);
                                 layer.setNOut(layer.getNOut() - nOutDelta);
                                 if (changeNinMeansChangeNout(layer) && !visited.output(inputName)) {
                                     layer.setNIn(layer.getNIn() - nOutDelta);
@@ -193,18 +173,14 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         // old recursive code did this and testcases fail if it is not done. Will probably
         // have to look it up someday...
         new Traverse<>(
-                vertex -> LayerMutationInfo.vertexAsLayerVertex
-                        .andThen(layerVertex -> LayerMutationInfo
-                                .layerVertexAsFeedForward.apply(vertex, layerVertex))
-                        .apply(vertex, builder).isPresent(),
+                vertex -> asFf.apply(vertex).isPresent(),
                 new Connect<>(forwardGraph, backwardGraph)).children(layerName).count();
     }
 
 
-    private Map<String, Long> calcInputLayerDeltas(HasVistited visited, GraphBuilder builder, String layerName, long deltaSize) {
+    private Map<String, Long> calcInputLayerDeltas(Map<String, Long> deltas, GraphBuilder builder, String layerName, long deltaSize) {
         final List<String> inputs = builder.getVertexInputs().get(layerName);
         final GraphVertex vertex = builder.getVertices().get(layerName);
-        final Map<String, Long> deltas = new HashMap<>();
         final long[] layerSizes = new long[inputs.size()];
 
         if (vertex instanceof MergeVertex) {
@@ -212,26 +188,23 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             Boolean[] validLayers = new Boolean[inputs.size()];
             for (int i = 0; i < validLayers.length; i++) {
                 final String inputName = inputs.get(i);
-                layerSizes[i] = LayerMutationInfo.vertexAsLayerVertex
-                        .andThen(layerVertex -> LayerMutationInfo
-                                .layerVertexAsFeedForward.apply(inputName, layerVertex))
-                        .apply(inputName, builder)
+                layerSizes[i] = GraphBuilderUtil.asFeedforwardLayer(builder).apply(inputName)
                         .map(FeedForwardLayer::getNOut)
                         .orElse(0L);
                 validLayers[i] = layerSizes[i] > 0;
-                if (validLayers[i] && visited.input(inputName)) {
-                    remainder += layerSizes[i] - visited.prevNout(inputName).orElse(layerSizes[i]);
+                if (validLayers[i]) {
+                    remainder -= deltas.getOrDefault(inputName, 0L);
                 }
             }
 
             for (int i = 0; i < validLayers.length; i++) {
                 final String inputName = inputs.get(i);
                 final long layerSizesSum = Arrays.stream(layerSizes, i, validLayers.length).sum();
-                if (validLayers[i] && !visited.input(inputName)) {
+                if (validLayers[i] && !deltas.containsKey(inputName)) {
                     final long delta = Math.min(layerSizes[i] - 1, Math.min((remainder * layerSizes[i]) / layerSizesSum, remainder));
                     deltas.put(inputs.get(i), delta);
                     remainder -= delta;
-                } else {
+                } else if(!validLayers[i]){
                     deltas.put(inputs.get(i), 0L);
                 }
             }

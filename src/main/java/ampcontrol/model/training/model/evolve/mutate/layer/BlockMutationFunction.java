@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.VertexSpyAdapter;
@@ -85,7 +86,7 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
     public GraphMutation.InputsAndOutputNames apply(ComputationGraphConfiguration.GraphBuilder graphBuilder) {
 
         final long nIn = Stream.of(inputNames)
-                .mapToLong(layerName -> LayerMutationInfo.getInputSize(layerName, graphBuilder))
+                .mapToLong(layerName -> GraphBuilderUtil.getInputSize(layerName, graphBuilder))
                 .sum();
 
         final LayerBlockConfig.BlockInfo blockInfo = new LayerBlockConfig.SimpleBlockInfo.Builder()
@@ -121,8 +122,8 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
     }
 
     private static long getInputSizeForward(String layerName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
-        return LayerMutationInfo.vertexAsLayerVertex
-                .andThen(layerVertex -> LayerMutationInfo.layerVertexAsFeedForward.apply(layerName, layerVertex))
+        return GraphBuilderUtil.vertexAsLayerVertex
+                .andThen(layerVertex -> GraphBuilderUtil.layerVertexAsFeedForward.apply(layerName, layerVertex))
                 .apply(layerName, graphBuilder)
                 .map(FeedForwardLayer::getNIn)
                 .orElseGet(() -> graphBuilder.getVertexInputs().entrySet().stream()
