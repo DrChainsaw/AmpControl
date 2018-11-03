@@ -1,6 +1,10 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
+import ampcontrol.model.training.model.evolve.mutate.util.Filter;
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
+import ampcontrol.model.training.model.evolve.mutate.util.TraverseBackward;
+import ampcontrol.model.training.model.evolve.mutate.util.TraverseForward;
 import lombok.Builder;
 import lombok.Getter;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
@@ -51,7 +55,9 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             return output.containsKey(name);
         }
 
-        private OptionalLong prevNout(String name) {return input.get(name);}
+        private OptionalLong prevNout(String name) {
+            return input.get(name);
+        }
 
         private void addInput(String name) {
             if (Optional.ofNullable(input.put(name, OptionalLong.empty())).isPresent()) {
@@ -66,7 +72,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         }
 
         private void setPrevNOut(String name, long nOut) {
-            if(input.put(name, OptionalLong.of(nOut)).isPresent()) {
+            if (input.put(name, OptionalLong.of(nOut)).isPresent()) {
                 throw new IllegalStateException("Tried to reset previous nOut of " + name);
             }
         }
@@ -90,7 +96,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
         final FeedForwardLayer layerConf = (FeedForwardLayer) ((LayerVertex) builder.getVertices().get(layerName)).getLayerConf().getLayer();
         final long oldNout = layerConf.getNOut();
-        final long newNout = Math.max(mutation.getMutateNout().apply(oldNout), getMinNOut(builder, layerName, new HasVistited()));
+        final long newNout = Math.max(mutation.getMutateNout().apply(oldNout), getMinNOut(builder, layerName));
         layerConf.setNOut(newNout);
         visited.addInput(layerName);
         visited.setPrevNOut(layerName, oldNout);
@@ -99,8 +105,8 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
         propagateNOutChange(visited, builder, layerName, oldNout - layerConf.getNOut());
         //updateNinOfOutputLayer(builder, layerName);
-         //System.out.println("Handled inputs: " + visited.input);
-         //System.out.println("Handled outputs: " + visited.output);
+        //System.out.println("Handled inputs: " + visited.input);
+        //System.out.println("Handled outputs: " + visited.output);
         return builder;
     }
 
@@ -110,7 +116,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             String layerName,
             long deltaSize) {
 
-           //System.out.println("\tHandle NOut change " + layerName + " with outputs: " + builder.getVertexInputs().entrySet().stream()
+        //System.out.println("\tHandle NOut change " + layerName + " with outputs: " + builder.getVertexInputs().entrySet().stream()
 //                   .filter(entry -> entry.getValue().contains(layerName))
 //                   .map(Map.Entry::getKey)
 //                   .collect(Collectors.toSet()));
@@ -162,7 +168,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                         deltaSize);
             }
         }
-         //System.out.println("\tDone with NOut change " + layerName);
+        //System.out.println("\tDone with NOut change " + layerName);
 
     }
 
@@ -227,10 +233,10 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         final GraphVertex vertex = builder.getVertices().get(layerName);
         final long[] deltas = new long[inputs.size()];//getDeltaSizePerInputVertex(deltaSize, builder.getVertices().get(layerName), inputs.size());
         final long[] layerSizes = new long[inputs.size()];
-        if(vertex instanceof MergeVertex) {
+        if (vertex instanceof MergeVertex) {
             long remainder = deltaSize;
             Boolean[] validLayers = new Boolean[inputs.size()];
-            for(int i = 0; i < deltas.length; i++) {
+            for (int i = 0; i < deltas.length; i++) {
                 final String inputName = inputs.get(i);
                 layerSizes[i] = LayerMutationInfo.vertexAsLayerVertex
                         .andThen(layerVertex -> LayerMutationInfo
@@ -239,21 +245,21 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                         .map(FeedForwardLayer::getNOut)
                         .orElse(0L);
                 validLayers[i] = layerSizes[i] > 0;
-                if(validLayers[i] && visited.input(inputName)) {
+                if (validLayers[i] && visited.input(inputName)) {
                     remainder += layerSizes[i] - visited.prevNout(inputName).orElse(layerSizes[i]);
                 }
             }
 
-            for(int i = 0; i < deltas.length; i++) {
+            for (int i = 0; i < deltas.length; i++) {
                 final String inputName = inputs.get(i);
                 final long layerSizesSum = Arrays.stream(layerSizes, i, deltas.length).sum();
-                if(validLayers[i] && !visited.input(inputName)) {
+                if (validLayers[i] && !visited.input(inputName)) {
                     deltas[i] = Math.min(layerSizes[i] - 1, Math.min((remainder * layerSizes[i]) / layerSizesSum, remainder));
                     remainder -= deltas[i];
                 }
             }
 
-            if(remainder != 0) {
+            if (remainder != 0) {
                 throw new IllegalStateException("Failed to distribute deltaSize over " + inputs + " deltas: " +
                         Arrays.toString(deltas) + " layerSizes : " + Arrays.toString(layerSizes));
             }
@@ -264,68 +270,24 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         return deltas;
     }
 
-    private long getMinNOut(GraphBuilder builder, String vertexName, HasVistited vistited) {
-
-        vistited.addInput(vertexName);
-
-        if (builder.getNetworkInputs().contains(vertexName)) {
-            return 1;
-        }
-
-        long minNoutUp = 0;
-        long minNoutDown = 0;
-        for (String outputName : builder.getVertexInputs().entrySet().stream()
-                .filter(entry -> entry.getValue().contains(vertexName))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet())) {
-
-            if(vistited.output(outputName)) {
-                continue;
-            }
-
-            vistited.addOutput(outputName);
-            final GraphVertex outputVertex = builder.getVertices().get(outputName);
-            if (doesSizeChangePropagate(outputVertex)) {
-                minNoutUp = Math.max(minNoutUp, getMinNOut(builder, outputName, vistited));
-            }
-
-            if(doesNOutChangePropagateToInputs(outputVertex)) {
-                minNoutDown += getMinNOutBackwards(builder, outputName, vistited);
-            }
-        }
-
-        return Math.max(minNoutDown, minNoutUp);
+    private long getMinNOut(GraphBuilder builder, String vertexName) {
+        return new TraverseForward(builder).build().children(vertexName)
+                .mapToLong(childName ->
+                        new Filter<>(GraphBuilderUtil.changeSizePropagates(builder).negate(),
+                                new TraverseBackward(builder)
+                                        .visitCondition(vertex -> !vertex.equals(vertexName))
+                                        .build())
+                                .children(childName).count())
+                .max()
+                .orElse(0);
     }
 
-    private long getMinNOutBackwards(GraphBuilder builder, String vertexName, HasVistited vistited) {
-
-        if (builder.getNetworkInputs().contains(vertexName)) {
-            return 1;
-        }
-
-        long minNout = 0;
-        for(String inputName: builder.getVertexInputs().get(vertexName)) {
-
-            if(vistited.input(inputName)) {
-                continue;
-            }
-            vistited.addInput(inputName);
-
-            if (doesSizeChangePropagate(builder.getVertices().get(inputName))) {
-                minNout += getMinNOutBackwards(builder, inputName, vistited);
-            } else {
-                minNout++;
-            }
-        }
-        return minNout;
-    }
-
-        /**
-         * Returns true if the given layer is of a type where NIn and NOut must both be set to the same value
-         *
-         * @param layer Layer to check
-         * @return true if the given layer is of a type where NIn and NOut must both be set to the same value
-         */
+    /**
+     * Returns true if the given layer is of a type where NIn and NOut must both be set to the same value
+     *
+     * @param layer Layer to check
+     * @return true if the given layer is of a type where NIn and NOut must both be set to the same value
+     */
     private static boolean changeNinMeansChangeNout(FeedForwardLayer layer) {
 
         // Is there any parameter which can tell this instead of hardcoding it to types like this?

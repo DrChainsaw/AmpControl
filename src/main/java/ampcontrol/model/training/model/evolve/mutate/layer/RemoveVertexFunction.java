@@ -53,8 +53,8 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
-        System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
-                " nIn: " + nIn + " nOut: " + nOut);
+        //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
+        //        " nIn: " + nIn + " nOut: " + nOut);
         removeOrphanedElemWiseVertices(graphBuilder, outputNames);
 
         handleMergeVertexOutputs(graphBuilder, outputNames);
@@ -65,7 +65,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
 
         outputNames.stream()
                 .peek(name -> log.info("Connect " + name + " to " + inputNamesPerOutput.get(name)))
-                .peek(name -> System.out.println("Connect " + name + " to " + inputNamesPerOutput.get(name)))
+                //.peek(name -> System.out.println("Connect " + name + " to " + inputNamesPerOutput.get(name)))
                 .forEach(outputName ->
                 graphBuilder.addVertex(
                         outputName,
@@ -155,7 +155,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
             // and
             // 2) What are the other inputs to that merge vertex if 1)
             final Map<String, List<String>> inputsToConnectedMergeVertex = getInputsConnectedToMergeVertex(builder, outputName);
-            System.out.println("inputsConnected: " + inputsToConnectedMergeVertex);
+            //System.out.println("inputsConnected: " + inputsToConnectedMergeVertex);
             if (!inputsToConnectedMergeVertex.isEmpty()) {
                 //outputName is connected to a MergeVertex
                 mergeVertexOutputs.add(outputName);
@@ -170,7 +170,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
         // Somewhere here we also want to add mergeVertexOutputs as output to viableOutputs
         // and maybe change the size. Or return some object which describes this action?
 
-        System.out.println("viable outputs: " + viableOutputs);
+        //System.out.println("viable outputs: " + viableOutputs);
         outputNames.removeAll(mergeVertexOutputs);
         outputNames.addAll(viableOutputs);
         return viableOutputs;
