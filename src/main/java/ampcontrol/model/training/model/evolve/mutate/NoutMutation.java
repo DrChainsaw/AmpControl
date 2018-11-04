@@ -41,36 +41,27 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
     }
 
     private static class HasVistited {
-        private final Map<String, OptionalLong> input = new HashMap<>();
-        private final Map<String, OptionalLong> output = new HashMap<>();
+        private final Set<String> input = new HashSet<>();
+        private final Set<String> output = new HashSet<>();
 
         private boolean input(String name) {
-            return input.containsKey(name);
+            return input.contains(name);
         }
 
         private boolean output(String name) {
-            return output.containsKey(name);
-        }
-
-        private OptionalLong prevNout(String name) {
-            return input.get(name);
+            return output.contains(name);
         }
 
         private void addInput(String name) {
-            if (Optional.ofNullable(input.put(name, OptionalLong.empty())).isPresent()) {
+            if (!input.add(name)) {
                 throw new IllegalStateException("Visited " + name + " twice!");
             }
         }
 
         private void addOutput(String name) {
-            if (Optional.ofNullable(output.put(name, OptionalLong.empty())).isPresent()) {
+            if (!output.add(name)) {
                 throw new IllegalStateException("Visited " + name + " twice!");
             }
-        }
-
-        private void setPrevNOut(String name, long nOut) {
-            input.put(name, OptionalLong.of(nOut));
-            // throw new IllegalStateException("Tried to reset previous nOut of " + name);
         }
     }
 
@@ -96,24 +87,52 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
         log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
 
-        final HasVistited visited = new HasVistited();
-        visited.addInput(layerName);
-        visited.setPrevNOut(layerName, oldNout);
-
-        propagateNOutChange2(
-                visited,
+        propagateNOutChange(
                 builder,
                 layerName,
                 oldNout - layerConf.getNOut());
         return builder;
     }
 
-    private void propagateNOutChange2(
-            HasVistited visited,
+    /**
+     * Propagate a change in nOut to the next layer(s), i.e change nIn with the given delta size so that nOut of the
+     * mutated layer is equal to nIn of all layers which have it as input.
+     * <br><br>
+     * <b>Brainf*ck level 0:</b> Next vertex might be of a type which does not allow nIn to be set or has constraint
+     * nIn == nOut. We must propagate the change through to the next vertex which allows setting nIn and allows
+     * nIn != nOut, hereafter referred to as a "termination layer" (as in "terminates the traversal").
+     * <br><br>
+     * <b>Brainf*ck level 1:</b> On the way to a termination layer a vertex is encountered which has multiple inputs and
+     * which requires that all its inputs are of the same size (i.e have the same nOut). We must traverse backwards from
+     * this vertex to find all termination layers which leads to its inputs. Example of such a vertex is
+     * ElementWiseVertex which is commonly used to create residual blocks.
+     * <br><br>
+     * <b>Brainf*ck level 2:</b> While traversing backwards the outputs of each encountered vertex may have multiple
+     * outputs. We must propagate the change forward through any not yet encountered output vertexes in the exact same
+     * manner as done for the mutated layer to begin with.
+     * <br><br>
+     * <b>Brainf*ck level 3:</b> If a {@link MergeVertex} is encountered while traversing backwards the delta size
+     * applies to the sum of its input vertices, and not to each one of them individually. Distribute the delta size
+     * across them and continue the traversal down each branch using the recomputed delta size.
+     * <br><br>
+     * <b>Brainf*ck level 4:</b> While handling brainf*ck level 3, we might have changed nOut of one or more vertices
+     * already without having traversed the other paths. This must be taken into account when distributing the delta
+     * sizes. I suspect that this can only happen in case the original target mutation layer is part of a fork which
+     * touches an ElementWiseVertex.
+     * <br><br>
+     * <b>Brainf*ck level 5:</b> TBD (To Be Discovered)...
+     *
+     * @param builder {@link GraphBuilder} to mutate
+     * @param layerName Name of layer for which nOut has been changed
+     * @param deltaSize How much the size of any dependent layers shall be changed.
+     */
+    private void propagateNOutChange(
             GraphBuilder builder,
             String layerName,
             final long deltaSize) {
 
+        final HasVistited visited = new HasVistited();
+        visited.addInput(layerName);
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
 
         final Graph<String> forwardGraph = new TraverseForward(builder)
@@ -122,9 +141,10 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 //                        .map(Map.Entry::getKey)
 //                        .collect(Collectors.toSet())))
 //                .leaveListener(vertex -> System.out.println("\tDone with NOut change " + vertex))
+                .visitCondition(outputName -> !visited.output(outputName))
                 .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
- //                           System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
+                            //                           System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
                             layer.setNIn(layer.getNIn() - deltaSize);
                             if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
@@ -139,7 +159,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         deltas.put(layerName, deltaSize);
         final Graph<String> backwardGraph = new TraverseBackward(builder)
                 .enterListener(vertex -> {
-                   // System.out.println("\tHandle NOut change backwards " + vertex + " with inputs: " + builder.getVertexInputs().get(vertex));
+                    // System.out.println("\tHandle NOut change backwards " + vertex + " with inputs: " + builder.getVertexInputs().get(vertex));
                     deltas.putAll(calcInputLayerDeltas(deltas, builder, vertex, deltas.getOrDefault(vertex, deltaSize)));
                 })
                 //.leaveListener(vertex -> System.out.println("\tDone with NOut change backwards " + vertex))
@@ -148,6 +168,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 // are probably not correct as they might "compensate" for previous size changes in a way in which they
                 // should not. So far, I think this can only happen when the "original" mutation is in a fork in which
                 // case we know (?) that the output sizes are correct
+                // Possble candidate for Brainf*ck level 5...
                 .visitCondition(inputName -> !visited.input(inputName) && deltas.get(inputName) != 0)
                 .visitListener(inputName ->
                 {
@@ -157,7 +178,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                 final long nOutDelta = deltas.get(inputName);
                                 //System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 log.info("Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
-                                //visited.setPrevNOut(inputName, layer.getNOut());
                                 visited.addInput(inputName);
                                 layer.setNOut(layer.getNOut() - nOutDelta);
                                 if (changeNinMeansChangeNout(layer) && !visited.output(inputName)) {
@@ -169,9 +189,9 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .build();
 
         // Whatever comes out from backwardGraph which is a feedforward layer needs to go into
-        // back into the "loop", starting again with the forwardGraph. Why? Don't remember,
-        // old recursive code did this and testcases fail if it is not done. Will probably
-        // have to look it up someday...
+        // back into the "loop", starting again with the forwardGraph due to brainf*ck level 2
+        // described above. Why only feedforward layers? Answer: Those are the only ones for
+        // which nOut was actually changed.
         new Traverse<>(
                 vertex -> asFf.apply(vertex).isPresent(),
                 new Connect<>(forwardGraph, backwardGraph)).children(layerName).count();
@@ -204,7 +224,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                     final long delta = Math.min(layerSizes[i] - 1, Math.min((remainder * layerSizes[i]) / layerSizesSum, remainder));
                     deltas.put(inputs.get(i), delta);
                     remainder -= delta;
-                } else if(!validLayers[i]){
+                } else if (!validLayers[i]) {
                     deltas.put(inputs.get(i), 0L);
                 }
             }

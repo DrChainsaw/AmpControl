@@ -15,9 +15,13 @@ public class TraverseForward {
     private final Graph<String> baseGraph;
 
     private Predicate<String> traverseCondition;
-    private Consumer<String> enterListener = vertex -> {};
-    private Consumer<String> leaveListener = vertex -> {};
-    private Consumer<String> visitListener = vertex -> {};
+    private Consumer<String> enterListener = vertex -> {
+    };
+    private Consumer<String> leaveListener = vertex -> {
+    };
+    private Predicate<String> visitCondition = vertex -> true;
+    private Consumer<String> visitListener = vertex -> {
+    };
 
     public TraverseForward(ComputationGraphConfiguration.GraphBuilder builder) {
         baseGraph = new ForwardOf(builder);
@@ -27,6 +31,7 @@ public class TraverseForward {
     /**
      * Set the condition for traversing to the next vertex. Default is if the current vertex
      * is of a type where nOut must be equal to nIn.
+     *
      * @param traverseCondition the condition
      * @return the builder for fluent API
      */
@@ -38,6 +43,7 @@ public class TraverseForward {
     /**
      * Set listener to listen for when the scope of a new vertex is entered and its children will be queried. Any
      * subsequent vertices given to visitListener are ancestors of this node.
+     *
      * @param enterListener the listener
      * @return the builder for fluent API
      */
@@ -49,6 +55,7 @@ public class TraverseForward {
     /**
      * Set listener for when the scope of the a vertex is left. Any subsequent vertices given to visitListener are not
      * ancestors of this node.
+     *
      * @param leaveListener the listener
      * @return the builder for fluent API
      */
@@ -60,6 +67,7 @@ public class TraverseForward {
     /**
      * Set a listener for when a vertex is visited. Vertices given to this listener are ancestors to any vertex given
      * to enterListener but not yet given to leaveListener.
+     *
      * @param visitListener the listener
      * @return the builder for fluent API
      */
@@ -69,7 +77,19 @@ public class TraverseForward {
     }
 
     /**
+     * Sets a condition for vertices to be visited. Only those vertices matching the condition will be visited.
+     *
+     * @param visitCondition the condition
+     * @return the builder for fluent API
+     */
+    public TraverseForward visitCondition(Predicate<String> visitCondition) {
+        this.visitCondition = visitCondition;
+        return this;
+    }
+
+    /**
      * Build a forward traversing Graph
+     *
      * @return a forward traversing Graph
      */
     public Graph<String> build() {
@@ -78,6 +98,7 @@ public class TraverseForward {
                 enterListener,
                 leaveListener,
                 new Peek<>(visitListener,
-                        new SingleVisit<>(baseGraph)));
+                        new Filter<>(visitCondition,
+                                new SingleVisit<>(baseGraph))));
     }
 }

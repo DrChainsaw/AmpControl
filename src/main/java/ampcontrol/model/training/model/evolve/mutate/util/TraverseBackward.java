@@ -85,6 +85,7 @@ public class TraverseBackward {
 
     /**
      * Sets a condition for vertices to be visited. Only those vertices matching the condition will be visited.
+     *
      * @param visitCondition the condition
      * @return the builder for fluent API
      */
