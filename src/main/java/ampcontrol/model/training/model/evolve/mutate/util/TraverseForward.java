@@ -15,13 +15,10 @@ public class TraverseForward {
     private final Graph<String> baseGraph;
 
     private Predicate<String> traverseCondition;
-    private Consumer<String> enterListener = vertex -> {
-    };
-    private Consumer<String> leaveListener = vertex -> {
-    };
+    private Consumer<String> enterListener = vertex -> {/* ignore */};
+    private Consumer<String> leaveListener = vertex -> {/* ignore */};
     private Predicate<String> visitCondition = vertex -> true;
-    private Consumer<String> visitListener = vertex -> {
-    };
+    private Consumer<String> visitListener = vertex -> {/* ignore */};
 
     public TraverseForward(ComputationGraphConfiguration.GraphBuilder builder) {
         baseGraph = new ForwardOf(builder);
@@ -42,7 +39,7 @@ public class TraverseForward {
 
     /**
      * Set listener to listen for when the scope of a new vertex is entered and its children will be queried. Any
-     * subsequent vertices given to visitListener are ancestors of this node.
+     * subsequent vertices given to visitListener are descendants of this vertex.
      *
      * @param enterListener the listener
      * @return the builder for fluent API
@@ -54,7 +51,7 @@ public class TraverseForward {
 
     /**
      * Set listener for when the scope of the a vertex is left. Any subsequent vertices given to visitListener are not
-     * ancestors of this node.
+     * descendants of this vertex.
      *
      * @param leaveListener the listener
      * @return the builder for fluent API
@@ -65,7 +62,7 @@ public class TraverseForward {
     }
 
     /**
-     * Set a listener for when a vertex is visited. Vertices given to this listener are ancestors to any vertex given
+     * Set a listener for when a vertex is visited. Vertices given to this listener are descendants to any vertex given
      * to enterListener but not yet given to leaveListener.
      *
      * @param visitListener the listener

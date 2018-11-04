@@ -17,9 +17,9 @@ public class TraverseBackward {
     private Predicate<String> enterCondition;
     private Predicate<String> traverseCondition;
     private Predicate<String> visitCondition = vertex -> true;
-    private Consumer<String> enterListener = vertex -> {};
-    private Consumer<String> leaveListener = vertex -> {};
-    private Consumer<String> visitListener = vertex -> {};
+    private Consumer<String> enterListener = vertex -> {/* ignore */};
+    private Consumer<String> leaveListener = vertex -> {/* ignore */};
+    private Consumer<String> visitListener = vertex -> {/* ignore */};
 
     public TraverseBackward(ComputationGraphConfiguration.GraphBuilder builder) {
         baseGraph = new BackwardOf(builder);
@@ -42,6 +42,7 @@ public class TraverseBackward {
     /**
      * Set the condition for traversing to the next vertex. Default is if the current vertex
      * is of a type where nOut must be equal to nIn.
+     *
      * @param traverseCondition the condition
      * @return the builder for fluent API
      */
@@ -52,7 +53,8 @@ public class TraverseBackward {
 
     /**
      * Set listener to listen for when the scope of a new vertex is entered and its children will be queried. Any
-     * subsequent vertices given to visitListener are ancestors of this node.
+     * subsequent vertices given to visitListener are ancestors of this vertex.
+     *
      * @param enterListener the listener
      * @return the builder for fluent API
      */
@@ -63,7 +65,8 @@ public class TraverseBackward {
 
     /**
      * Set listener for when the scope of the a vertex is left. Any subsequent vertices given to visitListener are not
-     * ancestors of this node.
+     * ancestors of this vertex.
+     *
      * @param leaveListener the listener
      * @return the builder for fluent API
      */
@@ -75,6 +78,7 @@ public class TraverseBackward {
     /**
      * Set a listener for when a vertex is visited. Vertices given to this listener are ancestors to any vertex given
      * to enterListener but not yet given to leaveListener.
+     *
      * @param visitListener the listener
      * @return the builder for fluent API
      */
@@ -95,7 +99,7 @@ public class TraverseBackward {
     }
 
     public Graph<String> build() {
-        return  new EnterIf<>(enterCondition,
+        return new EnterIf<>(enterCondition,
                 new Traverse<>(
                         traverseCondition,
                         enterListener,

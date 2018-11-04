@@ -8,8 +8,8 @@ import java.util.stream.Stream;
 
 /**
  * Traverses a Graph, recursively streaming all the children and grandchildren etc. of a given vertex.
- * @param <T> Type of the vertices of the graph
  *
+ * @param <T> Type of the vertices of the graph
  * @author Christian Skärby
  */
 public class Traverse<T> implements Graph<T> {
@@ -19,14 +19,26 @@ public class Traverse<T> implements Graph<T> {
     private final Consumer<T> leaveListener;
     private final Predicate<T> traverse;
 
-    public Traverse(Graph<T> graph){
-        this(vertex -> true, vertex -> {}, vertex -> {}, graph);
+    public Traverse(Graph<T> graph) {
+        this(vertex -> true, vertex -> {/* ignore */}, vertex -> {/* ignore */}, graph);
     }
 
     public Traverse(Predicate<T> traverse, Graph<T> graph) {
-        this(traverse, vertex -> {}, vertex -> {}, graph);
+        this(traverse, vertex -> {/* ignore */}, vertex -> {/* ignore */}, graph);
     }
 
+    /**
+     * Constructor.
+     *
+     * @param traverse      Criterion for visiting vertices when traversing (only applies to children, not the "root" vertex)
+     * @param enterListener Listener for whenever a vertex is entered before its children are visited. Note: Not invoked
+     *                      through a Stream#peek call. Beware that the context for which it is valid only
+     *                      refers to what happens when the underlying graphs child stream is consumed.
+     * @param leaveListener Listener for whenever a vertex is left, meaning all its descendants have been visited. Note:
+     *                      Not invoked through a Stream#peek call. Beware that the context for which it is valid only
+     *                      refers to what happens when the underlying graphs child stream is consumed.
+     * @param graph         {@link Graph} to traverse
+     */
     public Traverse(Predicate<T> traverse, Consumer<T> enterListener, Consumer<T> leaveListener, Graph<T> graph) {
         this.graph = graph;
         this.enterListener = enterListener;

@@ -96,7 +96,8 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
     /**
      * Propagate a change in nOut to the next layer(s), i.e change nIn with the given delta size so that nOut of the
-     * mutated layer is equal to nIn of all layers which have it as input.
+     * mutated layer is equal to nIn of all layers which have it as input. Why not just set all nIns to zero and let
+     * the {@link GraphBuilder} handle it automatically? Because of nr 1 below basically.
      * <br><br>
      * <b>Brainf*ck level 0:</b> Next vertex might be of a type which does not allow nIn to be set or has constraint
      * nIn == nOut. We must propagate the change through to the next vertex which allows setting nIn and allows
@@ -122,7 +123,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
      * <br><br>
      * <b>Brainf*ck level 5:</b> TBD (To Be Discovered)...
      *
-     * @param builder {@link GraphBuilder} to mutate
+     * @param builder   {@link GraphBuilder} to mutate
      * @param layerName Name of layer for which nOut has been changed
      * @param deltaSize How much the size of any dependent layers shall be changed.
      */
@@ -133,14 +134,28 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
         final HasVistited visited = new HasVistited();
         visited.addInput(layerName);
-        final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
 
-        final Graph<String> forwardGraph = new TraverseForward(builder)
-//                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
-//                        .filter(entry -> entry.getValue().contains(vertex))
-//                        .map(Map.Entry::getKey)
-//                        .collect(Collectors.toSet())))
-//                .leaveListener(vertex -> System.out.println("\tDone with NOut change " + vertex))
+        final Graph<String> forwardGraph = getForwardGraph(builder, deltaSize, visited);
+        final Graph<String> backwardGraph = getBackwardGraph(builder, layerName, deltaSize, visited);
+
+        // Whatever comes out from backwardGraph which is a feedforward layer needs to go into
+        // back into the "loop", starting again with the forwardGraph due to brainf*ck level 2
+        // described above. Why only feedforward layers? Answer: Those are the only ones for
+        // which nOut was actually changed.
+        final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
+        new Traverse<>(
+                vertex -> asFf.apply(vertex).isPresent(),
+                new Connect<>(forwardGraph, backwardGraph)).children(layerName).forEachOrdered(residual -> {/* ignore */});
+    }
+
+    private Graph<String> getForwardGraph(GraphBuilder builder, long deltaSize, HasVistited visited) {
+        final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
+        return new TraverseForward(builder)
+                //                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
+                //                        .filter(entry -> entry.getValue().contains(vertex))
+                //                        .map(Map.Entry::getKey)
+                //                        .collect(Collectors.toSet())))
+                //                .leaveListener(vertex -> System.out.println("\tDone with NOut change " + vertex))
                 .visitCondition(outputName -> !visited.output(outputName))
                 .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
@@ -153,14 +168,23 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                             }
                         }))
                 .build();
+    }
 
-
+    private Graph<String> getBackwardGraph(GraphBuilder builder, String layerName, long deltaSize, HasVistited visited) {
         final Map<String, Long> deltas = new HashMap<>();
         deltas.put(layerName, deltaSize);
-        final Graph<String> backwardGraph = new TraverseBackward(builder)
+        final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
+        // Just a note: Listeners below are a bit less insane than it might appear. The enterListener is not invoked
+        // through in a Stream#peek call, but rather just before a stream is created (and immediately consumed) as the
+        // Traverse graph creates a new collection for each recursion. This also makes the visitListener bit less of an
+        // API-abuse as it does not touch any state which may impact it before the stream i consumed. One might (and
+        // perhaps should) argue that the fact I had to write this comment to myself is reason enough to change the
+        // design...
+        return new TraverseBackward(builder)
                 .enterListener(vertex -> {
                     // System.out.println("\tHandle NOut change backwards " + vertex + " with inputs: " + builder.getVertexInputs().get(vertex));
-                    deltas.putAll(calcInputLayerDeltas(deltas, builder, vertex, deltas.getOrDefault(vertex, deltaSize)));
+                    // Note: Output will be added to deltas in method.
+                    calcInputLayerDeltas(deltas, builder, vertex, deltas.getOrDefault(vertex, deltaSize));
                 })
                 //.leaveListener(vertex -> System.out.println("\tDone with NOut change backwards " + vertex))
                 // nOutDelta == 0 below might mask shortcoming of alg:
@@ -168,7 +192,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 // are probably not correct as they might "compensate" for previous size changes in a way in which they
                 // should not. So far, I think this can only happen when the "original" mutation is in a fork in which
                 // case we know (?) that the output sizes are correct
-                // Possble candidate for Brainf*ck level 5...
+                // Possible candidate for Brainf*ck level 5...
                 .visitCondition(inputName -> !visited.input(inputName) && deltas.get(inputName) != 0)
                 .visitListener(inputName ->
                 {
@@ -187,25 +211,17 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                             });
                 })
                 .build();
-
-        // Whatever comes out from backwardGraph which is a feedforward layer needs to go into
-        // back into the "loop", starting again with the forwardGraph due to brainf*ck level 2
-        // described above. Why only feedforward layers? Answer: Those are the only ones for
-        // which nOut was actually changed.
-        new Traverse<>(
-                vertex -> asFf.apply(vertex).isPresent(),
-                new Connect<>(forwardGraph, backwardGraph)).children(layerName).count();
     }
 
 
-    private Map<String, Long> calcInputLayerDeltas(Map<String, Long> deltas, GraphBuilder builder, String layerName, long deltaSize) {
+    private void calcInputLayerDeltas(Map<String, Long> deltas, GraphBuilder builder, String layerName, long deltaSize) {
         final List<String> inputs = builder.getVertexInputs().get(layerName);
         final GraphVertex vertex = builder.getVertices().get(layerName);
-        final long[] layerSizes = new long[inputs.size()];
-
         if (vertex instanceof MergeVertex) {
             long remainder = deltaSize;
-            Boolean[] validLayers = new Boolean[inputs.size()];
+            final long[] layerSizes = new long[inputs.size()];
+            final Boolean[] validLayers = new Boolean[inputs.size()];
+
             for (int i = 0; i < validLayers.length; i++) {
                 final String inputName = inputs.get(i);
                 layerSizes[i] = GraphBuilderUtil.asFeedforwardLayer(builder).apply(inputName)
@@ -240,7 +256,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                     name -> deltaSize
             )));
         }
-        return deltas;
     }
 
     private long getMinNOut(GraphBuilder builder, String vertexName) {
