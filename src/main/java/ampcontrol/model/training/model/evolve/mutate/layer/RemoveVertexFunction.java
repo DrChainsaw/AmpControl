@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
-import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
+import ampcontrol.model.training.model.evolve.mutate.util.*;
+import org.apache.commons.lang.mutable.MutableLong;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
@@ -42,36 +43,47 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
                 .filter(entry -> entry.getValue().contains(vertexNameToRemove))
                 .forEach(entry -> graphBuilder.getVertexInputs().put(entry.getKey(), new ArrayList<>(entry.getValue())));
 
-        final List<String> outputNames = graphBuilder.getVertexInputs().entrySet().stream()
-                .filter(entry -> entry.getValue().contains(vertexNameToRemove))
-                .map(Map.Entry::getKey)
+        final List<String> outputNames = new ForwardOf(graphBuilder).children(vertexNameToRemove)
                 .collect(Collectors.toList());
 
         final List<String> inputNames = new ArrayList<>(graphBuilder.getVertexInputs().get(vertexNameToRemove));
 
-        final long nOut = GraphBuilderUtil.getOutputSize(vertexNameToRemove, graphBuilder);
+        final long nOut = Math.max(GraphBuilderUtil.getOutputSize(vertexNameToRemove, graphBuilder),
+                new Connect<>(
+                        TraverseBuilder.forwards(graphBuilder).build(),
+                        TraverseBuilder.backwards(graphBuilder)
+                                .enterCondition(vertex -> graphBuilder.getVertices().get(vertex) instanceof MergeVertex)
+                                .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
+                                .build()
+                ).children(vertexNameToRemove)
+                        .map(GraphBuilderUtil.asFeedforwardLayer(graphBuilder))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .mapToLong(FeedForwardLayer::getNOut)
+                        .sum());
         final long nIn = GraphBuilderUtil.getInputSize(vertexNameToRemove, graphBuilder);
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
         //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
         //        " nIn: " + nIn + " nOut: " + nOut);
+
+        final Collection<String> connectedMergeVertices = handleMergeVertexOutputs(graphBuilder, outputNames);
+
         removeOrphanedElemWiseVertices(graphBuilder, outputNames);
 
-        handleMergeVertexOutputs(graphBuilder, outputNames);
+        final Map<String, Set<String>> inputNamesPerOutput = getInputNamesPerOutput(graphBuilder, outputNames, inputNames);
 
-        final Map<String, List<String>> inputNamesPerOutput = getInputNamesPerOutput(graphBuilder, outputNames, inputNames);
-
-        graphBuilder.removeVertex(vertexNameToRemove, true);
+        //System.out.println("inputPerOutput: " + inputNamesPerOutput);
 
         outputNames.stream()
                 .peek(name -> log.info("Connect " + name + " to " + inputNamesPerOutput.get(name)))
-                //.peek(name -> System.out.println("Connect " + name + " to " + inputNamesPerOutput.get(name)))
+                //.peek(name -> //System.out.println("Connect " + name + " to " + inputNamesPerOutput.get(name)))
                 .forEach(outputName ->
-                graphBuilder.addVertex(
-                        outputName,
-                        graphBuilder.getVertices().get(outputName),
-                        inputNamesPerOutput.get(outputName).toArray(new String[1])));
+                        graphBuilder.addVertex(
+                                outputName,
+                                graphBuilder.getVertices().get(outputName),
+                                inputNamesPerOutput.get(outputName).toArray(new String[1])));
 
         // Not possible to change network inputs (e.g. image size)
         final boolean isAnyLayerInputNetworkInput = graphBuilder.getNetworkInputs().stream()
@@ -82,26 +94,27 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
             changeNinOfOutputs(graphBuilder, outputNames, nIn);
 
         } else {
+
             changeNoutOfInputs(graphBuilder, inputNames, nOut);
 
             // Need to update other layers which have one of inputNames as their inputs
-            inputNames.forEach(name -> changeNinOfOutputs(
+            inputNames.stream()
+                    .map(name -> new ForwardOf(graphBuilder).children(name).collect(Collectors.toList()))
+                    .forEach(names -> changeNinOfOutputs(
                     graphBuilder,
-                    graphBuilder.getVertexInputs().entrySet().stream()
-                            .filter(entry -> entry.getValue().contains(name))
-                            .filter(entry -> outputNames.stream().noneMatch(output -> entry.getKey().equals(output)))
-                            .map(Map.Entry::getKey)
-                            .collect(Collectors.toList()),
+                    names,
                     nOut));
+
+            changeNoutOfInputs(graphBuilder, new ArrayList<>(connectedMergeVertices), nOut/2);
         }
 
         return GraphMutation.InputsAndOutputNames.builder().build();
     }
 
     @NotNull
-    private Map<String, List<String>> getInputNamesPerOutput(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<String> outputNames, List<String> inputNames) {
+    private Map<String, Set<String>> getInputNamesPerOutput(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<String> outputNames, List<String> inputNames) {
         return outputNames.stream()
-                .map(name -> new AbstractMap.SimpleEntry<>(name, new ArrayList<>(inputNames)))
+                .map(name -> new AbstractMap.SimpleEntry<>(name, new LinkedHashSet<>(inputNames)))
                 .peek(entry -> entry.getValue().addAll(graphBuilder.getVertexInputs().get(entry.getKey())))
                 .peek(entry -> entry.getValue().remove(vertexNameToRemove))
                 .collect(Collectors.toMap(
@@ -115,11 +128,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
         new ArrayList<>(outputNames).forEach(name -> {
             final GraphVertex vertex = builder.getVertices().get(name);
             if (vertex instanceof ElementWiseVertex && builder.getVertexInputs().get(name).size() <= 2) {
-
-                outputNames.addAll(builder.getVertexInputs().entrySet().stream()
-                        .filter(entry -> entry.getValue().contains(name))
-                        .map(Map.Entry::getKey)
-                        .collect(Collectors.toList()));
+                outputNames.addAll(new ForwardOf(builder).children(name).collect(Collectors.toList()));
                 builder.removeVertex(name, true);
                 outputNames.remove(name);
             }
@@ -135,176 +144,141 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
      * of A or the other layers (since 0 is not an allowed size). This situation commonly occurs when using
      * residual inception modules.
      * <br><br>
-     * Because of this, the adopted strategy is to "reroute" the inputs of the removed layer to the other layers
-     * which are merged in the same {@link MergeVertex} while at the same time add the outputs of the removed layers
-     * as outputs to one of said other layers. After nIn and nOut of other layers are updated with respect to the new
-     * inputs and outputs, it should be guaranteed that the output of any subsequent {@link MergeVertex} remains
-     * unchanged.
-     * @param builder GraphBuilder with the current configuration
+     *
+     * @param builder     GraphBuilder with the current configuration
      * @param outputNames List of output names for the vertex which shall be removed
      * @return Don't know yet...
      */
-    private List<String> handleMergeVertexOutputs(ComputationGraphConfiguration.GraphBuilder builder, List<String> outputNames) {
+    private Collection<String> handleMergeVertexOutputs(ComputationGraphConfiguration.GraphBuilder builder, List<String> outputNames) {
         // Use this somehow to prevent that size changes in case of an elementwise vertex somewhere down the line
         // Probably also need to traverse through layers for which nIn and nOut can not be changed independently...
-        final List<String> mergeVertexOutputs = new ArrayList<>();
         final List<String> viableOutputs = new ArrayList<>();
-        final Set<String> forbiddenOutputs = createForbiddenSet(builder, Collections.singleton(vertexNameToRemove));
-        for (String outputName : outputNames) {
-            // Figure out two things at once:
-            // 1) is the output connected to a merge vertex
-            // and
-            // 2) What are the other inputs to that merge vertex if 1)
-            final Map<String, List<String>> inputsToConnectedMergeVertex = getInputsConnectedToMergeVertex(builder, outputName);
-            //System.out.println("inputsConnected: " + inputsToConnectedMergeVertex);
-            if (!inputsToConnectedMergeVertex.isEmpty()) {
-                //outputName is connected to a MergeVertex
-                mergeVertexOutputs.add(outputName);
-            }
-            for (List<String> inputNames : inputsToConnectedMergeVertex.values()) {
-                inputNames.stream().flatMap(
-                        name -> getNonSizeTransparentInputs(builder, forbiddenOutputs, name).stream())
-                        .findFirst()
-                        .ifPresent(viableOutputs::add);
-            }
+        // No vertex after vertexNameToRemove may be input to this a vertex which is connected to the input of vertexNameToRemove as this
+        // will create a cycle in the graph
+        final Set<String> forbiddenOutputs = new Traverse<>(new BackwardOf(builder)).children(vertexNameToRemove).collect(Collectors.toSet());
+
+        // Figure out two things at once:
+        // 1) are any of the outputs connected to a merge vertex
+        // and
+        // 2) What are the other inputs to that merge vertex if 1)
+        //final Map<String, List<String>> inputsToConnectedMergeVertex = getInputsConnectedToMergeVertex(builder, outputName);
+        final Map<String, Set<String>> outputsToConnectedMergeVertex = new HashMap<>();
+        final Set<String> pathToMerge = new LinkedHashSet<>();
+
+        final Graph<String> backwards = TraverseBuilder.backwards(builder)
+                .enterCondition(vertex -> true)
+                .visitCondition(vertex -> !forbiddenOutputs.contains(vertex))
+                .build();
+
+        final Set<String> currentPath = new LinkedHashSet<>();
+        TraverseBuilder.forwards(builder)
+                .traverseCondition(vertex -> !isSizeChangePossible(builder.getVertices().get(vertex)))
+                .enterListener(currentPath::add)
+                .visitListener(vertex -> {
+                    if (builder.getVertices().get(vertex) instanceof MergeVertex) {
+                        outputsToConnectedMergeVertex.put(vertex,
+                                new LinkedHashSet<>(backwards.children(vertex)
+                                        .filter(vert -> isSizeChangePossible(builder.getVertices().get(vert)))
+                                        .collect(Collectors.toSet())));
+                        pathToMerge.addAll(currentPath);
+                    }
+                })
+                .leaveListener(currentPath::remove)
+                .build().children(vertexNameToRemove).forEach(vertex -> {/* Ignore */});
+        //System.out.println();
+        //System.out.println("outputs... map " + outputsToConnectedMergeVertex);
+        //System.out.println("path to merge: " + pathToMerge);
+
+        outputNames.removeAll(pathToMerge);
+        pathToMerge.add(vertexNameToRemove);
+
+        for (Set<String> inputNames : outputsToConnectedMergeVertex.values()) {
+            inputNames.stream()
+                    .findFirst()
+                    .ifPresent(viableOutputs::add);
         }
+
+        pathToMerge.forEach(vertex -> builder.removeVertex(vertex, true));
+
         // Somewhere here we also want to add mergeVertexOutputs as output to viableOutputs
         // and maybe change the size. Or return some object which describes this action?
 
-        //System.out.println("viable outputs: " + viableOutputs);
-        outputNames.removeAll(mergeVertexOutputs);
         outputNames.addAll(viableOutputs);
-        return viableOutputs;
-    }
-
-    /**
-     * Create the set of vertex names for which the given vertex may not be input to or else there will be a cycle in
-     * the graph
-     *
-     * @param builder     represents the configuration
-     * @param vertexNames Collections of the vertices
-     * @return The forbidden set
-     */
-    private static Set<String> createForbiddenSet(ComputationGraphConfiguration.GraphBuilder builder, Collection<String> vertexNames) {
-        final Set<String> forbidden = new HashSet<>();
-        for (String vertexName : vertexNames) {
-            if (!builder.getNetworkInputs().contains(vertexName)) {
-                forbidden.addAll(builder.getVertexInputs().get(vertexName));
-                forbidden.addAll(createForbiddenSet(builder, forbidden));
-            }
-        }
-        return forbidden;
-    }
-
-    private static Map<String, List<String>> getInputsConnectedToMergeVertex(ComputationGraphConfiguration.GraphBuilder builder, String vertexName) {
-        final GraphVertex vertex = builder.getVertices().get(vertexName);
-        if (vertex instanceof MergeVertex) {
-            return Collections.singletonMap(vertexName, new ArrayList<>(builder.getVertexInputs().get(vertexName)));
-        }
-
-        final Map<String, List<String>> inputsConnectedToMergeVertex = new LinkedHashMap<>();
-        if (!isSizeChangePossible(vertex)) {
-            List<String> outputNames = builder.getVertexInputs().entrySet().stream()
-                    .filter(entry -> entry.getValue().contains(vertexName))
-                    .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-
-            for (String outputName : outputNames) {
-                getInputsConnectedToMergeVertex(builder, outputName).forEach(
-                        (mergeVertexName, inputs) -> inputsConnectedToMergeVertex.merge(mergeVertexName, inputs,
-                                (inputs1, inputs2) -> Stream.concat(inputs1.stream(), inputs2.stream())
-                                        .distinct()
-                                        .collect(Collectors.toList()))
-                );
-            }
-        }
-        return inputsConnectedToMergeVertex;
-    }
-
-    private static List<String> getNonSizeTransparentInputs(
-            ComputationGraphConfiguration.GraphBuilder builder,
-            Set<String> forbidden,
-            String vertexName) {
-
-        if (!isSizeChangePossible(builder.getVertices().get(vertexName))) {
-            return builder.getVertexInputs().get(vertexName).stream()
-                    .flatMap(name -> getNonSizeTransparentInputs(builder, forbidden, name).stream())
-                    .filter(name -> !forbidden.contains(name))
-                    .collect(Collectors.toList());
-        }
-        return Collections.singletonList(vertexName);
+        outputNames.removeAll(outputsToConnectedMergeVertex.keySet());
+        return outputsToConnectedMergeVertex.keySet();
     }
 
     private static void changeNoutOfInputs(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<String> inputNames, long nOut) {
-        inputNames.stream()
-                .map(layerName -> findPrevFeedForwardLayer(layerName, graphBuilder, nOut))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + nOut))
-                .forEach(layer -> layer.setNOut(nOut));
+
+        //System.out.println("inputnames: " + inputNames);
+
+        toLayerStream(
+                TraverseBuilder.backwards(graphBuilder)
+                        .enterCondition(vertex -> true)
+                        .build(),
+                graphBuilder,
+                inputNames)
+                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nOut))
+                .forEachOrdered(layer -> {
+                    //System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + nOut);
+                    layer.setNOut(nOut);
+                    if (!isSizeChangePossible(layer)) {
+                        layer.setNIn(nOut);
+                    }
+                });
     }
 
     private static void changeNinOfOutputs(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<String> outputNames, long nIn) {
-        outputNames.stream()
-                .map(layerName -> findNextFeedForwardLayer(layerName, graphBuilder, nIn))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .peek(layer -> log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nIn))
-                .forEach(layer -> layer.setNIn(nIn));
+        //System.out.println("output names: " + outputNames + " inputs: " + new ForwardOf(graphBuilder).children(outputNames.get(0)).collect(Collectors.joining(", ")));
+
+        final MutableLong encounteredMergeVerticesMultiplier = new MutableLong(1);
+        final Map<String, Long> nInToUse = outputNames.stream()
+                .collect(Collectors.toMap(
+                        name -> name,
+                        name -> nIn
+                ));
+        toLayerStream(
+                TraverseBuilder.forwards(graphBuilder)
+                        .enterCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
+                        .enterListener(vertex -> {
+                            if(graphBuilder.getVertices().get(vertex) instanceof MergeVertex) {
+                                encounteredMergeVerticesMultiplier.increment();
+                            }
+                        })
+                        .leaveListener(vertex -> {
+                            if(graphBuilder.getVertices().get(vertex) instanceof MergeVertex) {
+                                encounteredMergeVerticesMultiplier.decrement();
+                            }
+                        })
+                        .visitListener(vertex -> nInToUse.put(vertex, nIn * encounteredMergeVerticesMultiplier.longValue()))
+                        .build(),
+                graphBuilder,
+                outputNames)
+                .peek(layer -> log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse.get(layer.getLayerName())))
+                .forEachOrdered(layer -> {
+                    final long thisNIn = nInToUse.get(layer.getLayerName());
+                    //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNIn);
+                    layer.setNIn(thisNIn);
+                    if (!isSizeChangePossible(layer)) {
+                        layer.setNOut(thisNIn);
+                    }
+                });
     }
 
-
-    private static Optional<FeedForwardLayer> findPrevFeedForwardLayer(
-            String layerName,
+    private static Stream<FeedForwardLayer> toLayerStream(
+            Graph<String> graph,
             ComputationGraphConfiguration.GraphBuilder graphBuilder,
-            long newNout) {
-        return GraphBuilderUtil.vertexAsLayerVertex
-                .andThen(layerVertex -> GraphBuilderUtil.layerVertexAsFeedForward.apply(layerName, layerVertex))
-                .apply(layerName, graphBuilder)
-                .filter(layer -> isSizeChangePossibleOrElseChange(layer, newNout))
-                .map(Optional::of)
-                .orElseGet(() -> Optional.ofNullable(graphBuilder.getVertexInputs().get(layerName))
-                        .flatMap(inputLayers -> inputLayers.stream()
-                                .map(layerInputName -> findPrevFeedForwardLayer(layerInputName, graphBuilder, newNout))
-                                .filter(Optional::isPresent)
-                                .map(Optional::get)
-                                .findAny()));
-    }
-
-    private static Optional<FeedForwardLayer> findNextFeedForwardLayer(
-            String layerName,
-            ComputationGraphConfiguration.GraphBuilder graphBuilder,
-            long newNin) {
-        return GraphBuilderUtil.vertexAsLayerVertex
-                .andThen(layerVertex -> GraphBuilderUtil.layerVertexAsFeedForward.apply(layerName, layerVertex))
-                .apply(layerName, graphBuilder)
-                .filter(layer -> isSizeChangePossibleOrElseChange(layer, newNin))
-                .map(Optional::of)
-                .orElseGet(() -> graphBuilder.getVertexInputs().entrySet().stream()
-                        .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(layerName))
-                        .map(Map.Entry::getKey)
-                        .map(layerInputName -> findNextFeedForwardLayer(layerInputName, graphBuilder, newNin))
+            List<String> names) {
+        return
+                Stream.concat(names.stream(), names.stream().flatMap(graph::children))
+                        .map(GraphBuilderUtil.asFeedforwardLayer(graphBuilder))
                         .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .findAny());
-    }
-
-
-    /**
-     * Return true if the given layer supports nIn != nOut. If not true, the size will also be changed of the given layer.
-     * @param layer Layer to check
-     * @param newNout New nOut (and nIn) to set in case size change not possible
-     * @return true if the given layer supports nIn != nOut.
-     */
-    private static boolean isSizeChangePossibleOrElseChange(FeedForwardLayer layer, long newNout) {
-        if (isSizeChangePossible(layer)) return true;
-        layer.setNIn(newNout);
-        layer.setNOut(newNout);
-        return false;
+                        .map(Optional::get);
     }
 
     /**
      * Return true if the given layer supports nIn != nOut
+     *
      * @param layer the layer to check
      * @return true if the given layer supports nIn != nOut
      */
@@ -320,6 +294,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
 
     /**
      * Return true if the given vertex supports nIn != nOut
+     *
      * @param vertex the vertex to check
      * @return true if the given vertex supports nIn != nOut
      */

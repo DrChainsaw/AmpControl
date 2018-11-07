@@ -7,7 +7,6 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -64,7 +63,7 @@ public class RemoveVertexTest {
     /**
      * Test to remove one out of three convolution layers in a fork.
      */
-    @Test @Ignore
+    @Test
     public void removeForkPath() {
         final String beforeFork = "beforeFork";
         final String afterFork = "afterFork";
@@ -79,7 +78,7 @@ public class RemoveVertexTest {
     /**
      * Test to remove one out of three convolution layers in a residual fork.
      */
-    @Test @Ignore
+    @Test
     public void removeForkResPath() {
         final String beforeFork = "beforeFork";
         final String afterFork = "afterFork";
@@ -87,11 +86,6 @@ public class RemoveVertexTest {
         final String fork2ToRemove = "fork2ToRemove";
         final String fork3 = "fork3";
         final ComputationGraph graph = GraphUtils.getForkResNet(beforeFork, afterFork, fork1, fork2ToRemove, fork3);
-
-        printNout(beforeFork, graph);
-        printNout(fork1, graph);
-        printNout(fork2ToRemove, graph);
-        printNout(fork3, graph);
 
         removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
 
@@ -118,9 +112,5 @@ public class RemoveVertexTest {
         newGraph.outputSingle(Nd4j.randn(shape));
 
         return newGraph;
-    }
-
-    private void printNout(String beforeFork, ComputationGraph graph) {
-        System.out.println("graph " + beforeFork + " nOut: " + graph.layerSize(beforeFork));
     }
 }

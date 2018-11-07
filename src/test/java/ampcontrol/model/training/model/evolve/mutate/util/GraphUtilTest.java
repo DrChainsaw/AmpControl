@@ -57,10 +57,10 @@ public class GraphUtilTest {
         final ComputationGraphConfiguration.GraphBuilder builder = new ComputationGraphConfiguration.GraphBuilder(
                 computationGraph.getConfiguration(), new NeuralNetConfiguration.Builder(computationGraph.conf()));
 
-        final Graph<String> forwardGraph = new TraverseForward(builder).build();
+        final Graph<String> forwardGraph = TraverseBuilder.forwards(builder).build();
         final Graph<String> backwardGraph =
                 new Filter<>(GraphBuilderUtil.changeSizePropagates(builder).negate(),
-                        new TraverseBackward(builder)
+                        TraverseBuilder.backwards(builder)
                                 .visitCondition(vertex -> !vertex.equals(toQuery))
                                 .build());
         final long minNout = forwardGraph.children(toQuery)

@@ -127,7 +127,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
      * @param layerName Name of layer for which nOut has been changed
      * @param deltaSize How much the size of any dependent layers shall be changed.
      */
-    private void propagateNOutChange(
+    private static void propagateNOutChange(
             GraphBuilder builder,
             String layerName,
             final long deltaSize) {
@@ -148,9 +148,9 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 new Connect<>(forwardGraph, backwardGraph)).children(layerName).forEachOrdered(residual -> {/* ignore */});
     }
 
-    private Graph<String> getForwardGraph(GraphBuilder builder, long deltaSize, HasVistited visited) {
+    private static Graph<String> getForwardGraph(GraphBuilder builder, long deltaSize, HasVistited visited) {
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
-        return new TraverseForward(builder)
+        return TraverseBuilder.forwards(builder)
                 //                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
                 //                        .filter(entry -> entry.getValue().contains(vertex))
                 //                        .map(Map.Entry::getKey)
@@ -170,7 +170,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .build();
     }
 
-    private Graph<String> getBackwardGraph(GraphBuilder builder, String layerName, long deltaSize, HasVistited visited) {
+    private static Graph<String> getBackwardGraph(GraphBuilder builder, String layerName, long deltaSize, HasVistited visited) {
         final Map<String, Long> deltas = new HashMap<>();
         deltas.put(layerName, deltaSize);
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
@@ -180,7 +180,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         // API-abuse as it does not touch any state which may impact it before the stream i consumed. One might (and
         // perhaps should) argue that the fact I had to write this comment to myself is reason enough to change the
         // design...
-        return new TraverseBackward(builder)
+        return TraverseBuilder.backwards(builder)
                 .enterListener(vertex -> {
                     // System.out.println("\tHandle NOut change backwards " + vertex + " with inputs: " + builder.getVertexInputs().get(vertex));
                     // Note: Output will be added to deltas in method.
@@ -214,7 +214,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
     }
 
 
-    private void calcInputLayerDeltas(Map<String, Long> deltas, GraphBuilder builder, String layerName, long deltaSize) {
+    private static void calcInputLayerDeltas(Map<String, Long> deltas, GraphBuilder builder, String layerName, long deltaSize) {
         final List<String> inputs = builder.getVertexInputs().get(layerName);
         final GraphVertex vertex = builder.getVertices().get(layerName);
         if (vertex instanceof MergeVertex) {
@@ -259,10 +259,10 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
     }
 
     private long getMinNOut(GraphBuilder builder, String vertexName) {
-        return new TraverseForward(builder).build().children(vertexName)
+        return TraverseBuilder.forwards(builder).build().children(vertexName)
                 .mapToLong(childName ->
                         new Filter<>(GraphBuilderUtil.changeSizePropagates(builder).negate(),
-                                new TraverseBackward(builder)
+                                TraverseBuilder.backwards(builder)
                                         .visitCondition(vertex -> !vertex.equals(vertexName))
                                         .build())
                                 .children(childName).count())
