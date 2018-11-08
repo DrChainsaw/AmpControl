@@ -308,13 +308,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
      * @return true if the given layer supports nIn != nOut
      */
     private static boolean isSizeChangePossible(FeedForwardLayer layer) {
-        if (layer instanceof ConvolutionLayer
+        return layer instanceof ConvolutionLayer
                 || layer instanceof DenseLayer
                 || layer instanceof BaseRecurrentLayer
-                || layer instanceof BaseOutputLayer) {
-            return true;
-        }
-        return false;
+                || layer instanceof BaseOutputLayer;
     }
 
     /**
