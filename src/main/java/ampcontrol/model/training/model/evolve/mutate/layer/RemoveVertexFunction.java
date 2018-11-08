@@ -2,7 +2,7 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.mutate.util.*;
 import org.apache.commons.lang.mutable.MutableLong;
-import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
@@ -19,11 +19,11 @@ import java.util.stream.Stream;
 
 /**
  * Function to be used with a {@link GraphMutation}. Removes a named layer from the given
- * {@link ComputationGraphConfiguration.GraphBuilder}.
+ * {@link GraphBuilder}.
  *
  * @author Christian Skärby
  */
-public class RemoveVertexFunction implements Function<ComputationGraphConfiguration.GraphBuilder, GraphMutation.InputsAndOutputNames> {
+public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutation.InputsAndOutputNames> {
 
     private static final Logger log = LoggerFactory.getLogger(RemoveVertexFunction.class);
 
@@ -34,7 +34,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
     }
 
     @Override
-    public GraphMutation.InputsAndOutputNames apply(ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+    public GraphMutation.InputsAndOutputNames apply(GraphBuilder graphBuilder) {
 
         // WTF is this about? graphBuilder.removeVertex(vertexName, true) will go through all vertexInputs and
         // remove vertexToRemove from the list of inputs. However, this list is typically created by Array.asList
@@ -105,14 +105,23 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
                     names,
                     nOut));
 
-            changeNoutOfInputs(graphBuilder, new ArrayList<>(connectedMergeVertices), nOut/2);
+            // TODO Will not work when nOut is not evenly divisible with number of inputs to mergevertex!
+            // Must add MergeVertex handling in changeNoutOfInputs?
+//            connectedMergeVertices.forEach(mergeVertex -> changeNoutOfInputs(
+//                    graphBuilder,
+//                    Collections.singletonList(mergeVertex),
+//                    nOut/new BackwardOf(graphBuilder).children(mergeVertex).count()));
+            changeNoutOfInputs(
+                    graphBuilder,
+                    connectedMergeVertices,
+                    nOut);
         }
 
         return GraphMutation.InputsAndOutputNames.builder().build();
     }
 
     @NotNull
-    private Map<String, Set<String>> getInputNamesPerOutput(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<String> outputNames, List<String> inputNames) {
+    private Map<String, Set<String>> getInputNamesPerOutput(GraphBuilder graphBuilder, List<String> outputNames, List<String> inputNames) {
         return outputNames.stream()
                 .map(name -> new AbstractMap.SimpleEntry<>(name, new LinkedHashSet<>(inputNames)))
                 .peek(entry -> entry.getValue().addAll(graphBuilder.getVertexInputs().get(entry.getKey())))
@@ -124,7 +133,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
                 ));
     }
 
-    private void removeOrphanedElemWiseVertices(ComputationGraphConfiguration.GraphBuilder builder, List<String> outputNames) {
+    private void removeOrphanedElemWiseVertices(GraphBuilder builder, List<String> outputNames) {
         new ArrayList<>(outputNames).forEach(name -> {
             final GraphVertex vertex = builder.getVertices().get(name);
             if (vertex instanceof ElementWiseVertex && builder.getVertexInputs().get(name).size() <= 2) {
@@ -149,7 +158,7 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
      * @param outputNames List of output names for the vertex which shall be removed
      * @return Don't know yet...
      */
-    private Collection<String> handleMergeVertexOutputs(ComputationGraphConfiguration.GraphBuilder builder, List<String> outputNames) {
+    private Collection<String> handleMergeVertexOutputs(GraphBuilder builder, List<String> outputNames) {
         // Use this somehow to prevent that size changes in case of an elementwise vertex somewhere down the line
         // Probably also need to traverse through layers for which nIn and nOut can not be changed independently...
         final List<String> viableOutputs = new ArrayList<>();
@@ -175,19 +184,21 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
                 .traverseCondition(vertex -> !isSizeChangePossible(builder.getVertices().get(vertex)))
                 .enterListener(currentPath::add)
                 .visitListener(vertex -> {
+                   // System.out.println("visit: " + vertex);
                     if (builder.getVertices().get(vertex) instanceof MergeVertex) {
                         outputsToConnectedMergeVertex.put(vertex,
                                 new LinkedHashSet<>(backwards.children(vertex)
                                         .filter(vert -> isSizeChangePossible(builder.getVertices().get(vert)))
                                         .collect(Collectors.toSet())));
+                    //    System.out.println("add to path: " + currentPath);
                         pathToMerge.addAll(currentPath);
                     }
                 })
                 .leaveListener(currentPath::remove)
                 .build().children(vertexNameToRemove).forEach(vertex -> {/* Ignore */});
         //System.out.println();
-        //System.out.println("outputs... map " + outputsToConnectedMergeVertex);
-        //System.out.println("path to merge: " + pathToMerge);
+       // System.out.println("outputsConnectedToMergeVertex map " + outputsToConnectedMergeVertex);
+       // System.out.println("path to merge: " + pathToMerge);
 
         outputNames.removeAll(pathToMerge);
         pathToMerge.add(vertexNameToRemove);
@@ -208,28 +219,36 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
         return outputsToConnectedMergeVertex.keySet();
     }
 
-    private static void changeNoutOfInputs(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<String> inputNames, long nOut) {
+    private static void changeNoutOfInputs(GraphBuilder graphBuilder, Collection<String> inputNames, long nOut) {
 
         //System.out.println("inputnames: " + inputNames);
+        final SizeVisitor sizeRegistry = new SizeVisitor(
+                graphBuilder,
+                nOut,
+                (layerSize, size) -> Math.max(1, size));
+        inputNames.forEach(vertex -> sizeRegistry.set(vertex, nOut));
 
         toLayerStream(
                 TraverseBuilder.backwards(graphBuilder)
                         .enterCondition(vertex -> true)
+                        .enterListener(sizeRegistry::visit)
+                        .visitCondition(vertex -> sizeRegistry.getSize(vertex) != 0)
                         .build(),
                 graphBuilder,
                 inputNames)
-                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nOut))
+                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + sizeRegistry.getSize(layer.getLayerName())))
                 .forEachOrdered(layer -> {
-                    //System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + nOut);
-                    layer.setNOut(nOut);
+                    final long thisNout = sizeRegistry.getSize(layer.getLayerName());
+                    //System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNout);
+                    layer.setNOut(thisNout);
                     if (!isSizeChangePossible(layer)) {
-                        layer.setNIn(nOut);
+                        layer.setNIn(thisNout);
                     }
                 });
     }
 
-    private static void changeNinOfOutputs(ComputationGraphConfiguration.GraphBuilder graphBuilder, List<String> outputNames, long nIn) {
-        //System.out.println("output names: " + outputNames + " inputs: " + new ForwardOf(graphBuilder).children(outputNames.get(0)).collect(Collectors.joining(", ")));
+    private static void changeNinOfOutputs(GraphBuilder graphBuilder, Collection<String> outputNames, long nIn) {
+        //System.out.println("output names: " + outputNames);
 
         final MutableLong encounteredMergeVerticesMultiplier = new MutableLong(1);
         final Map<String, Long> nInToUse = outputNames.stream()
@@ -267,8 +286,8 @@ public class RemoveVertexFunction implements Function<ComputationGraphConfigurat
 
     private static Stream<FeedForwardLayer> toLayerStream(
             Graph<String> graph,
-            ComputationGraphConfiguration.GraphBuilder graphBuilder,
-            List<String> names) {
+            GraphBuilder graphBuilder,
+            Collection<String> names) {
         return
                 Stream.concat(names.stream(), names.stream().flatMap(graph::children))
                         .map(GraphBuilderUtil.asFeedforwardLayer(graphBuilder))

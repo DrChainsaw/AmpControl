@@ -49,7 +49,7 @@ public class GraphBuilderUtil {
     public static Predicate<String> changeSizePropagates(ComputationGraphConfiguration.GraphBuilder builder) {
         return vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
                 .map(GraphBuilderUtil::doesSizeChangePropagate)
-                .orElseThrow(() -> new IllegalArgumentException("Unkown vertex name: " + vertex + "!"));
+                .orElse(false);
     }
 
     /**
