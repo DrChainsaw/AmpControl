@@ -7,7 +7,6 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -95,7 +94,7 @@ public class RemoveVertexTest {
     /**
      * Test to remove one out of three convolution layers in a residual fork.
      */
-    @Test @Ignore
+    @Test
     public void removeDoubleForkResPath() {
         final String beforeFork = "beforeFork";
         final String afterFork = "afterFork";
@@ -103,7 +102,6 @@ public class RemoveVertexTest {
         final ComputationGraph graph = GraphUtils.getDoubleForkResNet(beforeFork, afterFork, "f1", fork2ToRemove, "f3");
 
         removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
-
     }
 
 

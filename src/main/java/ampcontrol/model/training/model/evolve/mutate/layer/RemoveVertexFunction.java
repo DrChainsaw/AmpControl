@@ -101,16 +101,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
             inputNames.stream()
                     .map(name -> new ForwardOf(graphBuilder).children(name).collect(Collectors.toList()))
                     .forEach(names -> changeNinOfOutputs(
-                    graphBuilder,
-                    names,
-                    nOut));
+                            graphBuilder,
+                            names,
+                            nOut));
 
-            // TODO Will not work when nOut is not evenly divisible with number of inputs to mergevertex!
-            // Must add MergeVertex handling in changeNoutOfInputs?
-//            connectedMergeVertices.forEach(mergeVertex -> changeNoutOfInputs(
-//                    graphBuilder,
-//                    Collections.singletonList(mergeVertex),
-//                    nOut/new BackwardOf(graphBuilder).children(mergeVertex).count()));
             changeNoutOfInputs(
                     graphBuilder,
                     connectedMergeVertices,
@@ -184,21 +178,26 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .traverseCondition(vertex -> !isSizeChangePossible(builder.getVertices().get(vertex)))
                 .enterListener(currentPath::add)
                 .visitListener(vertex -> {
-                   // System.out.println("visit: " + vertex);
+                    //  System.out.println("visit: " + vertex);
                     if (builder.getVertices().get(vertex) instanceof MergeVertex) {
                         outputsToConnectedMergeVertex.put(vertex,
                                 new LinkedHashSet<>(backwards.children(vertex)
                                         .filter(vert -> isSizeChangePossible(builder.getVertices().get(vert)))
                                         .collect(Collectors.toSet())));
-                    //    System.out.println("add to path: " + currentPath);
-                        pathToMerge.addAll(currentPath);
+                        //System.out.println("currpath: " + currentPath);
+                        currentPath.stream()
+                                // add vertices which are either 1) not mergevertices and 2) mergevertices with only 1 input (the one which is about to be removed)
+                                .filter(childvertex -> outputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
+                                // .peek(vert -> System.out.println("add to path: " + vert))
+                                .forEach(pathToMerge::add);
+
                     }
                 })
                 .leaveListener(currentPath::remove)
                 .build().children(vertexNameToRemove).forEach(vertex -> {/* Ignore */});
         //System.out.println();
-       // System.out.println("outputsConnectedToMergeVertex map " + outputsToConnectedMergeVertex);
-       // System.out.println("path to merge: " + pathToMerge);
+        //System.out.println("outputsConnectedToMergeVertex map " + outputsToConnectedMergeVertex);
+        //System.out.println("path to merge: " + pathToMerge);
 
         outputNames.removeAll(pathToMerge);
         pathToMerge.add(vertexNameToRemove);
@@ -222,7 +221,15 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
     private static void changeNoutOfInputs(GraphBuilder graphBuilder, Collection<String> inputNames, long nOut) {
 
         //System.out.println("inputnames: " + inputNames);
+        // What we want here is to traverse in topological order really. Just so happens to be so that inputNames
+        // is always in reverse topological order since this is how it is construced?
+        final List<String> names = new ArrayList<>(inputNames);
+        Collections.reverse(names);
+        //System.out.println("reverse: " + names);
+
         final SizeVisitor sizeRegistry = new SizeVisitor(
+                new Traverse<>(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent(),
+                        new BackwardOf(graphBuilder)),
                 graphBuilder,
                 nOut,
                 (layerSize, size) -> Math.max(1, size));
@@ -232,10 +239,9 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 TraverseBuilder.backwards(graphBuilder)
                         .enterCondition(vertex -> true)
                         .enterListener(sizeRegistry::visit)
-                        .visitCondition(vertex -> sizeRegistry.getSize(vertex) != 0)
                         .build(),
                 graphBuilder,
-                inputNames)
+                names)
                 .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + sizeRegistry.getSize(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNout = sizeRegistry.getSize(layer.getLayerName());
@@ -260,12 +266,12 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 TraverseBuilder.forwards(graphBuilder)
                         .enterCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
                         .enterListener(vertex -> {
-                            if(graphBuilder.getVertices().get(vertex) instanceof MergeVertex) {
+                            if (graphBuilder.getVertices().get(vertex) instanceof MergeVertex) {
                                 encounteredMergeVerticesMultiplier.increment();
                             }
                         })
                         .leaveListener(vertex -> {
-                            if(graphBuilder.getVertices().get(vertex) instanceof MergeVertex) {
+                            if (graphBuilder.getVertices().get(vertex) instanceof MergeVertex) {
                                 encounteredMergeVerticesMultiplier.decrement();
                             }
                         })
@@ -276,7 +282,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .peek(layer -> log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse.get(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNIn = nInToUse.get(layer.getLayerName());
-                    //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNIn);
+                   // System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNIn);
                     layer.setNIn(thisNIn);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNOut(thisNIn);

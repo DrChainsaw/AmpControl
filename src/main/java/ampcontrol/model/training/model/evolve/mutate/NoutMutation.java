@@ -172,6 +172,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
     private static Graph<String> getBackwardGraph(GraphBuilder builder, String layerName, long deltaSize, HasVistited visited) {
 
         final SizeVisitor deltaRegistry = new SizeVisitor(
+                new BackwardOf(builder),
                 builder,
                 deltaSize,
                 (layerSize, delta) -> Math.min(layerSize-1, delta));

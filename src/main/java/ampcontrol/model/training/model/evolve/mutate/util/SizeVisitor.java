@@ -4,7 +4,10 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -16,14 +19,18 @@ import java.util.stream.Stream;
  */
 public class SizeVisitor {
 
+    private final Graph<String> graph;
     private final BiFunction<Long, Long, Long> truncate;
     private final ComputationGraphConfiguration.GraphBuilder builder;
     private final long startSize;
     private final Map<String, Long> visitedToSize = new HashMap<>();
 
     public SizeVisitor(
+            Graph<String> graph,
             ComputationGraphConfiguration.GraphBuilder builder,
-            long startSize, BiFunction<Long, Long, Long> truncate) {
+            long startSize,
+            BiFunction<Long, Long, Long> truncate) {
+        this.graph = graph;
         this.builder = builder;
         this.startSize = startSize;
         this.truncate = truncate;
@@ -43,7 +50,19 @@ public class SizeVisitor {
      * @param vertex vertex to visit
      */
     public void visit(String vertex) {
-        final List<String> inputs = Optional.ofNullable(builder.getVertexInputs().get(vertex)).orElseGet(ArrayList::new);
+//        final List<String> inputs = TraverseBuilder.backwards(builder)
+//                .enterCondition(childVertex -> true)
+//                .traverseCondition(childVertex -> !GraphBuilderUtil.asFeedforwardLayer(builder).apply(childVertex).isPresent())
+//                .traverseCondition(ch -> false)
+//                .build()
+//                .children(vertex)
+//                .collect(Collectors.toList());
+
+        final List<String> inputs = graph.children(vertex).collect(Collectors.toList());
+
+        if(inputs.stream().allMatch(visitedToSize::containsKey)) {
+            return;
+        }
 
         if (builder.getVertices().get(vertex) instanceof MergeVertex) {
             long remainder = visitedToSize.getOrDefault(vertex, startSize);
