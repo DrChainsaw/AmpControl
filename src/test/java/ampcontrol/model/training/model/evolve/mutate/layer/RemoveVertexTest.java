@@ -26,12 +26,10 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeConvVertex() {
-        final String conv1 = "conv1";
-        final String conv2 = "conv2";
-        final String conv3 = "conv3";
-        final ComputationGraph graph = GraphUtils.getCnnGraph(conv1, conv2, conv3);
+        final String conv2ToRemove = "conv2ToRemove";
+        final ComputationGraph graph = GraphUtils.getCnnGraph("conv1", conv2ToRemove, "conv3");
 
-        removeLayer(conv2, graph, InputType.convolutional(33, 33, 3));
+        removeLayer(conv2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -39,12 +37,10 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeFirstVertex() {
-        final String dense1 = "dense1";
-        final String dense2 = "dense2";
-        final String dense3 = "dense3";
-        final ComputationGraph graph = GraphUtils.getGraph(dense1, dense2, dense3);
+        final String dense1ToRemove = "dense1ToRemove";
+        final ComputationGraph graph = GraphUtils.getGraph(dense1ToRemove, "dense2", "dense3");
 
-        removeLayer(dense1, graph, InputType.feedForward(33));
+        removeLayer(dense1ToRemove, graph, InputType.feedForward(33));
     }
 
     /**
@@ -52,12 +48,10 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeResLayer() {
-        final String conv1 = "resConv1";
-        final String conv2 = "resConv2ToRemove";
-        final String conv3 = "resConv3";
-        final ComputationGraph graph = GraphUtils.getResNet(conv1, conv2, conv3);
+        final String conv2ToRemove = "conv2ToRemove";
+        final ComputationGraph graph = GraphUtils.getResNet("conv1", conv2ToRemove, "conv3");
 
-        removeLayer(conv2, graph, InputType.convolutional(33, 33, 3));
+        removeLayer(conv2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -65,12 +59,8 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeForkPath() {
-        final String beforeFork = "beforeFork";
-        final String afterFork = "afterFork";
-        final String fork1 = "fork1";
-        final String fork2ToRemove = "fork2ToRemove";
-        final String fork3 = "fork3";
-        final ComputationGraph graph = GraphUtils.getForkNet(beforeFork, afterFork, fork1, fork2ToRemove, fork3);
+        final String fork2ToRemove = "f2ToRemove";
+        final ComputationGraph graph = GraphUtils.getForkNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3");
 
         removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
@@ -80,28 +70,54 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeForkResPath() {
-        final String beforeFork = "beforeFork";
-        final String afterFork = "afterFork";
-        final String fork1 = "fork1";
-        final String fork2ToRemove = "fork2ToRemove";
-        final String fork3 = "fork3";
-        final ComputationGraph graph = GraphUtils.getForkResNet(beforeFork, afterFork, fork1, fork2ToRemove, fork3);
+        final String fork2ToRemove = "f2ToRemove";
+        final ComputationGraph graph = GraphUtils.getForkResNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3");
 
         removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
 
     }
 
     /**
-     * Test to remove one out of three convolution layers in a residual fork.
+     * Test to remove one out of three convolution layers in a complex double residual fork.
      */
     @Test
     public void removeDoubleForkResPath() {
-        final String beforeFork = "beforeFork";
-        final String afterFork = "afterFork";
         final String fork2ToRemove = "f2ToRemove";
-        final ComputationGraph graph = GraphUtils.getDoubleForkResNet(beforeFork, afterFork, "f1", fork2ToRemove, "f3");
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3", "f4");
 
         removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove one out of three convolution layers in a complex double residual fork. This layer is connected
+     * to a single mergevertex which is thus also removed.
+     */
+    @Test
+    public void removeSingleInDoubleForkResPath() {
+        final String fork3ToRemove = "f3ToRemove";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", "afterFork", "f1", "f2", fork3ToRemove);
+
+        removeLayer(fork3ToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove the convolution layer just before the first fork in a complex double residual fork.
+     */
+    @Test
+    public void removeBeforeDoubleForkResPath() {
+        final String beforeForkToRemove = "beforeForkToRemove";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet(beforeForkToRemove, "afterFork", "f1", "f2", "f3");
+        removeLayer(beforeForkToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove the convolution layer just after the last fork in a complex double residual fork.
+     */
+    @Test
+    public void removeAfterDoubleForkResPath() {
+        final String afterForkToRemove = "afterForkToRemove";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", afterForkToRemove, "f1", "f2", "f3");
+        removeLayer(afterForkToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
 

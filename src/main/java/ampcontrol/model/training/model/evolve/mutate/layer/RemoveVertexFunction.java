@@ -65,8 +65,8 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
-        //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
-        //        " nIn: " + nIn + " nOut: " + nOut);
+//        System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
+//                " nIn: " + nIn + " nOut: " + nOut);
 
         final Collection<String> connectedMergeVertices = handleMergeVertexOutputs(graphBuilder, outputNames);
 
@@ -74,11 +74,9 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         final Map<String, Set<String>> inputNamesPerOutput = getInputNamesPerOutput(graphBuilder, outputNames, inputNames);
 
-        //System.out.println("inputPerOutput: " + inputNamesPerOutput);
-
         outputNames.stream()
-                .peek(name -> log.info("Connect " + name + " to " + inputNamesPerOutput.get(name)))
-                //.peek(name -> //System.out.println("Connect " + name + " to " + inputNamesPerOutput.get(name)))
+                .peek(name -> log.info("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
+               // .peek(name -> System.out.println("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
                 .forEach(outputName ->
                         graphBuilder.addVertex(
                                 outputName,
@@ -118,12 +116,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
     private Map<String, Set<String>> getInputNamesPerOutput(GraphBuilder graphBuilder, List<String> outputNames, List<String> inputNames) {
         return outputNames.stream()
                 .map(name -> new AbstractMap.SimpleEntry<>(name, new LinkedHashSet<>(inputNames)))
-                .peek(entry -> entry.getValue().addAll(graphBuilder.getVertexInputs().get(entry.getKey())))
-                .peek(entry -> entry.getValue().remove(vertexNameToRemove))
+                .peek(entry -> entry.getValue().addAll(Optional.ofNullable(graphBuilder.getVertexInputs().get(entry.getKey())).orElse(new ArrayList<>())))
                 .collect(Collectors.toMap(
                         AbstractMap.SimpleEntry::getKey,
                         AbstractMap.SimpleEntry::getValue
-
                 ));
     }
 
@@ -131,8 +127,14 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         new ArrayList<>(outputNames).forEach(name -> {
             final GraphVertex vertex = builder.getVertices().get(name);
             if (vertex instanceof ElementWiseVertex && builder.getVertexInputs().get(name).size() <= 2) {
-                outputNames.addAll(new ForwardOf(builder).children(name).collect(Collectors.toList()));
-                builder.removeVertex(name, true);
+                // This seems like it could break for so many different reasons...
+                // Other options are:
+                // 1) Remove vertex in this function, its inputs and outputs needs to be kept track of so that they
+                // can be joined. Also, their nOut and nIn is likely different compared to vertexNameToRemove
+                // 2) Try to keep elementwise vertices and just give them new inputs. I can't see how this can
+                // work given that vertexToRemove might just as well have been connected to a subsamplinglayer
+                // -> need to remove it too if that is the case. Still, this could ripple all the way back to input
+                new RemoveVertexFunction(name).apply(builder);
                 outputNames.remove(name);
             }
         });
@@ -178,7 +180,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .traverseCondition(vertex -> !isSizeChangePossible(builder.getVertices().get(vertex)))
                 .enterListener(currentPath::add)
                 .visitListener(vertex -> {
-                    //  System.out.println("visit: " + vertex);
+                      //System.out.println("visit: " + vertex);
                     if (builder.getVertices().get(vertex) instanceof MergeVertex) {
                         outputsToConnectedMergeVertex.put(vertex,
                                 new LinkedHashSet<>(backwards.children(vertex)
@@ -188,7 +190,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         currentPath.stream()
                                 // add vertices which are either 1) not mergevertices and 2) mergevertices with only 1 input (the one which is about to be removed)
                                 .filter(childvertex -> outputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
-                                // .peek(vert -> System.out.println("add to path: " + vert))
+                                //.peek(vert -> System.out.println("add to path: " + vert))
                                 .forEach(pathToMerge::add);
 
                     }
@@ -202,13 +204,18 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         outputNames.removeAll(pathToMerge);
         pathToMerge.add(vertexNameToRemove);
 
+        pathToMerge.forEach(vertex -> {
+            // "Loneley" mergevertices will be part of pathToMerge, need to remove them
+            outputsToConnectedMergeVertex.remove(vertex);
+            builder.removeVertex(vertex, true);
+        });
+
         for (Set<String> inputNames : outputsToConnectedMergeVertex.values()) {
             inputNames.stream()
                     .findFirst()
                     .ifPresent(viableOutputs::add);
         }
 
-        pathToMerge.forEach(vertex -> builder.removeVertex(vertex, true));
 
         // Somewhere here we also want to add mergeVertexOutputs as output to viableOutputs
         // and maybe change the size. Or return some object which describes this action?
