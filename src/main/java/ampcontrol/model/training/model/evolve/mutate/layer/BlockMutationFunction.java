@@ -115,7 +115,7 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
         final LayerBlockConfig.BlockInfo outinfo = conf.addLayers(graphBuilder, blockInfo);
 
         return GraphMutation.InputsAndOutputNames.builder()
-                .outputName(outinfo.getInputsNames()[0])
+                .outputNames(Arrays.asList(outinfo.getInputsNames()))
                 .inputNames(Arrays.asList(inputNames))
                 .keepInputConnection(name -> layersSpy.firstLayers.contains(name) ||verticesSpy.firstLayers.contains(name))
                 .build();

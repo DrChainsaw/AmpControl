@@ -1,14 +1,12 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Singular;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,9 +17,9 @@ import java.util.stream.Collectors;
 
 /**
  * Modifies a {@link GraphBuilder} based on an input {@link GraphMutationDescription}. Useful for adding layers/vertices.
- * Note that in case more than one layer shall be added, the name returned from {@link LayerMutationInfo#getLayerName()}
- * needs to be the last vertex added and {@link LayerMutationInfo#getInputLayers()} needs to be the inputs to the first
- * vertex. {@link NoutNin} provided to {@link GraphMutationDescription#mutation} is also giving the input size of the
+ * Note that in case more than one layer shall be added, the name returned from {@link InputsAndOutputNames#getOutputNames()}
+ * needs to be the last vertex added and {@link InputsAndOutputNames#getInputNames()}  needs to be the inputs to the first
+ * vertex. {@code NOut} provided to {@link GraphMutationDescription#mutation} is also giving the input size of the
  * first vertex and the output size of the last vertex.
  *
  * @author Christian Skärby
@@ -39,16 +37,9 @@ public class GraphMutation implements Mutation<GraphBuilder> {
     @Builder
     @Getter
     public static class InputsAndOutputNames {
-        private final String outputName;
+        @Singular private final List<String> outputNames;
         @Builder.Default private final Predicate<String> keepInputConnection = str -> true;
         @Singular private final List<String> inputNames;
-    }
-
-    @AllArgsConstructor
-    @Getter
-    public static class NoutNin {
-        private final long nOut;
-        private final long nIn;
     }
 
     public GraphMutation(Supplier<GraphMutationDescription> mutationSupplier) {
@@ -78,7 +69,6 @@ public class GraphMutation implements Mutation<GraphBuilder> {
      * @param mutation Defines how to change the builder
      * @param builder  {@link ComputationGraphConfiguration.GraphBuilder} to mutate
      */
-    @NotNull
     private static void reconnectVertices(InputsAndOutputNames mutation, ComputationGraphConfiguration.GraphBuilder builder) {
         for (String inputName : mutation.getInputNames()) {
 
@@ -100,8 +90,11 @@ public class GraphMutation implements Mutation<GraphBuilder> {
                 // Better insert new layer in the same place as the one which is removed...
                 final int index = allInputsToOutput.indexOf(inputName);
                 allInputsToOutput.remove(index);
-                allInputsToOutput.add(index, mutation.getOutputName());
-
+                int cnt = 0;
+                for(String newOutputName: mutation.getOutputNames()) {
+                    allInputsToOutput.add(index + cnt, newOutputName);
+                    cnt++;
+                }
                 builder.removeVertex(outputName, false)
                         .addVertex(outputName,
                                 vertexConf,
