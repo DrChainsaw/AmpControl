@@ -41,13 +41,13 @@ public class ParameterTransferRemoveLayerTest {
      */
     @Test
     public void removeAndNoutMutateConvBefore() {
-        final String toRemove = "toRemove";
-        final String toNoutMutate = "toNoutMutate";
-        final ComputationGraph graph = GraphUtils.getCnnGraph(toNoutMutate, toRemove, "conv3");
+        final String conv2ToRemove = "conv2ToRemoveAfterNoutMutate";
+        final String conv1ToNoutMutate = "conv1ToNoutMutateBeforeRemove";
+        final ComputationGraph graph = GraphUtils.getCnnGraph(conv1ToNoutMutate, conv2ToRemove, "conv3");
         removeVertexAndMutateNout(
                 graph,
-                toRemove,
-                toNoutMutate,
+                conv2ToRemove,
+                conv1ToNoutMutate,
                 InputType.convolutional(33, 33, 3));
 
     }
@@ -57,13 +57,13 @@ public class ParameterTransferRemoveLayerTest {
      */
     @Test
     public void removeAndNoutMutateConvAfter() {
-        final String toRemove = "toRemove";
-        final String toNoutMutate = "toNoutMutate";
-        final ComputationGraph graph = GraphUtils.getCnnGraph("conv1", toRemove, toNoutMutate);
+        final String conv2ToRemove = "conv2ToRemoveBeforeNoutMutate";
+        final String conv3ToNoutMutate = "conv3ToNoutMutateAfterRemove";
+        final ComputationGraph graph = GraphUtils.getCnnGraph("conv1", conv2ToRemove, conv3ToNoutMutate);
         removeVertexAndMutateNout(
                 graph,
-                toRemove,
-                toNoutMutate,
+                conv2ToRemove,
+                conv3ToNoutMutate,
                 InputType.convolutional(33, 33, 3));
 
     }
@@ -171,7 +171,7 @@ public class ParameterTransferRemoveLayerTest {
         removeVertex(afterForkToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
-    private final ComputationGraph removeVertex(String layerName, ComputationGraph graph, InputType inputType) {
+    private void removeVertex(String layerName, ComputationGraph graph, InputType inputType) {
 
         final ComputationGraphConfiguration.GraphBuilder builder = createBuilder(graph);
         final ComputationGraph newGraph = new ComputationGraph(mutateRemove(builder, layerName)
@@ -187,7 +187,6 @@ public class ParameterTransferRemoveLayerTest {
         graph.outputSingle(Nd4j.randn(shape));
         newGraph.outputSingle(Nd4j.randn(shape));
         mutatedGraph.outputSingle(Nd4j.randn(shape));
-        return mutatedGraph;
     }
 
     @NotNull
@@ -196,7 +195,7 @@ public class ParameterTransferRemoveLayerTest {
                 new NeuralNetConfiguration.Builder(graph.conf()));
     }
 
-    private final ComputationGraph removeVertexAndMutateNout(
+    private void removeVertexAndMutateNout(
             ComputationGraph graph,
             String layerNameToRemove,
             String layerNameToNoutMutate,
@@ -220,7 +219,6 @@ public class ParameterTransferRemoveLayerTest {
         graph.outputSingle(Nd4j.randn(shape));
         newGraph.outputSingle(Nd4j.randn(shape));
         mutatedGraph.outputSingle(Nd4j.randn(shape));
-        return mutatedGraph;
     }
 
     @NotNull
