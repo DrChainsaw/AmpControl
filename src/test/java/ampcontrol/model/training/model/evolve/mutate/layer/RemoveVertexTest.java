@@ -29,7 +29,7 @@ public class RemoveVertexTest {
         final String conv2ToRemove = "conv2ToRemove";
         final ComputationGraph graph = GraphUtils.getCnnGraph("conv1", conv2ToRemove, "conv3");
 
-        removeLayer(conv2ToRemove, graph, InputType.convolutional(33, 33, 3));
+        removeVertex(conv2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -40,7 +40,7 @@ public class RemoveVertexTest {
         final String dense1ToRemove = "dense1ToRemove";
         final ComputationGraph graph = GraphUtils.getGraph(dense1ToRemove, "dense2", "dense3");
 
-        removeLayer(dense1ToRemove, graph, InputType.feedForward(33));
+        removeVertex(dense1ToRemove, graph, InputType.feedForward(33));
     }
 
     /**
@@ -51,7 +51,7 @@ public class RemoveVertexTest {
         final String conv2ToRemove = "conv2ToRemove";
         final ComputationGraph graph = GraphUtils.getResNet("conv1", conv2ToRemove, "conv3");
 
-        removeLayer(conv2ToRemove, graph, InputType.convolutional(33, 33, 3));
+        removeVertex(conv2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -62,7 +62,7 @@ public class RemoveVertexTest {
         final String fork2ToRemove = "f2ToRemove";
         final ComputationGraph graph = GraphUtils.getForkNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3");
 
-        removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
+        removeVertex(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -73,8 +73,7 @@ public class RemoveVertexTest {
         final String fork2ToRemove = "f2ToRemove";
         final ComputationGraph graph = GraphUtils.getForkResNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3");
 
-        removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
-
+        removeVertex(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -85,7 +84,7 @@ public class RemoveVertexTest {
         final String fork2ToRemove = "f2ToRemove";
         final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3", "f4");
 
-        removeLayer(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
+        removeVertex(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -97,7 +96,7 @@ public class RemoveVertexTest {
         final String fork3ToRemove = "f3ToRemove";
         final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", "afterFork", "f1", "f2", fork3ToRemove);
 
-        removeLayer(fork3ToRemove, graph, InputType.convolutional(33, 33, 3));
+        removeVertex(fork3ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -107,7 +106,7 @@ public class RemoveVertexTest {
     public void removeBeforeDoubleForkResPath() {
         final String beforeForkToRemove = "beforeForkToRemove";
         final ComputationGraph graph = GraphUtils.getDoubleForkResNet(beforeForkToRemove, "afterFork", "f1", "f2", "f3");
-        removeLayer(beforeForkToRemove, graph, InputType.convolutional(33, 33, 3));
+        removeVertex(beforeForkToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
     /**
@@ -117,12 +116,12 @@ public class RemoveVertexTest {
     public void removeAfterDoubleForkResPath() {
         final String afterForkToRemove = "afterForkToRemove";
         final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", afterForkToRemove, "f1", "f2", "f3");
-        removeLayer(afterForkToRemove, graph, InputType.convolutional(33, 33, 3));
+        removeVertex(afterForkToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
 
     @NotNull
-    private static ComputationGraph removeLayer(String vertexToRemove, ComputationGraph graph, InputType inputType) {
+    private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {
         final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(
                 GraphMutation.GraphMutationDescription.builder()
                         .mutation(new RemoveVertexFunction(vertexToRemove))

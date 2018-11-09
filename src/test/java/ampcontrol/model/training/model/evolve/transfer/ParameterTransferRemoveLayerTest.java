@@ -32,8 +32,8 @@ public class ParameterTransferRemoveLayerTest {
     public void removeConv() {
         final String toRemove = "toRemove";
         final ComputationGraph graph = GraphUtils.getCnnGraph("conv1", toRemove, "conv3");
-        final ComputationGraph mutatedGraph = removeVertex(graph, toRemove, InputType.convolutional(33, 33, 3));
-        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+        removeVertex(toRemove, graph, InputType.convolutional(33, 33, 3));
+
     }
 
     /**
@@ -44,12 +44,12 @@ public class ParameterTransferRemoveLayerTest {
         final String toRemove = "toRemove";
         final String toNoutMutate = "toNoutMutate";
         final ComputationGraph graph = GraphUtils.getCnnGraph(toNoutMutate, toRemove, "conv3");
-        final ComputationGraph mutatedGraph = removeVertexAndMutateNout(
+        removeVertexAndMutateNout(
                 graph,
                 toRemove,
                 toNoutMutate,
                 InputType.convolutional(33, 33, 3));
-        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
     }
 
     /**
@@ -60,12 +60,12 @@ public class ParameterTransferRemoveLayerTest {
         final String toRemove = "toRemove";
         final String toNoutMutate = "toNoutMutate";
         final ComputationGraph graph = GraphUtils.getCnnGraph("conv1", toRemove, toNoutMutate);
-        final ComputationGraph mutatedGraph = removeVertexAndMutateNout(
+        removeVertexAndMutateNout(
                 graph,
                 toRemove,
                 toNoutMutate,
                 InputType.convolutional(33, 33, 3));
-        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
     }
 
     /**
@@ -75,8 +75,7 @@ public class ParameterTransferRemoveLayerTest {
     public void removeDense() {
         final String toRemove = "toRemove";
         final ComputationGraph graph = GraphUtils.getGraph("dense1", toRemove, "dense3");
-        final ComputationGraph mutatedGraph = removeVertex(graph, toRemove, InputType.feedForward(33));
-        mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
+        removeVertex(toRemove, graph, InputType.feedForward(33));
     }
 
     /**
@@ -86,8 +85,7 @@ public class ParameterTransferRemoveLayerTest {
     public void removeDenseAfterConv() {
         final String toRemove = "toRemove";
         final ComputationGraph graph = GraphUtils.getConvToDenseGraph("conv1", toRemove, "dense2");
-        final ComputationGraph mutatedGraph = removeVertex(graph, toRemove, InputType.convolutional(9, 9, 3));
-        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 9, 9}));
+        removeVertex(toRemove, graph, InputType.convolutional(9, 9, 3));
     }
 
     /**
@@ -97,20 +95,99 @@ public class ParameterTransferRemoveLayerTest {
     public void removeBeforeOut() {
         final String toRemove = "toRemove";
         final ComputationGraph graph = GraphUtils.getGraphNearOut("dense1", toRemove, "output");
-        final ComputationGraph mutatedGraph = removeVertex(graph, toRemove, InputType.feedForward(33));
-        mutatedGraph.output(Nd4j.randn(new long[]{1, 33}));
+        removeVertex(toRemove, graph, InputType.feedForward(33));
     }
 
-    private final ComputationGraph removeVertex(ComputationGraph graph, String layerName, InputType inputType) {
+    /**
+     * Test to remove a residual layer
+     */
+    @Test
+    public void removeResLayer() {
+        final String toRemove = "conv2ToRemove";
+        final ComputationGraph graph = GraphUtils.getResNet("conv1", toRemove, "conv3");
+        removeVertex(toRemove, graph, InputType.convolutional(33, 33, 3));
+
+    }
+
+    /**
+     * Test to remove one out of three convolution layers in a fork.
+     */
+    @Test
+    public void removeForkPath() {
+        final String fork2ToRemove = "f2ToRemove";
+        final ComputationGraph graph = GraphUtils.getForkNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3");
+        removeVertex(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
+
+    }
+
+    /**
+     * Test to remove one out of three convolution layers in a residual fork.
+     */
+    @Test
+    public void removeForkResPath() {
+        final String fork2ToRemove = "f2ToRemove";
+        final ComputationGraph graph = GraphUtils.getForkResNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3");
+        removeVertex(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove one out of three convolution layers in a complex double residual fork.
+     */
+    @Test
+    public void removeDoubleForkResPath() {
+        final String fork2ToRemove = "f2ToRemove";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3", "f4");
+        removeVertex(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove one out of three convolution layers in a complex double residual fork. This layer is connected
+     * to a single mergevertex which is thus also removed.
+     */
+    @Test
+    public void removeSingleInDoubleForkResPath() {
+        final String fork3ToRemove = "f3ToRemove";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", "afterFork", "f1", "f2", fork3ToRemove);
+        removeVertex(fork3ToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove the convolution layer just before the first fork in a complex double residual fork.
+     */
+    @Test
+    public void removeBeforeDoubleForkResPath() {
+        final String beforeForkToRemove = "beforeForkToRemove";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet(beforeForkToRemove, "afterFork", "f1", "f2", "f3");
+        removeVertex(beforeForkToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove the convolution layer just after the last fork in a complex double residual fork.
+     */
+    @Test
+    public void removeAfterDoubleForkResPath() {
+        final String afterForkToRemove = "afterForkToRemove";
+        final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", afterForkToRemove, "f1", "f2", "f3");
+        removeVertex(afterForkToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    private final ComputationGraph removeVertex(String layerName, ComputationGraph graph, InputType inputType) {
 
         final ComputationGraphConfiguration.GraphBuilder builder = createBuilder(graph);
         final ComputationGraph newGraph = new ComputationGraph(mutateRemove(builder, layerName)
                 .setInputTypes(inputType)
                 .build());
         newGraph.init();
-        assertEquals("No vertex was removed!", graph.getVertices().length - 1, newGraph.getVertices().length);
+
+        assertFalse("Vertex was not removed!", Stream.of(newGraph.getVertices()).anyMatch(vertex -> vertex.getVertexName().equals(layerName)));
         assertFalse("Removed vertex still part of graph!", Optional.ofNullable(newGraph.getVertex(layerName)).isPresent());
-        return new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        long[] shape = inputType.getShape(true);
+        shape[0] = 1;
+        graph.outputSingle(Nd4j.randn(shape));
+        newGraph.outputSingle(Nd4j.randn(shape));
+        mutatedGraph.outputSingle(Nd4j.randn(shape));
+        return mutatedGraph;
     }
 
     @NotNull
@@ -137,7 +214,13 @@ public class ParameterTransferRemoveLayerTest {
         assertFalse("Removed vertex still part of graph!", Optional.ofNullable(newGraph.getVertex(layerNameToRemove)).isPresent());
         assertFalse("Nout was not changed!",
                 graph.layerSize(layerNameToNoutMutate) == newGraph.layerSize(layerNameToNoutMutate));
-        return new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        long[] shape = inputType.getShape(true);
+        shape[0] = 1;
+        graph.outputSingle(Nd4j.randn(shape));
+        newGraph.outputSingle(Nd4j.randn(shape));
+        mutatedGraph.outputSingle(Nd4j.randn(shape));
+        return mutatedGraph;
     }
 
     @NotNull
