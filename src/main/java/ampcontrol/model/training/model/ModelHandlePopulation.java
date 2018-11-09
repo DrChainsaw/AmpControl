@@ -42,7 +42,14 @@ public class ModelHandlePopulation implements ModelHandle {
 
     @Override
     public void fit() {
-        population.streamPopulation().forEach(ModelHandle::fit);
+        final List<ModelHandle> pop = population.streamPopulation().collect(Collectors.toList());
+        for (int i = 0; i < pop.size(); i++) {
+            try {
+                pop.get(i).fit();
+            } catch (Exception e) {
+                throw new IllegalStateException("Failure while fitting model "  + i, e);
+            }
+        }
     }
 
     @Override

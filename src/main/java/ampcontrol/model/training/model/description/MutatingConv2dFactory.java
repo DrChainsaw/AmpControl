@@ -7,6 +7,7 @@ import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.builder.BlockBuilder;
 import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
 import ampcontrol.model.training.model.builder.ModelBuilder;
+import ampcontrol.model.training.model.builder.OverrideName;
 import ampcontrol.model.training.model.evolve.CachedPopulation;
 import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.Population;
@@ -24,6 +25,8 @@ import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.AddVertexGraphAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
+import ampcontrol.model.training.model.layerblocks.graph.ForkAgg;
+import ampcontrol.model.training.model.layerblocks.graph.ResBlock;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import ampcontrol.model.training.model.naming.AddSuffix;
 import ampcontrol.model.training.model.naming.FileNamePolicy;
@@ -40,7 +43,6 @@ import lombok.Getter;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -68,7 +70,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * Description for simple 2D convolutional networs which will evolve during training to perform architecture search.
+ * Description for 2D convolutional networks which will evolve during training to perform some kind of architecture
+ * search.
  *
  * @author Christian Skärby
  */
@@ -231,6 +234,7 @@ public final class MutatingConv2dFactory {
         final FileNamePolicy evolvingSuffix = new AddSuffix("_evolving_train");
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
         // TODO: Some other way to do this please...
+        // FIXME: This is creating issues when using random models as init!
         // Bug caused by this sloppy implementation:
         //  model A gets mutated so that layer named X is conv layer -> X added to mutateNoutLayers
         //  model B gets mutated so that layer named X is batchnorm layer
@@ -252,7 +256,13 @@ public final class MutatingConv2dFactory {
 
             final GraphSpyAppender graphSpyBuilder = new GraphSpyAppender(mutationLayerState);
 
-            final ModelBuilder baseBuilder = createModelBuilder(graphSpyBuilder);
+            final ModelBuilder baseBuilder;
+            if (candInd == 0) {
+                baseBuilder = createSeedModelBuilder(graphSpyBuilder);
+            } else {
+                baseBuilder = new OverrideName(createSeedModelBuilder(UnaryOperator.identity()).name(),
+                        createRandomModelBuilder(new Random(candInd * 666), graphSpyBuilder));
+            }
 
             final ModelBuilder builder = new DeserializingModelBuilder(
                     candNamePolicy,
@@ -267,11 +277,8 @@ public final class MutatingConv2dFactory {
                     mutationLayerState,
                     baseName);
 
-            final EvolvingGraphAdapter adapter = candInd == 0 || graph.getIterationCount() > 0 ?
+            final EvolvingGraphAdapter adapter =
                     new EvolvingGraphAdapter(graph, mutation,
-                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer)))) :
-                    new EvolvingGraphAdapter(mutateGraph(mutation, graph), mutation,
                             graphToTransfer -> new ParameterTransfer(graphToTransfer,
                                     Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
 
@@ -286,7 +293,7 @@ public final class MutatingConv2dFactory {
         final Population<ModelHandle> population = createPopulation(allNoutMutationLayers, comparatorRegistry, initialPopulation);
 
         final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
-        final ModelBuilder baseBuilder = createModelBuilder(UnaryOperator.identity());
+        final ModelBuilder baseBuilder = createSeedModelBuilder(UnaryOperator.identity());
         modelData.add(new GenericModelHandle(trainIter, evalIter,
                 new GraphModelAdapter(
                         new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
@@ -342,7 +349,7 @@ public final class MutatingConv2dFactory {
                                 } else {
                                     return AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
                                             .first(new SuppliedMutation<>(() ->
-                                                    createNoutMutation(state.get().getMutateNout(), seedGenNout.nextInt(),0)))
+                                                    createNoutMutation(state.get().getMutateNout(), seedGenNout.nextInt(), 0)))
                                             .andThen(new SuppliedMutation<>(() ->
                                                     createKernelSizeMutation(state.get().getMutateKernelSize(), seedGenKs.nextInt(), 1)))
                                             .andThen(new SuppliedMutation<>(() ->
@@ -465,41 +472,12 @@ public final class MutatingConv2dFactory {
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createAddBlockMutation(
             UnaryOperator<GraphBuilderAdapter> spyFactory,
             int seed) {
-        final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
-                .setFactory(spyFactory);
 
         final Random rng = new Random(seed);
-        final List<Function<Long, LayerBlockConfig>> beforeGpBlocks = Arrays.asList(
-                nOut -> new Conv2D()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()),
-                nOut -> new Conv2DBatchNormAfter()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()),
-                nOut -> new Conv2DBatchNormBefore()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()),
-                nOut -> new Conv2DBatchNormBetween()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()));
 
-        final List<Function<Long, LayerBlockConfig>> afterGpBlocks = Arrays.asList(
-                nOut -> new Dense().setHiddenWidth(nOut.intValue()));
-
-        Function<Long, LayerBlockConfig> lbcBeforeGpSupplier = nOut -> beforeGpBlocks.get(rng.nextInt(beforeGpBlocks.size())).andThen(spyConfig).apply(nOut);
-        Function<Long, LayerBlockConfig> lbcAfterGpSupplier = nOut -> afterGpBlocks.get(rng.nextInt(afterGpBlocks.size())).andThen(spyConfig).apply(nOut);
+        final Function<Long, LayerBlockConfig> lbcBeforeGpSupplier = createBeforeGlobPoolLayerFactory(spyFactory, rng)
+                .andThen(block -> rng.nextDouble() < 0.3 ? new ResBlock().setBlockConfig(block) : block);
+        final Function<Long, LayerBlockConfig> lbcAfterGpSupplier = createAfterGlobPoolLayerFactory(spyFactory, rng);
 
         final String afterGpStr = "mutafterGp_";
         return new GraphMutation(() -> Stream.of(GraphMutation.GraphMutationDescription.builder()
@@ -546,6 +524,64 @@ public final class MutatingConv2dFactory {
                 }).build()
         )
                 .filter(mut -> rng.nextDouble() < 0.05));
+    }
+
+    @NotNull
+    private static Function<Long, LayerBlockConfig> createAfterGlobPoolLayerFactory(UnaryOperator<GraphBuilderAdapter> spyFactory, Random rng) {
+        final List<Function<Long, LayerBlockConfig>> afterGpBlocks = Arrays.asList(
+                nOut -> new Dense().setHiddenWidth(nOut.intValue()));
+        final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
+                .setFactory(spyFactory);
+        return nOut -> afterGpBlocks.get(rng.nextInt(afterGpBlocks.size())).andThen(spyConfig).apply(nOut);
+    }
+
+    @NotNull
+    private static Function<Long, LayerBlockConfig> createBeforeGlobPoolLayerFactory(UnaryOperator<GraphBuilderAdapter> spyFactory, Random rng) {
+        final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
+                .setFactory(spyFactory);
+        final List<Function<Long, LayerBlockConfig>> beforeGpBlocks = Arrays.asList(
+                nOut -> new Conv2D()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
+                        .setActivation(new ActivationReLU()),
+                nOut -> new Conv2DBatchNormAfter()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
+                        .setActivation(new ActivationReLU()),
+                nOut -> new Conv2DBatchNormBefore()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
+                        .setActivation(new ActivationReLU()),
+                nOut -> new Conv2DBatchNormBetween()
+                        .setConvolutionMode(ConvolutionMode.Same)
+                        .setNrofKernels(nOut.intValue())
+                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
+                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
+                        .setActivation(new ActivationReLU()));
+
+        final Function<Long, LayerBlockConfig> one = beforeGpBlocks.get(rng.nextInt(beforeGpBlocks.size()));
+
+        final Function<Long, LayerBlockConfig> forkFunction = nOut -> {
+            final long nrofPaths = Math.min(nOut, rng.nextInt(3)+2);
+            long reminder = nOut;
+            final ForkAgg fork = new ForkAgg();
+            for(int pathInd = 0 ; pathInd < nrofPaths; pathInd++) {
+                final long thisNout = reminder / (nrofPaths - pathInd);
+                reminder -= thisNout;
+                fork.add(one.apply(thisNout));
+            }
+            return fork;
+        };
+
+        final Function<Long, LayerBlockConfig> maybeFork = nOut -> rng.nextDouble() < 0.1 ? forkFunction.apply(nOut) : one.apply(nOut);
+
+        return maybeFork.andThen(spyConfig);
     }
 
     private static boolean isAfterGlobPool(String vertexName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
@@ -609,7 +645,8 @@ public final class MutatingConv2dFactory {
                         .build()));
     }
 
-    private ModelBuilder createModelBuilder(
+    // Initial guess on what is good
+    private ModelBuilder createSeedModelBuilder(
             UnaryOperator<GraphBuilderAdapter> spyFactory) {
 
         final int schedPeriod = 50;
@@ -653,16 +690,60 @@ public final class MutatingConv2dFactory {
                         .setFactory(spyFactory))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
-                        .setLambda(0.0031));
+                        .setLambda(0.0029));
     }
 
-    @NotNull
-    private static ComputationGraph mutateGraph(Mutation<ComputationGraphConfiguration.GraphBuilder> mutation, ComputationGraph graph) {
-        final ComputationGraph mutated = new ComputationGraph(mutation.mutate(
-                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
-                        new NeuralNetConfiguration.Builder(graph.conf().clone())))
-                .build());
-        mutated.init();
-        return mutated;
+    // Random model
+    private ModelBuilder createRandomModelBuilder(
+            Random rng,
+            UnaryOperator<GraphBuilderAdapter> spyFactory) {
+
+        final int schedPeriod = 50;
+        final ISchedule lrSched = new Mul(new MinLim(0.02, new Step(4000, new Exponential(0.2))),
+                new SawTooth(schedPeriod, 1e-6, 0.05));
+        final ISchedule momSched = new Offset(schedPeriod / 2,
+                new SawTooth(schedPeriod, 0.85, 0.95));
+
+        final Function<Long, LayerBlockConfig> beforeGp = createBeforeGlobPoolLayerFactory(spyFactory, rng);
+        final UnaryOperator<LayerBlockConfig> maybeResBlock = block -> rng.nextDouble() < 0.3 ? new ResBlock().setBlockConfig(block) : block;
+
+        final int nrofPoolingLayers = rng.nextInt(2) + 1;
+        final int avgLayersPerBlock = 2;
+        final int avgNoutPerBlock = 16 * avgLayersPerBlock;
+        final int minNout = avgNoutPerBlock / 4;
+        final LayerBlockConfig pool = new Pool2D().setSize(2).setStride(2);
+        final BlockBuilder.RootBuilder builder = new BlockBuilder()
+                .setUpdater(new Nesterovs(lrSched, momSched))
+                .setNamePrefix(namePrefix)
+                .first(new ConvType(inputShape));
+
+        for (int poolingBlockInd = 0; poolingBlockInd < nrofPoolingLayers; poolingBlockInd++) {
+            final int nrofLayersThisBlock = rng.nextInt(3) + 1;
+            final int thisAvgNout = avgNoutPerBlock * (poolingBlockInd + 1) / nrofLayersThisBlock;
+            final long nOut = rng.nextInt(Math.max(0, thisAvgNout - minNout)) + minNout;
+            for (int layerInd = 0; layerInd < nrofLayersThisBlock; layerInd++) {
+                if(layerInd > 0) {
+                    builder.andThen(beforeGp
+                            .andThen(maybeResBlock)
+                            .apply(nOut));
+                } else {
+                    builder.andThen(beforeGp.apply(nOut));
+                }
+            }
+            builder.andThen(pool);
+        }
+        builder.andThen(new GlobPool());
+        final int nrofLayersAfterGlobPool = rng.nextInt(3) + 1;
+        final Function<Long, LayerBlockConfig> afterGp = createAfterGlobPoolLayerFactory(spyFactory, rng);
+        int reminder = avgNoutPerBlock * (nrofPoolingLayers + 1);
+        for (int layerInd = 0; layerInd < nrofLayersAfterGlobPool; layerInd++) {
+            final long nOut = rng.nextInt(Math.max(0, reminder / (nrofLayersAfterGlobPool - layerInd) - minNout)) + minNout;
+            reminder -= nOut;
+            builder.andThen(afterGp.apply(nOut));
+        }
+
+        return builder.andFinally(new CenterLossOutput(trainIter.totalOutcomes())
+                .setAlpha(0.6)
+                .setLambda(0.0031));
     }
 }

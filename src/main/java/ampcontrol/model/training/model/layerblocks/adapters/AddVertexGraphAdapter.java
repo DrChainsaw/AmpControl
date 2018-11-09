@@ -3,6 +3,8 @@ package ampcontrol.model.training.model.layerblocks.adapters;
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.layers.Layer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Predicate;
 
@@ -12,6 +14,8 @@ import java.util.function.Predicate;
  * @author Christian Skärby
  */
 public class AddVertexGraphAdapter implements GraphBuilderAdapter {
+
+    private static final Logger log = LoggerFactory.getLogger(AddVertexGraphAdapter.class);
 
     private final GraphBuilderAdapter adapter;
     private final GraphVertex vertexToAdd;
@@ -55,8 +59,11 @@ public class AddVertexGraphAdapter implements GraphBuilderAdapter {
     @Override
     public LayerBlockConfig.BlockInfo layer(LayerBlockConfig.BlockInfo info, Layer layer) {
         final LayerBlockConfig.BlockInfo newInfo = adapter.layer(info, layer);
+
+        // TODO: Must support multiple outputs!
         if(namesToInsertAfter.test(newInfo.getInputsNames()[0])) {
             final String spyName = vertexNamePrefix + newInfo.getInputsNames()[0];
+            log.info("Add " + spyName + " with class " + vertexToAdd.getClass());
             adapter.addVertex(spyName, vertexToAdd, newInfo.getInputsNames());
             return new LayerBlockConfig.SimpleBlockInfo.Builder(newInfo)
                     .setPrevLayerInd(newInfo.getPrevLayerInd()+1)
