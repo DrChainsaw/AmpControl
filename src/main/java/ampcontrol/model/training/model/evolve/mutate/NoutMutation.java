@@ -175,7 +175,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                             if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
                                 layer.setNOut(layer.getNOut() - deltaSize);
                                 visited.addInput(outputName);
-                                // We must also note down the delta size in case we go through this vertex on the way back though a MergeVertex
+                                // We must also note down the delta size in case we go through a sibling of this vertex on the way back though a MergeVertex
                                 nOutDeltaRegistry.set(layer.getLayerName(), deltaSize);
                             }
                         }))

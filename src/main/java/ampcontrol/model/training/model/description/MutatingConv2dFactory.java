@@ -328,7 +328,7 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(3))
+                                        .andThen(new FitnessPolicyTraining<>(107))
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
