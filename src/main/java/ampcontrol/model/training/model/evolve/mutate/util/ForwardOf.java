@@ -17,6 +17,10 @@ public class ForwardOf implements Graph<String> {
         actualGraph = new ForwardOfBuilder(graphBuilder);
     }
 
+    public ForwardOf(ComputationGraphConfiguration graphConf) {
+        actualGraph = new ForwardOfConfig(graphConf);
+    }
+
     @Override
     public Stream<String> children(String vertex) {
         return actualGraph.children(vertex);

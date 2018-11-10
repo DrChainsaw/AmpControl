@@ -5,7 +5,6 @@ import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import org.deeplearning4j.eval.IEvaluation;
-import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -22,7 +21,7 @@ import java.util.function.Function;
  *
  * @author Christian Skärby
  */
-public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGraphAdapter> {
+public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<EvolvingGraphAdapter> {
 
     private static final Logger log = LoggerFactory.getLogger(EvolvingGraphAdapter.class);
 
@@ -56,13 +55,13 @@ public class EvolvingGraphAdapter implements ModelAdapter, Evolving<EvolvingGrap
     }
 
     @Override
-    public Model asModel() {
+    public ComputationGraph asModel() {
         return graph;
     }
 
     @Override
     public void saveModel(String fileName) throws IOException {
-        ModelAdapter.super.saveModel(fileName);
+        CompGraphAdapter.super.saveModel(fileName);
         mutation.save(fileName);
     }
 

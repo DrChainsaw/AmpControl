@@ -15,7 +15,7 @@ public class TraverseBuilder<T> {
     private final Graph<T> baseGraph;
     
     private Predicate<T> enterCondition = vertex -> true;
-    private Predicate<T> traverseCondition;
+    private Predicate<T> traverseCondition = vertex -> true;
     private Consumer<T> enterListener = vertex -> {/* ignore */};
     private Consumer<T> leaveListener = vertex -> {/* ignore */};
     private Predicate<T> visitCondition = vertex -> true;
@@ -48,6 +48,15 @@ public class TraverseBuilder<T> {
     public static TraverseBuilder<String> forwards(ComputationGraphConfiguration.GraphBuilder builder) {
         return new TraverseBuilder<>(new ForwardOf(builder))
                 .traverseCondition(GraphBuilderUtil.changeSizePropagates(builder));
+    }
+
+    /**
+     * Builder for the standard way to traverse ComputationGraphs in the forward direction
+     * @param config Has the configuration to traverse
+     * @return a {@link TraverseBuilder}
+     */
+    public static TraverseBuilder<String> forwards(ComputationGraphConfiguration config) {
+        return new TraverseBuilder<>(new ForwardOf(config));
     }
 
     /**
