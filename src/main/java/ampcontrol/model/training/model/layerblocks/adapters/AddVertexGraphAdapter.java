@@ -60,17 +60,25 @@ public class AddVertexGraphAdapter implements GraphBuilderAdapter {
     public LayerBlockConfig.BlockInfo layer(LayerBlockConfig.BlockInfo info, Layer layer) {
         final LayerBlockConfig.BlockInfo newInfo = adapter.layer(info, layer);
 
-        // TODO: Must support multiple outputs!
-        if(namesToInsertAfter.test(newInfo.getInputsNames()[0])) {
-            final String spyName = vertexNamePrefix + newInfo.getInputsNames()[0];
-            log.info("Add " + spyName + " with class " + vertexToAdd.getClass());
-            adapter.addVertex(spyName, vertexToAdd, newInfo.getInputsNames());
-            return new LayerBlockConfig.SimpleBlockInfo.Builder(newInfo)
-                    .setPrevLayerInd(newInfo.getPrevLayerInd()+1)
-                    .setInputs(new String[] {spyName})
-                    .build();
+        final String[] inputs = newInfo.getInputsNames();
+        final String[] newInputs = new String[inputs.length];
+        final LayerBlockConfig.SimpleBlockInfo.Builder builder = new LayerBlockConfig.SimpleBlockInfo.Builder(newInfo);
+
+        for(int i = 0; i < inputs.length; i++) {
+
+            if (namesToInsertAfter.test(inputs[i])) {
+                final String spyName = vertexNamePrefix + inputs[i];
+                log.info("Add " + spyName + " with class " + vertexToAdd.getClass());
+                adapter.addVertex(spyName, vertexToAdd, inputs[i]);
+                builder.setPrevLayerInd(newInfo.getPrevLayerInd() + 1);
+                newInputs[i] = spyName;
+            } else {
+                newInputs[i] = inputs[i];
+            }
         }
-        return newInfo;
+        return new LayerBlockConfig.SimpleBlockInfo.Builder(newInfo)
+                .setInputs(newInputs)
+                .build();
 
     }
 

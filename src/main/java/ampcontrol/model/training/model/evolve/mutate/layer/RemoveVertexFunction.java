@@ -65,18 +65,24 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
-//        System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
-//                " nIn: " + nIn + " nOut: " + nOut);
+        //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
+        //        " nIn: " + nIn + " nOut: " + nOut);
 
         final Collection<String> connectedMergeVertices = handleMergeVertexOutputs(graphBuilder, outputNames);
 
+        //System.out.println("after merge handling: " + outputNames);
+
         removeOrphanedElemWiseVertices(graphBuilder, outputNames);
+
+        //System.out.println("after elemwise handling: " + outputNames + " input " + inputNames);
 
         final Map<String, Set<String>> inputNamesPerOutput = getInputNamesPerOutput(graphBuilder, outputNames, inputNames);
 
+        //System.out.println("input per output: " + inputNamesPerOutput);
+
         outputNames.stream()
                 .peek(name -> log.info("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
-               // .peek(name -> System.out.println("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
+                //.peek(name -> //System.out.println("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
                 .forEach(outputName ->
                         graphBuilder.addVertex(
                                 outputName,
@@ -93,6 +99,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         } else {
 
+            //System.out.println("change nout : " + nOut);
             changeNoutOfInputs(graphBuilder, inputNames, nOut);
 
             // Need to update other layers which have one of inputNames as their inputs
@@ -134,6 +141,32 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 // 2) Try to keep elementwise vertices and just give them new inputs. I can't see how this can
                 // work given that vertexToRemove might just as well have been connected to a subsamplinglayer
                 // -> need to remove it too if that is the case. Still, this could ripple all the way back to input
+                //new BackwardOf(builder).children(name).forEach(outputNames::add);
+                final Graph<String> forward = new ForwardOf(builder);
+                final Graph<String> backward = new BackwardOf(builder);
+                final Graph<String> findEndpoint = new Traverse<>(forward);
+                final List<String> leafVertices = backward.children(name).flatMap(findEndpoint::children)
+                        .filter(child -> forward.children(child).count() == 0)
+                        .filter(child -> !builder.getNetworkOutputs().contains(child))
+                        .collect(Collectors.toList());
+
+                // These nodes must be input to the elemwise vertex.
+                final String leafVertex;
+                if(leafVertices.size() == 1) {
+                    leafVertex = leafVertices.get(0);
+                } else if(leafVertices.size() > 1) {
+                    leafVertex = "mv_" + String.join("_", leafVertices);
+                    builder.addVertex(leafVertex, new MergeVertex(), leafVertices.toArray(new String[0]));
+                } else {
+                    leafVertex = null;
+                }
+
+                if(leafVertices.size() != 0) {
+                    builder.removeVertex(name, false)
+                            .addVertex(name, new ElementWiseVertex(ElementWiseVertex.Op.Add), leafVertex);
+                }
+
+                //System.out.println("output just before elem remove " + name + " leaves " + leafVertices);
                 new RemoveVertexFunction(name).apply(builder);
                 outputNames.remove(name);
             }
@@ -190,14 +223,14 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         currentPath.stream()
                                 // add vertices which are either 1) not mergevertices and 2) mergevertices with only 1 input (the one which is about to be removed)
                                 .filter(childvertex -> outputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
-                                //.peek(vert -> System.out.println("add to path: " + vert))
+                               // .peek(vert -> //System.out.println("add to path: " + vert))
                                 .forEach(pathToMerge::add);
 
                     }
                 })
                 .leaveListener(currentPath::remove)
                 .build().children(vertexNameToRemove).forEach(vertex -> {/* Ignore */});
-        //System.out.println();
+        ////System.out.println();
         //System.out.println("outputsConnectedToMergeVertex map " + outputsToConnectedMergeVertex);
         //System.out.println("path to merge: " + pathToMerge);
 
@@ -232,7 +265,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         // is always in reverse topological order since this is how it is construced?
         final List<String> names = new ArrayList<>(inputNames);
         Collections.reverse(names);
-        //System.out.println("reverse: " + names);
+        ////System.out.println("reverse: " + names);
 
         final SizeVisitor sizeRegistry = new SizeVisitor(
                 new Traverse<>(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent(),
@@ -289,7 +322,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .peek(layer -> log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse.get(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNIn = nInToUse.get(layer.getLayerName());
-                   // System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNIn);
+                    //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNIn);
                     layer.setNIn(thisNIn);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNOut(thisNIn);

@@ -2,9 +2,14 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
@@ -117,6 +122,42 @@ public class RemoveVertexTest {
         final String afterForkToRemove = "afterForkToRemove";
         final ComputationGraph graph = GraphUtils.getDoubleForkResNet("beforeFork", afterForkToRemove, "f1", "f2", "f3");
         removeVertex(afterForkToRemove, graph, InputType.convolutional(33, 33, 3));
+    }
+
+    /**
+     * Test to remove a layer inside a residual connection just before the elementwise vertex so that the vertices
+     * behind it are connected to the the elementwise vertex just before it is removed
+     */
+    @Test
+    public void removeResidualWithGapTest() {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(InputType.convolutional(122, 128, 3))
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("fb-1_branch_0_0", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(6).build(), "input")
+                .addVertex("spy_fb-1_branch_0_0", new EpsilonSpyVertex(), "fb-1_branch_0_0")
+                .addLayer("fb-1_branch_0_1", new BatchNormalization.Builder().build(), "spy_fb-1_branch_0_0")
+                .addLayer("fb-1_branch_1_0", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "input")
+                .addVertex("spy_fb-1_branch_1_0", new EpsilonSpyVertex(), "fb-1_branch_1_0")
+                .addLayer("fb-1_branch_1_1", new BatchNormalization.Builder().build(), "spy_fb-1_branch_1_0")
+                .addVertex("rbMv", new MergeVertex(), "fb-1_branch_0_1", "fb-1_branch_1_1")
+                .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(13).build(), "rbMv")
+                .addVertex("spy_1", new EpsilonSpyVertex(), "1")
+                .addLayer("2", new BatchNormalization.Builder().nOut(13).build(), "spy_1")
+                .addVertex("rbAdd0", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMv", "2")
+                .addLayer("3", new GlobalPoolingLayer(), "rbAdd0")
+                .addLayer("4", new DenseLayer.Builder().nOut(13).build(), "3")
+                .addVertex("spy_4", new EpsilonSpyVertex(), "4")
+                .addLayer("5", new DenseLayer.Builder().nOut(13).build(), "spy_4")
+                .addVertex("spy_5", new EpsilonSpyVertex(), "5")
+                .addLayer("6", new DenseLayer.Builder().nOut(13).build(), "spy_5")
+                .addVertex("spy_6", new EpsilonSpyVertex(), "6")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_6")
+                .build());
+        graph.init();
+
+        removeVertex("2", graph, InputType.convolutional(33, 33, 3));
     }
 
 

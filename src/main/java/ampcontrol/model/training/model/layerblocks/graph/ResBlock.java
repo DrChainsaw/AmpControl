@@ -36,10 +36,12 @@ public class ResBlock implements LayerBlockConfig {
     public BlockInfo addLayers(GraphBuilderAdapter graphBuilder, BlockInfo info) {
 
         log.info("Res block starting at " + info);
-        BlockInfo nextLayer = blockConfig.addLayers(graphBuilder, info);
+        final String add1 = graphBuilder.mergeIfMultiple(info.getName("rbMvInput" + info.getPrevLayerInd()), info.getInputsNames());
+        BlockInfo nextLayer = blockConfig.addLayers(graphBuilder, new SimpleBlockInfo.Builder(info)
+        .setInputs(new String[] {add1})
+        .build());
 
-        final String add1 = graphBuilder.mergeIfMultiple(info.getName("rbMv" + nextLayer.getPrevLayerInd()), info.getInputsNames());
-        final String add2 = graphBuilder.mergeIfMultiple(info.getName("rbMv" + (nextLayer.getPrevLayerInd()+1)), nextLayer.getInputsNames());
+        final String add2 = graphBuilder.mergeIfMultiple(info.getName("rbMv" + (nextLayer.getPrevLayerInd())), nextLayer.getInputsNames());
 
         final String add = info.getName("rbAdd" + info.getPrevLayerInd());
         log.info("rb add: " + info + " and " +nextLayer);
