@@ -92,7 +92,7 @@ public class InstrumentEpsilonSpies<T extends CompGraphAdapter> implements Fitne
                 .visitListener(vertex -> {
                     if(config.getVertices().get(vertex) instanceof EpsilonSpyVertex) {
                         final String spiedVertex = parentVertex.getValue();
-                        log.info("Instrument " + spiedVertex + " with activation contribution listener");
+                        log.debug("Instrument " + spiedVertex + " with activation contribution listener");
                         final ActivationContributionComparator comparator = new ActivationContributionComparator();
                         candidate.asModel().addListeners(new ActivationContribution(spiedVertex, comparator));
                         comparatorRegistry.add(candidate.asModel(), spiedVertex, 0, comparator); // For Conv

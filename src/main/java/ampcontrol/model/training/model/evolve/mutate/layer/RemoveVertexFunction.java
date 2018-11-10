@@ -65,8 +65,8 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
-        //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
-        //        " nIn: " + nIn + " nOut: " + nOut);
+//        System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
+//                " nIn: " + nIn + " nOut: " + nOut);
 
         final Collection<String> connectedMergeVertices = handleMergeVertexOutputs(graphBuilder, outputNames);
 
@@ -94,7 +94,12 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .anyMatch(inputNames::contains);
 
         // Do the change which adds neurons rather than the one which removes them
+        // What about if nIn == nOut? Can't do early return it seems as this is no guarantee
+        // that the below is not needed. Example when it is not involve pooling layers
+        // and merge vertices
+
         if (nIn > nOut || isAnyLayerInputNetworkInput) {
+           //System.out.println("change nIn " + nIn);
             changeNinOfOutputs(graphBuilder, outputNames, nIn);
 
         } else {
@@ -102,6 +107,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
             //System.out.println("change nout : " + nOut);
             changeNoutOfInputs(graphBuilder, inputNames, nOut);
 
+            //System.out.println("change other inputs");
             // Need to update other layers which have one of inputNames as their inputs
             inputNames.stream()
                     .map(name -> new ForwardOf(graphBuilder).children(name).collect(Collectors.toList()))
@@ -110,6 +116,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                             names,
                             nOut));
 
+            //System.out.println("do merges: " + connectedMergeVertices);
             changeNoutOfInputs(
                     graphBuilder,
                     connectedMergeVertices,
@@ -199,7 +206,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         // 1) are any of the outputs connected to a merge vertex
         // and
         // 2) What are the other inputs to that merge vertex if 1)
-        //final Map<String, List<String>> inputsToConnectedMergeVertex = getInputsConnectedToMergeVertex(builder, outputName);
         final Map<String, Set<String>> outputsToConnectedMergeVertex = new HashMap<>();
         final Set<String> pathToMerge = new LinkedHashSet<>();
 
@@ -262,12 +268,13 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         //System.out.println("inputnames: " + inputNames);
         // What we want here is to traverse in topological order really. Just so happens to be so that inputNames
-        // is always in reverse topological order since this is how it is construced?
+        // is always in reverse topological order since this is how it is constructed?
         final List<String> names = new ArrayList<>(inputNames);
         Collections.reverse(names);
-        ////System.out.println("reverse: " + names);
+        //System.out.println("reverse: " + names);
 
         final SizeVisitor sizeRegistry = new SizeVisitor(
+                // Why not GraphBuilderUtil.changeSizePropagates(graphBuilder)? We just need the size?
                 new Traverse<>(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent(),
                         new BackwardOf(graphBuilder)),
                 graphBuilder,
@@ -277,12 +284,12 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         toLayerStream(
                 TraverseBuilder.backwards(graphBuilder)
-                        .enterCondition(vertex -> true)
+                        .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
                         .enterListener(sizeRegistry::visit)
                         .build(),
                 graphBuilder,
                 names)
-                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + sizeRegistry.getSize(layer.getLayerName())))
+                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + sizeRegistry.getSize(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNout = sizeRegistry.getSize(layer.getLayerName());
                     //System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNout);
@@ -302,9 +309,11 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         name -> name,
                         name -> nIn
                 ));
+
         toLayerStream(
                 TraverseBuilder.forwards(graphBuilder)
-                        .enterCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
+                        // Used to be vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent()
+                        .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
                         .enterListener(vertex -> {
                             if (graphBuilder.getVertices().get(vertex) instanceof MergeVertex) {
                                 encounteredMergeVerticesMultiplier.increment();
@@ -322,7 +331,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .peek(layer -> log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse.get(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNIn = nInToUse.get(layer.getLayerName());
-                    //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNIn);
+                    //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNIn() + " to " + thisNIn);
                     layer.setNIn(thisNIn);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNOut(thisNIn);

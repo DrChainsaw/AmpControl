@@ -13,6 +13,7 @@ import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.stream.Stream;
@@ -157,7 +158,38 @@ public class RemoveVertexTest {
                 .build());
         graph.init();
 
-        removeVertex("2", graph, InputType.convolutional(33, 33, 3));
+        removeVertex("2", graph, InputType.convolutional(122, 128, 3));
+    }
+
+    /**
+     * Test to remove a layer inside a residual connection just before the elementwise vertex so that the vertices
+     * behind it are connected to the the elementwise vertex just before it is removed
+     */
+    @Test
+    public void removeSpyAndLayerNearEnd() {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(InputType.feedForward(10))
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new DenseLayer.Builder().nOut(19).build(), "input")
+                .addVertex("spy_1", new EpsilonSpyVertex(), "1")
+                .addLayer("2", new DenseLayer.Builder().nOut(7).build(), "spy_1")
+                .addVertex("spy_2", new EpsilonSpyVertex(), "2")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_2")
+                .build());
+
+        graph.init();
+        final ComputationGraphConfiguration.GraphBuilder builer = new ComputationGraphConfiguration.GraphBuilder(
+                graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf()));
+
+        new RemoveVertexFunction("spy_2").apply(builer);
+        new RemoveVertexFunction("2").apply(builer);
+
+        final ComputationGraph newGraph = new ComputationGraph(builer.build());
+        newGraph.init();
+        newGraph.fit(new DataSet(Nd4j.randn(new long[] {1, 10}), Nd4j.randn(new long[] {1,4})));
+
     }
 
 

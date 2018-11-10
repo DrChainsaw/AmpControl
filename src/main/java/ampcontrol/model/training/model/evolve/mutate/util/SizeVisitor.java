@@ -50,13 +50,6 @@ public class SizeVisitor {
      * @param vertex vertex to visit
      */
     public void visit(String vertex) {
-//        final List<String> inputs = TraverseBuilder.backwards(builder)
-//                .enterCondition(childVertex -> true)
-//                .traverseCondition(childVertex -> !GraphBuilderUtil.asFeedforwardLayer(builder).apply(childVertex).isPresent())
-//                .traverseCondition(ch -> false)
-//                .build()
-//                .children(vertex)
-//                .collect(Collectors.toList());
 
         final List<String> inputs = graph.children(vertex).collect(Collectors.toList());
 
