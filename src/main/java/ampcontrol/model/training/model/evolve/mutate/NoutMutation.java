@@ -85,6 +85,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         layerConf.setNOut(newNout);
 
         log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
+        //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
 
         propagateNOutChange(
                 builder,
@@ -134,8 +135,15 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         final HasVistited visited = new HasVistited();
         visited.addInput(layerName);
 
-        final Graph<String> forwardGraph = getForwardGraph(builder, deltaSize, visited);
-        final Graph<String> backwardGraph = getBackwardGraph(builder, layerName, deltaSize, visited);
+        final SizeVisitor nOutDeltaRegistry = new SizeVisitor(
+                new BackwardOf(builder),
+                builder,
+                deltaSize,
+                (layerSize, delta) -> Math.min(layerSize-1, delta));
+        nOutDeltaRegistry.set(layerName, deltaSize);
+
+        final Graph<String> forwardGraph = getForwardGraph(builder, nOutDeltaRegistry, deltaSize, visited);
+        final Graph<String> backwardGraph = getBackwardGraph(builder, nOutDeltaRegistry, visited);
 
         // Whatever comes out from backwardGraph which is a feedforward layer needs to go into
         // back into the "loop", starting again with the forwardGraph due to brainf*ck level 2
@@ -147,7 +155,10 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 new Connect<>(forwardGraph, backwardGraph)).children(layerName).forEachOrdered(residual -> {/* ignore */});
     }
 
-    private static Graph<String> getForwardGraph(GraphBuilder builder, long deltaSize, HasVistited visited) {
+    private static Graph<String> getForwardGraph(GraphBuilder builder,
+                                                 SizeVisitor nOutDeltaRegistry,
+                                                 long deltaSize,
+                                                 HasVistited visited) {
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
         return TraverseBuilder.forwards(builder)
                 //                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
@@ -158,25 +169,23 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .visitCondition(outputName -> !visited.output(outputName))
                 .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
-                            //                           System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
+                            //System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
                             layer.setNIn(layer.getNIn() - deltaSize);
                             if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
                                 layer.setNOut(layer.getNOut() - deltaSize);
                                 visited.addInput(outputName);
+                                // We must also note down the delta size in case we go through this vertex on the way back though a MergeVertex
+                                nOutDeltaRegistry.set(layer.getLayerName(), deltaSize);
                             }
                         }))
                 .build();
     }
 
-    private static Graph<String> getBackwardGraph(GraphBuilder builder, String layerName, long deltaSize, HasVistited visited) {
-
-        final SizeVisitor deltaRegistry = new SizeVisitor(
-                new BackwardOf(builder),
-                builder,
-                deltaSize,
-                (layerSize, delta) -> Math.min(layerSize-1, delta));
-        deltaRegistry.set(layerName, deltaSize);
+    private static Graph<String> getBackwardGraph(
+            GraphBuilder builder,
+            SizeVisitor nOutDeltaRegistry,
+            HasVistited visited) {
 
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
         // Just a note: Listeners below are a bit less insane than it might appear. The enterListener is not invoked
@@ -187,7 +196,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         // design...
 
         return TraverseBuilder.backwards(builder)
-                .enterListener(deltaRegistry::visit)
+                .enterListener(nOutDeltaRegistry::visit)
                 //.leaveListener(vertex -> System.out.println("\tDone with NOut change backwards " + vertex))
                 // nOutDelta == 0 below might mask shortcoming of alg:
                 // If you end up here with delta != original delta (e.g. change of size of original mutation) the deltas
@@ -195,13 +204,13 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 // should not. So far, I think this can only happen when the "original" mutation is in a fork in which
                 // case we know (?) that the output sizes are correct
                 // Possible candidate for Brainf*ck level 5...
-                .visitCondition(inputName -> !visited.input(inputName) && deltaRegistry.getSize(inputName) != 0)
+                .visitCondition(inputName -> !visited.input(inputName) && nOutDeltaRegistry.getSize(inputName) != 0)
                 .visitListener(inputName ->
                 {
                     //System.out.println("\t\t Handle input layer " + inputName + " in context of " + layerName + " visited: " + visited.input(inputName) + " delta: " + nOutDelta);
                     asFf.apply(inputName)
                             .ifPresent(layer -> {
-                                final long nOutDelta = deltaRegistry.getSize(inputName);
+                                final long nOutDelta = nOutDeltaRegistry.getSize(inputName);
                                 //System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 log.info("Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 visited.addInput(inputName);

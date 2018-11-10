@@ -1,8 +1,14 @@
 package ampcontrol.model.training.model.evolve.mutate;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
+import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
@@ -256,5 +262,56 @@ public class NoutMutationTest {
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
+    }
+
+    /**
+     * Test to mutate layers inside a residual fork
+     */
+    @Test
+    public void mutateResidualForkTwice() {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(InputType.convolutional(122, 128, 3))
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("fb-1_branch_0_0", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(6).build(), "input")
+                .addVertex("spy_fb-1_branch_0_0", new EpsilonSpyVertex(), "fb-1_branch_0_0")
+                .addLayer("fb-1_branch_0_1", new BatchNormalization.Builder().build(), "spy_fb-1_branch_0_0")
+                .addLayer("fb-1_branch_1_0", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "input")
+                .addVertex("spy_fb-1_branch_1_0", new EpsilonSpyVertex(), "fb-1_branch_1_0")
+                .addLayer("fb-1_branch_1_1", new BatchNormalization.Builder().build(), "spy_fb-1_branch_1_0")
+                .addVertex("rbMvInput0", new MergeVertex(), "fb-1_branch_0_1", "fb-1_branch_1_1")
+                .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(13).build(), "rbMvInput0")
+                .addVertex("spy_1", new EpsilonSpyVertex(), "1")
+                .addLayer("2", new BatchNormalization.Builder().nOut(13).build(), "spy_1")
+                .addVertex("rbAdd0", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0", "2")
+                .addLayer("3p", new SubsamplingLayer.Builder().kernelSize(2,2).stride(2,2).build(), "rbAdd0")
+                .addLayer("3", new GlobalPoolingLayer(), "3p")
+                .addLayer("4", new DenseLayer.Builder().nOut(13).build(), "3")
+                .addVertex("spy_4", new EpsilonSpyVertex(), "4")
+                .addLayer("5", new DenseLayer.Builder().nOut(13).build(), "spy_4")
+                .addVertex("spy_5", new EpsilonSpyVertex(), "5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_5")
+                .build());
+        graph.init();
+
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName("fb-1_branch_0_0")
+                                .mutateNout(nOut -> nOut-1)
+                                .build(),
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName("fb-1_branch_1_0")
+                                .mutateNout(nOut -> nOut-1)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+
+        newGraph.outputSingle(Nd4j.randn(new long[] {1, 3, 122, 128}));
     }
 }
