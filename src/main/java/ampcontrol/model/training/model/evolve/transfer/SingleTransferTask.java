@@ -68,7 +68,7 @@ public class SingleTransferTask implements TransferTask {
     @Override
     public void addWantedElementsFromTarget(int dim, int[] indexes) {
         if (!dimensionMask.contains(dim)) {
-            target.addWantedElements(dim,indexes);
+            target.addWantedElements(dim, indexes);
         }
         dependentTask.addWantedElementsFromTarget(dim, indexes);
     }
@@ -86,33 +86,29 @@ public class SingleTransferTask implements TransferTask {
         final long[] sourceShape = source.getEntry().shape();
         final long[] targetShape = target.getEntry().shape();
 
-        for (int i = 0; i < targetShape.length; i++) {
-            if (dimensionMask.contains(i)) {
-                continue;
-            }
+        IntStream.range(0, targetShape.length)
+                .filter(dim -> !dimensionMask.contains(dim))
+                .filter(dim -> targetShape[dim] < sourceShape[dim])
+                .forEach(dim -> {
+                    // TODO: Null should be an error. Just CBA to do the plumbing for it right now...
+                    final Comparator<Integer> comparator = Optional.ofNullable(compFactory)
+                            .map(factory -> factory.apply(dim))
+                            .orElseGet(() -> source.getEntry().defaultComparatorFactory(dim));
+                    final int[] wantedElements = IntStream.range(0, (int) sourceShape[dim])
+                            .boxed()
+                            .sorted(comparator)
+                            .limit(targetShape[dim])
+                            .mapToInt(e -> e)
+                            .sorted()
+                            .toArray();
 
-            if (targetShape[i] < sourceShape[i]) {
-                final int tensorDim = i;
-
-                // TODO: Null should be an error. Just CBA to do the plumbing for it right now...
-                final Comparator<Integer> comparator = Optional.ofNullable(compFactory)
-                        .map(factory -> factory.apply(tensorDim))
-                        .orElseGet(() -> source.getEntry().defaultComparatorFactory(tensorDim));
-                final int[] wantedElements = IntStream.range(0, (int) sourceShape[tensorDim])
-                        .boxed()
-                        .sorted(comparator)
-                        .limit(targetShape[tensorDim])
-                        .mapToInt(e -> e)
-                        .sorted()
-                        .toArray();
-
-                addWantedElementsFromSource(tensorDim, wantedElements);
-            } else if (targetShape[i] > sourceShape[i]) {
-                addWantedNrofElementsFromTarget(i, (int) sourceShape[i]);
-            }
-        }
+                    addWantedElementsFromSource(dim, wantedElements);
+                });
+        IntStream.range(0, targetShape.length)
+                .filter(dim -> !dimensionMask.contains(dim))
+                .filter(dim -> targetShape[dim] > sourceShape[dim])
+                .forEach(dim -> addWantedNrofElementsFromTarget(dim, (int) sourceShape[dim]));
     }
-
 
     public static class Builder implements ListBuilder {
         private ListBuilder dependentTaskBuilder = NoTransferTask.builder();
