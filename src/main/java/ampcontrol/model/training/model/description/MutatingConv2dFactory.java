@@ -187,7 +187,7 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 20).forEach(candInd -> {
+        IntStream.range(0, 30).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -365,7 +365,7 @@ public final class MutatingConv2dFactory {
                         .build())
                 .collect(Collectors.toSet());
         return new NoutMutation(
-                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.1));
+                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.15));
     }
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createKernelSizeMutation(
@@ -374,7 +374,7 @@ public final class MutatingConv2dFactory {
             int rngSign) {
         final Random rng = new Random(seed);
         return new LayerContainedMutation(
-                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.05)
+                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.1)
                         .map(layerName ->
                                 LayerContainedMutation.LayerMutation.builder()
                                         .mutationInfo(
@@ -450,7 +450,7 @@ public final class MutatingConv2dFactory {
 
                 }).build()
         )
-                .filter(mut -> rng.nextDouble() < 0.05));
+                .filter(mut -> rng.nextDouble() < 0.1));
     }
 
     @NotNull

@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.graph.ComputationGraph;
 
 import java.util.stream.Stream;
 
@@ -19,6 +20,10 @@ public class ForwardOf implements Graph<String> {
 
     public ForwardOf(ComputationGraphConfiguration graphConf) {
         actualGraph = new ForwardOfConfig(graphConf);
+    }
+
+    public ForwardOf(ComputationGraph graph) {
+        actualGraph = new ForwardOfCompGraph(graph);
     }
 
     @Override

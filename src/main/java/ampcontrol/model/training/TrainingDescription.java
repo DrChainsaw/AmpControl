@@ -45,8 +45,8 @@ public class TrainingDescription {
             .compose(new CharThreshold(100, FileNamePolicy.toHashCode));
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10;
-    private final static int trainBatchSize = 64;
-    private final static int evalBatchSize = 64;
+    private final static int trainBatchSize = 32;
+    private final static int evalBatchSize = 32;
     private final static double evalSetPercentage = 2;
 
     /**

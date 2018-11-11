@@ -14,7 +14,7 @@ class ForwardOfBuilder implements Graph<String> {
 
     private final ComputationGraphConfiguration.GraphBuilder graphBuilder;
 
-    public ForwardOfBuilder(ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+    ForwardOfBuilder(ComputationGraphConfiguration.GraphBuilder graphBuilder) {
         this.graphBuilder = graphBuilder;
     }
 

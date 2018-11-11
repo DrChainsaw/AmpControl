@@ -1,9 +1,11 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.graph.ComputationGraph;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 /**
  * Builder for recursive graph traversal
@@ -20,6 +22,7 @@ public class TraverseBuilder<T> {
     private Consumer<T> leaveListener = vertex -> {/* ignore */};
     private Predicate<T> visitCondition = vertex -> true;
     private Consumer<T> visitListener = vertex -> {/* ignore */};
+    private UnaryOperator<Graph<T>> wrapBaseGraph = SingleVisit::new;
 
     /**
      * Constructor
@@ -60,6 +63,16 @@ public class TraverseBuilder<T> {
     }
 
     /**
+     * Builder for the standard way to traverse ComputationGraphs in the forward direction
+     * @param compGraph Has the configuration to traverse
+     * @return a {@link TraverseBuilder}
+     */
+    public static TraverseBuilder<String> forwards(ComputationGraph compGraph) {
+        return new TraverseBuilder<>(new ForwardOf(compGraph))
+                .traverseCondition(CompGraphUtil.changeSizePropagates(compGraph));
+    }
+
+    /**
      * Sets a condition for traversal to be entered in the first place. Vertices not matching the condition will
      * return an empty stream.
      *
@@ -80,6 +93,18 @@ public class TraverseBuilder<T> {
      */
     public TraverseBuilder<T> traverseCondition(Predicate<T> traverseCondition) {
         this.traverseCondition = traverseCondition;
+        return this;
+    }
+
+    /**
+     * Adds a condition for traversing to the next vertex. Existing predicate and the
+     * new predicate must both be true in order to traverse
+     *
+     * @param traverseCondition the condition
+     * @return the builder for fluent API
+     */
+    public TraverseBuilder<T> andTraverseCondition(Predicate<T> traverseCondition) {
+        this.traverseCondition = this.traverseCondition.and(traverseCondition);
         return this;
     }
 
@@ -131,6 +156,15 @@ public class TraverseBuilder<T> {
     }
 
     /**
+     * Allows the same vertex to be visited twice. Use with care as it might lead to infinite recursion.
+     * @return the builder for fluent API
+     */
+    public TraverseBuilder<T> allowRevisit() {
+        wrapBaseGraph = UnaryOperator.identity();
+        return this;
+    }
+
+    /**
      * Build a forward traversing Graph
      *
      * @return a forward traversing Graph
@@ -144,6 +178,6 @@ public class TraverseBuilder<T> {
                                 leaveListener,
                                 new Peek<>(visitListener,
                                         new Filter<>(visitCondition,
-                                                new SingleVisit<>(baseGraph)))));
+                                                wrapBaseGraph.apply(baseGraph)))));
     }
 }
