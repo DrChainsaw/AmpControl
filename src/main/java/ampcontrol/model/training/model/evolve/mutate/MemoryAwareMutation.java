@@ -14,6 +14,9 @@ import java.util.function.Function;
  */
 public class MemoryAwareMutation<T> implements Mutation<T> {
 
+    private final MemoryProvider memoryProvider;
+    private final Function<Double, Mutation<T>> mutationSelection;
+
     /**
      * Interface to provide memory usage
      */
@@ -37,9 +40,6 @@ public class MemoryAwareMutation<T> implements Mutation<T> {
             return (totalMemory - NativeOpsHolder.getInstance().getDeviceNativeOps().getDeviceFreeMemory(devicePointer)) / totalMemory;
         }
     }
-
-    private final MemoryProvider memoryProvider;
-    private final Function<Double, Mutation<T>> mutationSelection;
 
     public MemoryAwareMutation(Function<Double, Mutation<T>> mutationSelection) {
         this(new DeviceMemoryProvider(), mutationSelection);

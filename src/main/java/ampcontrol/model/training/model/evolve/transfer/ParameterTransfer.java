@@ -344,7 +344,7 @@ public class ParameterTransfer {
     }
 
     private Optional<GraphVertex> findLayerVertex(String name, ComputationGraph graph) {
-        return Optional.of(graph.getVertex(name))
+        return Optional.ofNullable(graph.getVertex(name))
                 .filter(GraphVertex::hasLayer)
                 .filter(vertex -> vertex.getLayer().numParams() > 0);
     }

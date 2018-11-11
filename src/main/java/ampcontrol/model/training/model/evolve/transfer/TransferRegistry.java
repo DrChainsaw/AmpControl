@@ -220,7 +220,6 @@ class TransferRegistry {
         } else {
             //Can't get a view, so we'll do it in subsets instead
             // This is inefficient, but it is correct...
-            int numSpecified = 0;
             List<long[]> specifiedIdxs = new ArrayList<>();
             List<Integer> specifiedIdxDims = new ArrayList<>();
 
@@ -229,7 +228,6 @@ class TransferRegistry {
             for( int i=0; i<indices.length; i++){
                 INDArrayIndex idx = indices[i];
                 if(idx instanceof SpecifiedIndex){
-                    numSpecified++;
                     long[] idxs = ((SpecifiedIndex) idx).getIndexes();
                     specifiedIdxs.add(idxs);
                     specifiedIdxDims.add(i);
