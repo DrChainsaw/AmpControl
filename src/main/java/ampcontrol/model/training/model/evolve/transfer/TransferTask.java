@@ -1,7 +1,5 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
-import java.util.Optional;
-
 /**
  * An instruction for how to prune weights of a layer, including inputs to subsequent layers
  */
@@ -24,23 +22,6 @@ public interface TransferTask {
          * @return The constructed {@link TransferTask}.
          */
         TransferTask build();
-    }
-
-    /**
-     * Utility class to avoid duplicate handling dependent task builder in all ListBuilders
-     */
-    class DependentTaskBuilder {
-
-        private Optional<ListBuilder> dependentTaskBuilder = Optional.empty();
-
-        public ListBuilder addDependentTask(ListBuilder builder) {
-            if (!this.dependentTaskBuilder.isPresent()) {
-                this.dependentTaskBuilder = Optional.of(builder);
-            } else {
-                this.dependentTaskBuilder.get().addDependentTask(builder);
-            }
-            return dependentTaskBuilder.get();
-        }
     }
 
     /**

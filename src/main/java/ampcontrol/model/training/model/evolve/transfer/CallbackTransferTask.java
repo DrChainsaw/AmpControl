@@ -60,7 +60,7 @@ public class CallbackTransferTask implements TransferTask {
 
     public static class Builder implements ListBuilder {
 
-        private Optional<ListBuilder> dependentTaskBuilder = Optional.empty();
+        private ListBuilder dependentTaskBuilder = NoTransferTask.builder();
         private CallbackTransferTask instance;
         private BiConsumer<Integer, int[]> sourceCallback;
         private BiConsumer<Integer, int[]> targetCallback;
@@ -77,11 +77,7 @@ public class CallbackTransferTask implements TransferTask {
 
         @Override
         public ListBuilder addDependentTask(ListBuilder dependentTaskBuilder) {
-            if (!this.dependentTaskBuilder.isPresent()) {
-                this.dependentTaskBuilder = Optional.of(dependentTaskBuilder);
-            } else {
-                this.dependentTaskBuilder.get().addDependentTask(dependentTaskBuilder);
-            }
+            this.dependentTaskBuilder = this.dependentTaskBuilder.addDependentTask(dependentTaskBuilder);
             return this;
         }
 
@@ -89,7 +85,7 @@ public class CallbackTransferTask implements TransferTask {
         public CallbackTransferTask build() {
             return Optional.ofNullable(instance).orElseGet(() -> {
                 instance = new CallbackTransferTask(
-                        dependentTaskBuilder.map(ListBuilder::build).orElse(new NoTransferTask()),
+                        dependentTaskBuilder.build(),
                         sourceCallback,
                         targetCallback);
                 return instance;
