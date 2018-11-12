@@ -21,10 +21,10 @@ public interface Mutation<T> {
     }
 
     /**
-     * Applies mutation to the provided input
+     * Applies mutation to the provided item
      *
-     * @param toMutate The builder to mutate
-     * @return The mutated builder. Note: might not be same instance as input!
+     * @param toMutate The item to mutate
+     * @return The mutated item. Note: might not be same instance as input!
      */
     T mutate(T toMutate);
 }

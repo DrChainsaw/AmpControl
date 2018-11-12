@@ -56,7 +56,6 @@ public class RemoveVertexTest {
     public void removeResLayer() {
         final String conv2ToRemove = "conv2ToRemove";
         final ComputationGraph graph = GraphUtils.getResNet("conv1", conv2ToRemove, "conv3");
-
         removeVertex(conv2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
@@ -78,7 +77,6 @@ public class RemoveVertexTest {
     public void removeForkResPath() {
         final String fork2ToRemove = "f2ToRemove";
         final ComputationGraph graph = GraphUtils.getForkResNet("beforeFork", "afterFork", "f1", fork2ToRemove, "f3");
-
         removeVertex(fork2ToRemove, graph, InputType.convolutional(33, 33, 3));
     }
 
@@ -188,10 +186,33 @@ public class RemoveVertexTest {
 
         final ComputationGraph newGraph = new ComputationGraph(builer.build());
         newGraph.init();
-        newGraph.fit(new DataSet(Nd4j.randn(new long[] {1, 10}), Nd4j.randn(new long[] {1,4})));
-
+        newGraph.fit(new DataSet(Nd4j.randn(new long[]{1, 10}), Nd4j.randn(new long[]{1, 4})));
     }
 
+    /**
+     * Test to remove a layer after a residual connection so that also the nIn of one of the residual layers
+     * is altered
+     */
+    @Test
+    public void removeAfterResBlock() {
+        final InputType inputType = InputType.convolutional(10,10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "input")
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(6).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
+                .addLayer("gp", new GlobalPoolingLayer(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+
+       removeVertex("4", graph, inputType);
+    }
 
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {

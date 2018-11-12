@@ -82,7 +82,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         outputNames.stream()
                 .peek(name -> log.info("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
-                //.peek(name -> //System.out.println("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
+                //.peek(name -> System.out.println("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
                 .forEach(outputName ->
                         graphBuilder.addVertex(
                                 outputName,
@@ -99,22 +99,13 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         // and merge vertices
 
         if (nIn > nOut || isAnyLayerInputNetworkInput) {
-           //System.out.println("change nIn " + nIn);
+            //System.out.println("change nIn " + nIn);
             changeNinOfOutputs(graphBuilder, outputNames, nIn);
 
         } else {
 
             //System.out.println("change nout : " + nOut);
             changeNoutOfInputs(graphBuilder, inputNames, nOut);
-
-            //System.out.println("change other inputs");
-            // Need to update other layers which have one of inputNames as their inputs
-            inputNames.stream()
-                    .map(name -> new ForwardOf(graphBuilder).children(name).collect(Collectors.toList()))
-                    .forEach(names -> changeNinOfOutputs(
-                            graphBuilder,
-                            names,
-                            nOut));
 
             //System.out.println("do merges: " + connectedMergeVertices);
             changeNoutOfInputs(
@@ -159,16 +150,16 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
                 // These nodes must be input to the elemwise vertex.
                 final String leafVertex;
-                if(leafVertices.size() == 1) {
+                if (leafVertices.size() == 1) {
                     leafVertex = leafVertices.get(0);
-                } else if(leafVertices.size() > 1) {
+                } else if (leafVertices.size() > 1) {
                     leafVertex = "mv_" + String.join("_", leafVertices);
                     builder.addVertex(leafVertex, new MergeVertex(), leafVertices.toArray(new String[0]));
                 } else {
                     leafVertex = null;
                 }
 
-                if(leafVertices.size() != 0) {
+                if (leafVertices.size() != 0) {
                     builder.removeVertex(name, false)
                             .addVertex(name, new ElementWiseVertex(ElementWiseVertex.Op.Add), leafVertex);
                 }
@@ -219,7 +210,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .traverseCondition(vertex -> !isSizeChangePossible(builder.getVertices().get(vertex)))
                 .enterListener(currentPath::add)
                 .visitListener(vertex -> {
-                      //System.out.println("visit: " + vertex);
+                    //System.out.println("visit: " + vertex);
                     if (builder.getVertices().get(vertex) instanceof MergeVertex) {
                         outputsToConnectedMergeVertex.put(vertex,
                                 new LinkedHashSet<>(backwards.children(vertex)
@@ -229,7 +220,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         currentPath.stream()
                                 // add vertices which are either 1) not mergevertices and 2) mergevertices with only 1 input (the one which is about to be removed)
                                 .filter(childvertex -> outputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
-                               // .peek(vert -> //System.out.println("add to path: " + vert))
+                                // .peek(vert -> //System.out.println("add to path: " + vert))
                                 .forEach(pathToMerge::add);
 
                     }
@@ -282,6 +273,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 (layerSize, size) -> Math.max(1, size));
         inputNames.forEach(vertex -> sizeRegistry.set(vertex, nOut));
 
+        final Set<String> changedLayers = new LinkedHashSet<>();
         toLayerStream(
                 TraverseBuilder.backwards(graphBuilder)
                         .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
@@ -296,8 +288,36 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                     layer.setNOut(thisNout);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNIn(thisNout);
+                    } else {
+                        changedLayers.add(layer.getLayerName());
                     }
                 });
+
+        // Why not for merge vertices. Just becasue the code below does not work for them. Handling is most likely
+        // needed though...
+        if(inputNames.stream().noneMatch(vertex -> graphBuilder.getVertices().get(vertex) instanceof MergeVertex)) {
+            // Set Nin of layers which have changed and are not part of inputNames
+            final Set<String> needToChangeNin = changedLayers.stream()
+                   // .filter(layerName -> !inputNames.contains(layerName))
+                    .flatMap(vertex -> new ForwardOf(graphBuilder).children(vertex))
+                    .collect(Collectors.toSet());
+
+            changeNinOfOutputs(graphBuilder, needToChangeNin, nOut);
+        }
+//        final List<String> changedLayers = new ArrayList<>();
+//
+//        inputNames.stream().flatMap(inputName -> new Connect<>(
+//                TraverseBuilder.backwards(graphBuilder)
+//                .enterCondition(vertex -> true)
+//                .build(),
+//        TraverseBuilder.forwards(graphBuilder)
+//                .traverseCondition(GraphBuilderUtil.changeSizePropagatesBackwards(graphBuilder))
+//                .enterListener(vertex -> changedLayers.clear())
+//                .visitListener(changedLayers::add)
+//                .leaveListener(vertex -> changeNinOfOutputs(graphBuilder, changedLayers, nOut))
+//                .build())
+//                .children(inputName)).forEach(vertex -> {/* Do nothing*/});
+
     }
 
     private static void changeNinOfOutputs(GraphBuilder graphBuilder, Collection<String> outputNames, long nIn) {

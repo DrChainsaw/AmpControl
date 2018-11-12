@@ -61,7 +61,7 @@ public class GraphBuilderUtil {
     public static Predicate<String> changeSizePropagatesBackwards(ComputationGraphConfiguration.GraphBuilder builder) {
         return vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
                 .map(GraphBuilderUtil::doesNOutChangePropagateToInputs)
-                .orElseThrow(() -> new IllegalArgumentException("Unkown vertex name: " + vertex + "!"));
+                .orElse(false);
     }
 
     /**
