@@ -8,6 +8,7 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
+@FunctionalInterface
 public interface Graph<T> {
 
     /**

@@ -214,6 +214,31 @@ public class RemoveVertexTest {
        removeVertex("4", graph, inputType);
     }
 
+    /**
+     * Test to remove a layer after a residual connection so that also the nIn of both of the residual layers
+     * are altered
+     */
+    @Test
+    public void removeAfterResBlockWithFork() {
+        final InputType inputType = InputType.convolutional(10,10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "input")
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(2).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addVertex("merge2And3", new MergeVertex(), "2", "3")
+                .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "merge2And3")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
+                .addLayer("gp", new GlobalPoolingLayer(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("4", graph, inputType);
+    }
+
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {
         final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(

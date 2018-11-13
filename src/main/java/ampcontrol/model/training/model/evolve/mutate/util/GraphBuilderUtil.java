@@ -5,6 +5,7 @@ import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 
@@ -145,6 +146,7 @@ public class GraphBuilderUtil {
                                     Function<FeedForwardLayer, Long> sizeMapping) {
         return asFeedforwardLayer(graphBuilder).apply(layerName).map(sizeMapping)
                 .orElseGet(() -> Optional.of(new BackwardOf(graphBuilder).children(layerName)
+                                .limit(graphBuilder.getVertices().get(layerName) instanceof MergeVertex ? Long.MAX_VALUE : 1)
                                 .mapToLong(inputLayerName -> sumPrevSize(inputLayerName, graphBuilder, FeedForwardLayer::getNOut))
                                 .sum())
                         .orElseGet(() -> graphBuilder.getNetworkInputTypes().stream()

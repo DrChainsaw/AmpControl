@@ -2,13 +2,13 @@ package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
-import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -64,20 +64,19 @@ public class SizeVisitor {
 
             for (int i = 0; i < validLayers.length; i++) {
                 final String inputName = inputs.get(i);
-                layerSizes[i] = GraphBuilderUtil.asFeedforwardLayer(builder).apply(inputName)
-                        .map(FeedForwardLayer::getNOut)
-                        .orElse(0L);
+                layerSizes[i] = GraphBuilderUtil.getOutputSize(inputName, builder);
                 validLayers[i] = layerSizes[i] > 0;
                 if (validLayers[i]) {
                     remainder -= visitedToSize.getOrDefault(inputName, 0L);
                 }
             }
 
+            final BinaryOperator<Long> maxOrMin = startSize > 0 ? Math::min : Math::max;
             for (int i = 0; i < validLayers.length; i++) {
                 final String inputName = inputs.get(i);
                 final long layerSizesSum = Arrays.stream(layerSizes, i, validLayers.length).sum();
                 if (validLayers[i] && !visitedToSize.containsKey(inputName)) {
-                    final long delta = truncate.apply(layerSizes[i], Math.min((remainder * layerSizes[i]) / layerSizesSum, remainder));
+                    final long delta = truncate.apply(layerSizes[i], maxOrMin.apply((remainder * layerSizes[i]) / layerSizesSum, remainder));
                     visitedToSize.put(inputs.get(i), delta);
                     remainder -= delta;
                 } else if (!validLayers[i]) {

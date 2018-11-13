@@ -256,9 +256,9 @@ public class NoutMutationTest {
                 .build());
         newGraph.init();
 
-        assertEquals("Incorrect nOut!", graph.layerSize(fork1), newGraph.layerSize(fork1));
+        assertEquals("Incorrect nOut!", graph.layerSize(fork1)+1, newGraph.layerSize(fork1));
         assertEquals("Incorrect nOut!", newNout, newGraph.layerSize(fork2ToMutate));
-        assertEquals("Incorrect nOut!", graph.layerSize(fork3), newGraph.layerSize(fork3));
+        assertEquals("Incorrect nOut!", graph.layerSize(fork3)-1, newGraph.layerSize(fork3));
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));

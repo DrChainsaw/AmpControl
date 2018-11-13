@@ -187,7 +187,7 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 30).forEach(candInd -> {
+        IntStream.range(0, 20).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)

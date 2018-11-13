@@ -1,6 +1,8 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -25,6 +27,23 @@ public class Traverse<T> implements Graph<T> {
 
     public Traverse(Predicate<T> traverse, Graph<T> graph) {
         this(traverse, vertex -> {/* ignore */}, vertex -> {/* ignore */}, graph);
+    }
+
+    /**
+     * Returns a Graph which will only return leaf vertices
+     * @param traverse Criterion for visiting vertices when traversing (only applies to children, not the "root" vertex)
+     * @param graph {@link Graph} to traverse
+     * @param <T> Type of Graph
+     * @return a Graph
+     */
+    public static <T> Graph<T> leaves(Predicate<T> traverse, Graph<T> graph) {
+        final Set<T> entered = new HashSet<>();
+        return new Filter<>(vertex -> !entered.contains(vertex),
+                new Traverse<>(
+                        traverse,
+                        entered::add,
+                        vertex -> {/* Ignore*/},
+                        graph));
     }
 
     /**
