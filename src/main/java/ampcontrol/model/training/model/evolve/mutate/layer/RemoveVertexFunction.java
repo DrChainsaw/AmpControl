@@ -320,8 +320,8 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         return new SizeVisitor(
                 // Whats going on here? First, we want to traverse through MergeVertices to give fair sharing
                 // between the inputs to them given that they can have different sizes and be of different numbers.
-                // However, in case of an element wise vertex, we don't want to do this as this would set the inputs
-                // to the inputs to the mergevertex to the same nOut as the nOut of the element wise vertex -> error!
+                // However, in case of an ElementWiseVertex, we don't want to do this as this would set the inputs
+                // to the inputs to the MergeVertex to the same nOut as the nOut of the ElementWiseVertex -> error!
                 vertex -> (graphBuilder.getVertices().get(vertex) instanceof ElementWiseVertex) ? backward.children(vertex) : traverseMerges.children(vertex),
                 graphBuilder,
                 nOut,
