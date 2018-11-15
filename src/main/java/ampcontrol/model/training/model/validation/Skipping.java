@@ -13,7 +13,7 @@ import java.util.function.Function;
  *
  * @author Christian Skärby
  */
-public class Skipping<T extends IEvaluation> implements Validation<T> {
+public class Skipping<T extends IEvaluation<T>> implements Validation<T> {
 
     private static final Logger log = LoggerFactory.getLogger(Skipping.class);
 

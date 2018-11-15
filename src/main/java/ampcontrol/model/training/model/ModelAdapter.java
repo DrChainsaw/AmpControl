@@ -26,7 +26,7 @@ public interface ModelAdapter {
      * @see org.deeplearning4j.nn.multilayer.MultiLayerNetwork#doEvaluation(DataSetIterator, IEvaluation[])
      * @see org.deeplearning4j.nn.graph.ComputationGraph#doEvaluation(DataSetIterator, IEvaluation[])
      */
-    <T extends IEvaluation> T[] eval(DataSetIterator iter, T... evals);
+    <T extends IEvaluation<T>> T[] eval(DataSetIterator iter, T... evals);
 
     /**
      * Return the model as a {@link Model}

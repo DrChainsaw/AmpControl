@@ -34,7 +34,7 @@ public class ModelAdapterWithPreProc implements ModelAdapter {
     }
 
     @Override
-    public <T extends IEvaluation> T[] eval(DataSetIterator iter, T... evals)  {
+    public <T extends IEvaluation<T>> T[] eval(DataSetIterator iter, T... evals)  {
         DataSetPreProcessor existing = iter.getPreProcessor();
         iter.setPreProcessor(preProc);
         T[] result = adapter.eval(iter, evals);

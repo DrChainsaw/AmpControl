@@ -61,7 +61,7 @@ public class FitnessPolicyTrainingTest {
             }
 
             @Override
-            public <T extends IEvaluation> T[] eval(DataSetIterator iter, T... evals) {
+            public <T extends IEvaluation<T>> T[] eval(DataSetIterator iter, T... evals) {
                 throw new UnsupportedOperationException("Not implemented!");
             }
 

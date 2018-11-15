@@ -1,6 +1,5 @@
 package ampcontrol.model.training.model;
 
-import ampcontrol.model.training.data.iterators.CachingDataSetIterator;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.model.validation.Validation;
@@ -15,9 +14,8 @@ import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Handles fitting and evaluation of models encapsulated by a {@link ModelAdapter}. Manages {@link CachingDataSetIterator
- * CachingDataSetIterators} for training and evaluation and suspends training in case score or activation of the model
- * is NaN.
+ * Handles fitting and evaluation of models encapsulated by a {@link ModelAdapter}. Manages {@link MiniEpochDataSetIterator}s
+ * for training and evaluation and suspends training in case score or activation of the model is NaN.
  *
  * @author Christian Skärby
  */
@@ -31,7 +29,7 @@ public class GenericModelHandle implements ModelHandle {
     private final MiniEpochDataSetIterator evalIter;
     private final ModelAdapter model;
     private final String name;
-    private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
+    private final Collection<Validation<? extends IEvaluation<?>>> validations = new ArrayList<>();
 
     private int nanTimeOutTimer = nanTimeOutTime;
 
@@ -53,7 +51,7 @@ public class GenericModelHandle implements ModelHandle {
 
 
     @Override
-    public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
+    public void registerValidation(Validation.Factory<? extends IEvaluation<?>> validationFactory) {
         validations.add(validationFactory.create(evalIter.getLabels()));
     }
 
@@ -95,11 +93,11 @@ public class GenericModelHandle implements ModelHandle {
 
         evalIter.restartMiniEpoch();
 
-        final IEvaluation[] evalArr = validations.stream()
+        final IEvaluation<?>[] evalArr = validations.stream()
                 .map(Validation::get)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .toArray(IEvaluation[]::new);
+                .toArray(IEvaluation<?>[]::new);
 
         if (evalArr.length > 0) {
             model.eval(evalIter, evalArr);

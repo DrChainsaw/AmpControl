@@ -64,6 +64,22 @@ public class NanScoreWatcherTest {
         callback.assertWasCalled(true);
     }
 
+    /**
+     * Test iterationDone with a model having score NaN being called only once
+     */
+    @Test
+    public void iterationDoneNanOnce() {
+        final Model nanScoreModel = new ScoreModel(Double.NaN);
+        final ProbeCallback callback = new ProbeCallback();
+        final NanScoreWatcher watcher = NanScoreWatcher.once(callback);
+
+        watcher.iterationDone(nanScoreModel, 1,1);
+        callback.assertWasCalled(true);
+        callback.wasCalled = false;
+        watcher.iterationDone(nanScoreModel, 2, 1);
+        callback.assertWasCalled(false);
+    }
+
     private final static class ProbeCallback implements Runnable {
 
         private boolean wasCalled = false;
