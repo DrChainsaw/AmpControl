@@ -187,7 +187,7 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 20).forEach(candInd -> {
+        IntStream.range(0, 30).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -204,7 +204,7 @@ public final class MutatingConv2dFactory {
                 baseBuilder = createSeedModelBuilder(graphSpyBuilder);
             } else {
                 baseBuilder = new OverrideName(createSeedModelBuilder(UnaryOperator.identity()).name(),
-                        createRandomModelBuilder(new Random(candInd * 666), graphSpyBuilder));
+                        createRandomModelBuilder(new Random(candInd + 666), graphSpyBuilder));
             }
 
             final ModelBuilder builder = new DeserializingModelBuilder(
@@ -324,7 +324,7 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .first(new ClearListeners<>())
                                         // Kind of a fitness policy
-                                        .second(new AddListener<>(fitnessConsumer -> new NanScoreWatcher(() -> fitnessConsumer.accept(Double.MAX_VALUE))))
+                                        .second(new AddListener<>(fitnessConsumer -> NanScoreWatcher.once(() -> fitnessConsumer.accept(Double.MAX_VALUE))))
                                         // Not a fitness policy
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
@@ -342,7 +342,7 @@ public final class MutatingConv2dFactory {
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
                                                 new EvolveSelection<>(
-                                                        new RouletteSelection<EvolvingGraphAdapter>(rng::nextDouble)))
+                                                        new RouletteSelection<>(rng::nextDouble)))
                                         .build()
                         )));
 
@@ -365,7 +365,7 @@ public final class MutatingConv2dFactory {
                         .build())
                 .collect(Collectors.toSet());
         return new NoutMutation(
-                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.15));
+                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.1));
     }
 
     private Mutation<ComputationGraphConfiguration.GraphBuilder> createKernelSizeMutation(
@@ -374,7 +374,7 @@ public final class MutatingConv2dFactory {
             int rngSign) {
         final Random rng = new Random(seed);
         return new LayerContainedMutation(
-                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.1)
+                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.05)
                         .map(layerName ->
                                 LayerContainedMutation.LayerMutation.builder()
                                         .mutationInfo(
@@ -450,7 +450,7 @@ public final class MutatingConv2dFactory {
 
                 }).build()
         )
-                .filter(mut -> rng.nextDouble() < 0.1));
+                .filter(mut -> rng.nextDouble() < 0.15));
     }
 
     @NotNull
@@ -617,7 +617,7 @@ public final class MutatingConv2dFactory {
                         .setFactory(spyFactory))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
-                        .setLambda(0.0029));
+                        .setLambda(0.00299));
     }
 
     // Random model
@@ -671,6 +671,6 @@ public final class MutatingConv2dFactory {
 
         return builder.andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                 .setAlpha(0.6)
-                .setLambda(0.0031));
+                .setLambda(0.003));
     }
 }
