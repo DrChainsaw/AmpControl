@@ -219,10 +219,17 @@ public final class MutatingConv2dFactory {
                     mutationLayerState,
                     baseName);
 
-            final EvolvingGraphAdapter adapter =
-                    new EvolvingGraphAdapter(graph, mutation,
-                            graphToTransfer -> new ParameterTransfer(graphToTransfer,
-                                    Objects.requireNonNull(comparatorRegistry.get(graphToTransfer))));
+            final EvolvingGraphAdapter adapter = EvolvingGraphAdapter.builder(graph)
+                    .mutation(mutation)
+                    .paramTransfer(graphToPerVertexNameToTransfer -> new ParameterTransfer(
+                            graphToPerVertexNameToTransfer,
+                                    // ParameterTransfer wants a mapping from vertex name to comparator. comparatorRegistry
+                                    // has one such mapping for each ComputationGraph, but we first need to determine
+                                    // which ComputationGraph is used for the given vertex
+                                    Objects.requireNonNull(
+                                            vertexName -> comparatorRegistry.get(
+                                            graphToPerVertexNameToTransfer.apply(vertexName)).apply(vertexName))))
+                    .build();
 
             initialPopulation.add(adapter);
 

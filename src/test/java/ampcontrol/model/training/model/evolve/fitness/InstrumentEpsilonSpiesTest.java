@@ -32,7 +32,7 @@ public class InstrumentEpsilonSpiesTest {
      */
     @Test
     public void instrumentAndFit() {
-        final INDArray arr = Nd4j.randn(new long[] {1, 2, 10 ,15});
+        final INDArray arr = Nd4j.randn(new long[]{1, 2, 10, 15});
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .graphBuilder()
                 .addInputs("input")
@@ -50,7 +50,8 @@ public class InstrumentEpsilonSpiesTest {
         final ModelComparatorRegistry registry = new ModelComparatorRegistry();
         final InstrumentEpsilonSpies<EvolvingGraphAdapter> instrument = new InstrumentEpsilonSpies<>(registry);
 
-        instrument.apply(new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(gb -> gb)), fitness -> fail("Shall not report fitness!"));
+        instrument.apply(EvolvingGraphAdapter.builder(graph).mutation(new NoMutationStateWapper<>(gb -> gb)).build(),
+                fitness -> fail("Shall not report fitness!"));
 
         assertTrue("Expected comparator!", registry.get(graph).apply("first").isPresent());
         assertFalse("Did not expect comparator!", registry.get(graph).apply("second").isPresent());

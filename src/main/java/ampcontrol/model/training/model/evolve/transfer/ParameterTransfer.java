@@ -120,8 +120,18 @@ public class ParameterTransfer {
         this(sourceCompGraph, str -> Optional.empty());
     }
 
+    public ParameterTransfer(Function<String, ComputationGraph> sourceCompGraph) {
+        this(sourceCompGraph, str -> Optional.empty());
+    }
+
     public ParameterTransfer(ComputationGraph sourceCompGraph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
         this.sourceCompGraph = sourceCompGraph;
+        this.compFactory = compFactory;
+        this.registry = new TransferRegistry();
+    }
+
+    public ParameterTransfer(Function<String, ComputationGraph> sourceCompGraph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
+        this.sourceCompGraph = sourceCompGraph.apply("dummy");
         this.compFactory = compFactory;
         this.registry = new TransferRegistry();
     }

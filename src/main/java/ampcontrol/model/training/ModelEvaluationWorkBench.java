@@ -72,111 +72,118 @@ class ModelEvaluationWorkBench {
     }
 
     private void evalAddConvBlock(ComputationGraph graph, String layer) {
-        final ModelAdapter addConvBlock = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
-                AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
-                        .first(gb -> {
-                            gb.setInputTypes(InputType.inferInputType(trainIter.next().getFeatures()));
-                            return gb;
-                        })
-                        .andThen(new GraphMutation(() ->
-                                Stream.of(GraphMutation.GraphMutationDescription.builder()
-                                        .mutation(
-                                                new BlockMutationFunction(
-                                                        nOut ->
-                                                                //new ResBlock().setBlockConfig(
+        final ModelAdapter addConvBlock = EvolvingGraphAdapter.builder(graph)
+                .mutation(new NoMutationStateWapper<>(
+                        AggMutation.<ComputationGraphConfiguration.GraphBuilder>builder()
+                                .first(gb -> {
+                                    gb.setInputTypes(InputType.inferInputType(trainIter.next().getFeatures()));
+                                    return gb;
+                                })
+                                .andThen(new GraphMutation(() ->
+                                        Stream.of(GraphMutation.GraphMutationDescription.builder()
+                                                .mutation(
+                                                        new BlockMutationFunction(
+                                                                nOut ->
+                                                                        //new ResBlock().setBlockConfig(
                                                                         new Conv2D()
                                                                                 .setConvolutionMode(ConvolutionMode.Same)
                                                                                 .setKernelSize(3)
                                                                                 .setNrofKernels(nOut.intValue())
-                                                ,
-                                                        new String[]{layer},
-                                                        str -> "mut_" + str))
-                                        .build())
-                        ))
-                        .build())).evolve();
+                                                                ,
+                                                                new String[]{layer},
+                                                                str -> "mut_" + str))
+                                                .build())
+                                ))
+                                .build()))
+                .build().evolve();
         evaluateExperiment(addConvBlock, "addConvBlock: ");
     }
 
 
     private void evalDecreaseKernelSize(ComputationGraph graph, String layer) {
-        final ModelAdapter decreaseKs = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
-                new LayerContainedMutation(() ->
-                        Stream.of(LayerContainedMutation.LayerMutation.builder()
-                                .mutationInfo(LayerMutationInfo.builder()
-                                        .layerName(layer)
-                                        .build())
-                                .mutation(layerConfIn -> Optional.ofNullable(layerConfIn)
-                                        .map(Layer::clone)
-                                        .filter(layerConf -> layerConf instanceof ConvolutionLayer)
-                                        .map(layerConf -> (ConvolutionLayer) layerConf)
-                                        .map(convConf -> {
-                                            convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] - 1, convConf.getKernelSize()[1]});
-                                            convConf.setWeightInit(WeightInit.DISTRIBUTION);
-                                            convConf.setDist(new ConstantDistribution(0));
-                                            return convConf;
-                                        })
-                                        .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))
-                                .build()))
-        )).evolve();
+        final ModelAdapter decreaseKs = EvolvingGraphAdapter.builder(graph)
+                .mutation(new NoMutationStateWapper<>(
+                        new LayerContainedMutation(() ->
+                                Stream.of(LayerContainedMutation.LayerMutation.builder()
+                                        .mutationInfo(LayerMutationInfo.builder()
+                                                .layerName(layer)
+                                                .build())
+                                        .mutation(layerConfIn -> Optional.ofNullable(layerConfIn)
+                                                .map(Layer::clone)
+                                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                                .map(layerConf -> (ConvolutionLayer) layerConf)
+                                                .map(convConf -> {
+                                                    convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] - 1, convConf.getKernelSize()[1]});
+                                                    convConf.setWeightInit(WeightInit.DISTRIBUTION);
+                                                    convConf.setDist(new ConstantDistribution(0));
+                                                    return convConf;
+                                                })
+                                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))
+                                        .build()))
+                )).build().evolve();
         evaluateExperiment(decreaseKs, "decreaseKernelSize: ");
     }
 
     private void evalIncreaseKernelSize(ComputationGraph graph, String layer) {
-        final ModelAdapter increaseKs = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
-                new LayerContainedMutation(() ->
-                        Stream.of(LayerContainedMutation.LayerMutation.builder()
-                                .mutationInfo(LayerMutationInfo.builder()
-                                        .layerName(layer)
-                                        .build())
-                                .mutation(layerConfIn -> Optional.of(layerConfIn)
-                                        .map(Layer::clone)
-                                        .filter(layerConf -> layerConf instanceof ConvolutionLayer)
-                                        .map(layerConf -> (ConvolutionLayer) layerConf)
-                                        .map(convConf -> {
-                                            convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] + 1, convConf.getKernelSize()[1]});
-                                            convConf.setWeightInit(WeightInit.DISTRIBUTION);
-                                            convConf.setDist(new ConstantDistribution(0));
-                                            return convConf;
-                                        })
-                                        .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))
-                                .build()))
-        )).evolve();
+        final ModelAdapter increaseKs = EvolvingGraphAdapter.builder(graph)
+                .mutation(new NoMutationStateWapper<>(
+                        new LayerContainedMutation(() ->
+                                Stream.of(LayerContainedMutation.LayerMutation.builder()
+                                        .mutationInfo(LayerMutationInfo.builder()
+                                                .layerName(layer)
+                                                .build())
+                                        .mutation(layerConfIn -> Optional.of(layerConfIn)
+                                                .map(Layer::clone)
+                                                .filter(layerConf -> layerConf instanceof ConvolutionLayer)
+                                                .map(layerConf -> (ConvolutionLayer) layerConf)
+                                                .map(convConf -> {
+                                                    convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] + 1, convConf.getKernelSize()[1]});
+                                                    convConf.setWeightInit(WeightInit.DISTRIBUTION);
+                                                    convConf.setDist(new ConstantDistribution(0));
+                                                    return convConf;
+                                                })
+                                                .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))
+                                        .build()))
+                )).build().evolve();
         evaluateExperiment(increaseKs, "increaseKernelSize: ");
     }
 
     private void evalDecreaseNoutOptimal(ComputationGraph graph, String layer) {
         final Comparator<Integer> actContribComparator = getActivationContributionComparator(trainIter, layer, graph);
-        final ModelAdapter decreaseNoutOpt = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
-                new NoutMutation(() -> Stream.of(
-                        NoutMutation.NoutMutationDescription.builder()
-                                .layerName(layer)
-                                .mutateNout(nOut -> nOut - 1)
-                                .build()))
-        ),
-                graphVar -> new ParameterTransfer(graphVar,
-                        layerName -> Optional.of(i -> actContribComparator))).evolve();
+        final ModelAdapter decreaseNoutOpt = EvolvingGraphAdapter.builder(graph)
+                .mutation(new NoMutationStateWapper<>(
+                        new NoutMutation(() -> Stream.of(
+                                NoutMutation.NoutMutationDescription.builder()
+                                        .layerName(layer)
+                                        .mutateNout(nOut -> nOut - 1)
+                                        .build()))
+                ))
+                .paramTransfer(graphVar -> new ParameterTransfer(graphVar,
+                        layerName -> Optional.of(i -> actContribComparator))).build().evolve();
         evaluateExperiment(decreaseNoutOpt, "decreaseNoutOpt: ");
     }
 
     private void evalDecreaseNout(ComputationGraph graph, String layer) {
-        final ModelAdapter decreaseNout = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
+        final ModelAdapter decreaseNout = EvolvingGraphAdapter.builder(graph)
+                .mutation(new NoMutationStateWapper<>(
                 new NoutMutation(() -> Stream.of(
                         NoutMutation.NoutMutationDescription.builder()
                                 .layerName(layer)
                                 .mutateNout(nOut -> nOut - 1)
                                 .build()))
-        )).evolve();
+        )).build().evolve();
         evaluateExperiment(decreaseNout, "decreaseNout: ");
     }
 
     private void evalIncreaseNout(ComputationGraph graph, String layer) {
-        final ModelAdapter increaseNout = new EvolvingGraphAdapter(graph, new NoMutationStateWapper<>(
+        final ModelAdapter increaseNout = EvolvingGraphAdapter.builder(graph)
+                .mutation(new NoMutationStateWapper<>(
                 new NoutMutation(() -> Stream.of(
                         NoutMutation.NoutMutationDescription.builder()
                                 .layerName(layer)
                                 .mutateNout(nOut -> nOut + 1)
                                 .build()))
-        )).evolve();
+        )).build().evolve();
         evaluateExperiment(increaseNout, "increaseNout: ");
     }
 
