@@ -56,7 +56,7 @@ public class TrainingHarnessTest {
         private int nrofEvalCalls = 0;
         private final String name;
 
-        private final Collection<Validation<? extends IEvaluation<?>>> validations = new ArrayList<>();
+        private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
         private final List<String> labels = Arrays.asList("greg", "grgrhh");
         private final Set<String> savedModelNames = new LinkedHashSet<>();
 
@@ -104,7 +104,7 @@ public class TrainingHarnessTest {
 
 
         @Override
-        public void registerValidation(Validation.Factory<? extends IEvaluation<?>> validationFactory) {
+        public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
             validations.add(validationFactory.create(labels));
         }
 

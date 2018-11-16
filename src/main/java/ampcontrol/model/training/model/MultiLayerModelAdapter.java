@@ -33,7 +33,7 @@ public class MultiLayerModelAdapter implements ModelAdapter {
     }
 
     @Override
-    public <T extends IEvaluation<T>> T[] eval(DataSetIterator iter, T... evals) {
+    public <T extends IEvaluation> T[] eval(DataSetIterator iter, T... evals) {
         return model.doEvaluation(iter, evals);
     }
 

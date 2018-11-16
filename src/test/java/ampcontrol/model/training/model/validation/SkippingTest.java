@@ -48,7 +48,7 @@ public class SkippingTest {
         probe.assertNrofNotifications(2);
     }
 
-    private static class ProbeValidation<T extends IEvaluation<T>> implements Validation<T> {
+    private static class ProbeValidation<T extends IEvaluation> implements Validation<T> {
 
         private final T t;
         private int nrofNotify = 0;

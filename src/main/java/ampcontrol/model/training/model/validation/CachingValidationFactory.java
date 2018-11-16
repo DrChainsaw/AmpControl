@@ -11,7 +11,7 @@ import java.util.List;
  *
  * @author Christian Skärby
  */
-public final class CachingValidationFactory<T extends IEvaluation<T>> implements Validation.Factory<T> {
+public final class CachingValidationFactory<T extends IEvaluation> implements Validation.Factory<T> {
 
     private final Validation.Factory<T> sourceFactory;
     private Validation<T> validation;

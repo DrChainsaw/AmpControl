@@ -29,7 +29,7 @@ public class GenericModelHandle implements ModelHandle {
     private final MiniEpochDataSetIterator evalIter;
     private final ModelAdapter model;
     private final String name;
-    private final Collection<Validation<? extends IEvaluation<?>>> validations = new ArrayList<>();
+    private final Collection<Validation<? extends IEvaluation>> validations = new ArrayList<>();
 
     private int nanTimeOutTimer = nanTimeOutTime;
 
@@ -51,7 +51,7 @@ public class GenericModelHandle implements ModelHandle {
 
 
     @Override
-    public void registerValidation(Validation.Factory<? extends IEvaluation<?>> validationFactory) {
+    public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
         validations.add(validationFactory.create(evalIter.getLabels()));
     }
 
@@ -93,11 +93,11 @@ public class GenericModelHandle implements ModelHandle {
 
         evalIter.restartMiniEpoch();
 
-        final IEvaluation<?>[] evalArr = validations.stream()
+        final IEvaluation[] evalArr = validations.stream()
                 .map(Validation::get)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .toArray(IEvaluation<?>[]::new);
+                .toArray(IEvaluation[]::new);
 
         if (evalArr.length > 0) {
             model.eval(evalIter, evalArr);

@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class ModelHandlePopulation implements ModelHandle {
 
     private final Population<ModelHandle> population;
-    private final Set<Validation.Factory<? extends IEvaluation<?>>> validationFactories = new LinkedHashSet<>();
+    private final Set<Validation.Factory<? extends IEvaluation>> validationFactories = new LinkedHashSet<>();
     private final List<TrainingListener> listeners = new ArrayList<>();
     private final Function<Integer, FileNamePolicy> candidateFileNamePolicy;
     private final String name;
@@ -68,8 +68,8 @@ public class ModelHandlePopulation implements ModelHandle {
     }
 
     @Override
-    public void registerValidation(Validation.Factory<? extends IEvaluation<?>> validationFactory) {
-        final Validation.Factory<? extends IEvaluation<?>> cachingFactory = new CachingValidationFactory<>(validationFactory);
+    public void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory) {
+        final Validation.Factory<? extends IEvaluation> cachingFactory = new CachingValidationFactory<>(validationFactory);
         validationFactories.add(cachingFactory);
         firstModel().registerValidation(cachingFactory);
     }

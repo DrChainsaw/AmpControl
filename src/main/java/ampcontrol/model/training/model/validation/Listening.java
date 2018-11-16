@@ -5,7 +5,7 @@ import org.deeplearning4j.eval.IEvaluation;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public class Listening<T extends IEvaluation<T>> implements Validation<T> {
+public class Listening<T extends IEvaluation> implements Validation<T> {
 
     private final Validation<T> sourceValidation;
     private final Consumer<Boolean> listener;

@@ -39,7 +39,7 @@ public class GraphModelAdapter implements CompGraphAdapter {
     }
 
     @Override
-    public <T extends IEvaluation<T>> T[] eval(DataSetIterator iter, T... evals)  {
+    public <T extends IEvaluation> T[] eval(DataSetIterator iter, T... evals)  {
         return graph.doEvaluation(iter, evals);
     }
 

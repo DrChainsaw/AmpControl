@@ -341,7 +341,7 @@ public final class MutatingConv2dFactory {
                                 CompoundFixedSelection.<EvolvingGraphAdapter>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
-                                                new EvolveSelection<>(
+                                                new EvolveSelection<EvolvingGraphAdapter>( // Seems javac must have this
                                                         new RouletteSelection<>(rng::nextDouble)))
                                         .build()
                         )));

@@ -10,9 +10,9 @@ import java.util.Optional;
  *
  * @param <T>
  */
-public interface Validation<T extends IEvaluation<T>> {
+public interface Validation<T extends IEvaluation> {
 
-    interface Factory<T extends IEvaluation<T>> {
+    interface Factory<T extends IEvaluation> {
         Validation<T> create(List<String> labels);
     }
 

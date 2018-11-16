@@ -39,7 +39,7 @@ public interface ModelHandle {
      * Register a {@link Validation} to perform
      * @param validationFactory a {@link Validation.Factory} to create the validation.
      */
-    void registerValidation(Validation.Factory<? extends IEvaluation<?>> validationFactory);
+    void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory);
 
     /**
      * Adds a {@link TrainingListener} to the model
