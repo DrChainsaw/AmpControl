@@ -65,8 +65,8 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
-        //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
-        //        " nIn: " + nIn + " nOut: " + nOut);
+       // System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
+       //         " nIn: " + nIn + " nOut: " + nOut);
 
         final Collection<String> connectedMergeVertices = handleMergeVertexOutputs(graphBuilder, outputNames);
 
@@ -225,14 +225,13 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         currentPath.stream()
                                 // add vertices which are either 1) not mergevertices and 2) mergevertices with only 1 input (the one which is about to be removed)
                                 .filter(childvertex -> outputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
-                                // .peek(vert -> //System.out.println("add to path: " + vert))
+                                // .peek(vert -> System.out.println("add to path: " + vert))
                                 .forEach(pathToMerge::add);
 
                     }
                 })
                 .leaveListener(currentPath::remove)
                 .build().children(vertexNameToRemove).forEach(vertex -> {/* Ignore */});
-        ////System.out.println();
         //System.out.println("outputsConnectedToMergeVertex map " + outputsToConnectedMergeVertex);
         //System.out.println("path to merge: " + pathToMerge);
 
@@ -248,6 +247,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         for (Set<String> inputNames : outputsToConnectedMergeVertex.values()) {
             inputNames.stream()
+                    .filter(vertex -> !pathToMerge.contains(vertex))
                     .findFirst()
                     .ifPresent(viableOutputs::add);
         }
