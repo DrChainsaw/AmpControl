@@ -1,6 +1,8 @@
 package ampcontrol.model.training.model.evolve.crossover;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
+import ampcontrol.model.training.model.evolve.crossover.graph.GraphInfo;
+import ampcontrol.model.training.model.evolve.crossover.graph.SinglePoint;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
@@ -33,11 +35,11 @@ public class SinglePointTest {
         final ComputationGraph graph2 = GraphUtils.getCnnGraph("second1", "second2", "second3");
 
         final InputType inputType = InputType.convolutional(33,33,3);
-        final SinglePoint.Info info1 =  inputOf(graph1, inputType);
-        final SinglePoint.Info info2 =  inputOf(graph2, inputType);
+        final GraphInfo info1 =  inputOf(graph1, inputType);
+        final GraphInfo info2 =  inputOf(graph2, inputType);
 
 
-        final SinglePoint.Info output = new SinglePoint(() -> new SinglePoint.PointSelection(0.25, 0d)).cross(info1, info2);
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.125, 0d)).cross(info1, info2);
 
         final Collection<String> expected = Arrays.asList("first1", "second2", "second3");
         final Collection<String> notExpected = Arrays.asList("second1", "first2", "first3");
@@ -77,11 +79,11 @@ public class SinglePointTest {
         final ComputationGraph graph2 = GraphUtils.getForkResNet("secondBefore", "secondAfter", "second1", "second2", "second3");
 
         final InputType inputType = InputType.convolutional(33,33,3);
-        final SinglePoint.Info info1 =  inputOf(graph1, inputType);
-        final SinglePoint.Info info2 =  inputOf(graph2, inputType);
+        final GraphInfo info1 =  inputOf(graph1, inputType);
+        final GraphInfo info2 =  inputOf(graph2, inputType);
 
 
-        final SinglePoint.Info output = new SinglePoint(() -> new SinglePoint.PointSelection(1.4, 0.1)).cross(info1, info2);
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.7, 0.1)).cross(info1, info2);
 
         final Collection<String> expected = Arrays.asList("firstBefore", "secondAfter");
         final Collection<String> notExpected = Arrays.asList("secondBefore", "firstAfter", "first1", "second1");
@@ -112,8 +114,8 @@ public class SinglePointTest {
         newGraph.outputSingle(Nd4j.randn(shape));
     }
 
-    private static SinglePoint.Info inputOf(ComputationGraph graph, InputType inputType) {
-        return new SinglePoint.Input(
+    private static GraphInfo inputOf(ComputationGraph graph, InputType inputType) {
+        return new GraphInfo.Input(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
                         new NeuralNetConfiguration.Builder(graph.conf()))
         .setInputTypes(inputType));
