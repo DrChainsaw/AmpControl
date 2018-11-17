@@ -65,16 +65,29 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
-       // System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
-       //         " nIn: " + nIn + " nOut: " + nOut);
+        //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
+        //        " nIn: " + nIn + " nOut: " + nOut);
 
-        final Collection<String> connectedMergeVertices = handleMergeVertexOutputs(graphBuilder, outputNames);
+        final Collection<String> connectedMergeVertices = new ArrayList<>();
 
-        //System.out.println("after merge handling: " + outputNames);
+        // Skip the below if removal is trivial as handleMergeVertexOutputs tends to mess up stuff around MergeVertices in
+        // a way so that it becomes harder to remove parts of the fork.
+        if (isSizeChangePossible(graphBuilder.getVertices().get(vertexNameToRemove))
+                || graphBuilder.getVertices().get(vertexNameToRemove) instanceof ElementWiseVertex) {
+            connectedMergeVertices.addAll(handleMergeVertexOutputs(graphBuilder, outputNames));
 
-        removeOrphanedElemWiseVertices(graphBuilder, outputNames);
+            //System.out.println("after merge handling: " + outputNames);
 
-        //System.out.println("after elemwise handling: " + outputNames + " input " + inputNames);
+            removeOrphanedElemWiseVertices(graphBuilder, outputNames);
+
+            //System.out.println("after elemwise handling: " + outputNames + " input " + inputNames);
+
+            removeRedunantMergeVertices(graphBuilder, inputNames, outputNames);
+        } else {
+            graphBuilder.removeVertex(vertexNameToRemove, true);
+        }
+
+        //System.out.println("after redundant merge handling: " + outputNames + " input " + inputNames);
 
         final Map<String, Set<String>> inputNamesPerOutput = getInputNamesPerOutput(graphBuilder, outputNames, inputNames);
 
@@ -202,7 +215,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         // 1) are any of the outputs connected to a merge vertex
         // and
         // 2) What are the other inputs to that merge vertex if 1)
-        final Map<String, Set<String>> outputsToConnectedMergeVertex = new HashMap<>();
+        final Map<String, Set<String>> inputsToConnectedMergeVertex = new HashMap<>();
         final Set<String> pathToMerge = new LinkedHashSet<>();
 
         final Graph<String> backwards = TraverseBuilder.backwards(builder)
@@ -215,37 +228,29 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .traverseCondition(vertex -> !isSizeChangePossible(builder.getVertices().get(vertex)))
                 .enterListener(currentPath::add)
                 .visitListener(vertex -> {
-                    //System.out.println("visit: " + vertex);
+                    ///System.out.println("visit: " + vertex);
                     if (builder.getVertices().get(vertex) instanceof MergeVertex) {
-                        outputsToConnectedMergeVertex.put(vertex,
+                        inputsToConnectedMergeVertex.put(vertex,
                                 new LinkedHashSet<>(backwards.children(vertex)
                                         .filter(vert -> isSizeChangePossible(builder.getVertices().get(vert)))
                                         .collect(Collectors.toSet())));
                         //System.out.println("currpath: " + currentPath);
                         currentPath.stream()
                                 // add vertices which are either 1) not mergevertices and 2) mergevertices with only 1 input (the one which is about to be removed)
-                                .filter(childvertex -> outputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
-                                // .peek(vert -> System.out.println("add to path: " + vert))
+                                .filter(childvertex -> inputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
+                                //.peek(vert -> System.out.println("add to path: " + vert))
                                 .forEach(pathToMerge::add);
 
                     }
                 })
                 .leaveListener(currentPath::remove)
                 .build().children(vertexNameToRemove).forEach(vertex -> {/* Ignore */});
-        //System.out.println("outputsConnectedToMergeVertex map " + outputsToConnectedMergeVertex);
+        //System.out.println("outputsConnectedToMergeVertex map " + inputsToConnectedMergeVertex);
         //System.out.println("path to merge: " + pathToMerge);
 
         outputNames.removeAll(pathToMerge);
-        pathToMerge.add(vertexNameToRemove);
 
-        pathToMerge.forEach(vertex -> {
-            // "Loneley" mergevertices will be part of pathToMerge, need to remove them
-            //System.out.println("Remove " + vertex);
-            outputsToConnectedMergeVertex.remove(vertex);
-            builder.removeVertex(vertex, true);
-        });
-
-        for (Set<String> inputNames : outputsToConnectedMergeVertex.values()) {
+        for (Set<String> inputNames : inputsToConnectedMergeVertex.values()) {
             inputNames.stream()
                     .filter(vertex -> !pathToMerge.contains(vertex))
                     .findFirst()
@@ -253,15 +258,50 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         }
 
         outputNames.addAll(viableOutputs);
-        outputNames.removeAll(outputsToConnectedMergeVertex.keySet());
+        outputNames.removeAll(inputsToConnectedMergeVertex.keySet());
+
+        if (outputNames.isEmpty()) {
+            log.info("Failed to remove vertex " + vertexNameToRemove + " with outputs to connected MergeVertex: " + inputsToConnectedMergeVertex);
+            return Collections.emptyList();
+        }
+        pathToMerge.add(vertexNameToRemove);
+
+        pathToMerge.forEach(vertex -> {
+            // "Loneley" mergevertices will be part of pathToMerge, need to remove them
+            //System.out.println("Remove " + vertex);
+            inputsToConnectedMergeVertex.remove(vertex);
+            builder.removeVertex(vertex, true);
+        });
 
         // Whats going on here? We only need the "top" mergevertex when traversing downwards as we will visit all the
         // other vertices subsequently. This is required to split nOuts correctly through mergevertices
         // Maybe this belongs closer to nOut setting though...
-        return outputsToConnectedMergeVertex.keySet().stream()
+        return inputsToConnectedMergeVertex.keySet().stream()
                 .filter(vertex -> TraverseBuilder.forwards(builder).build().children(vertex)
-                        .noneMatch(child -> outputsToConnectedMergeVertex.keySet().contains(child)))
+                        .noneMatch(child -> inputsToConnectedMergeVertex.keySet().contains(child)))
                 .collect(Collectors.toSet());
+    }
+
+    private static void removeRedunantMergeVertices(GraphBuilder builder, Collection<String> inputNames, Collection<String> outputNames) {
+
+        final Graph<String> graph =
+                new Filter<>(vertex -> builder.getVertices().get(vertex) instanceof MergeVertex,
+                        new Filter<>(vertex -> builder.getVertexInputs().get(vertex).size() == 1,
+                                //new Peek<>(vertex -> System.out.println("check redundant merge " + vertex),
+                                TraverseBuilder.forwards(builder)
+                                        .traverseCondition(vertex -> true) // could do better here, something like is an outputname or size change propagates
+                                        .build()));
+
+        inputNames.stream().forEach(name -> graph.children(name).forEach(outputName -> {
+                    if (outputNames.contains(outputName)) {
+                        new ForwardOf(builder).children(outputName).forEach(outputNames::add);
+                        outputNames.remove(outputName);
+                    }
+                    new RemoveVertexFunction(outputName).apply(builder);
+
+
+                })
+        );
     }
 
     private static void changeNoutOfInputs(GraphBuilder graphBuilder, Collection<String> inputNames, long nOut) {
