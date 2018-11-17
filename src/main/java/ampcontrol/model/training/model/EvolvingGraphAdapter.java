@@ -11,11 +11,13 @@ import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 
@@ -31,10 +33,14 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
     private final ComputationGraph graph;
     private final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation;
     private final Crossover<GraphInfo> crossover;
-    private final Function<Function<String, ComputationGraph>, ParameterTransfer> parameterTransferFactory;
+    private final BiFunction<
+            Function<String, GraphVertex>,
+            Function<GraphVertex, ComputationGraph>,
+            ParameterTransfer> parameterTransferFactory;
 
     /**
      * Create a builder for this class
+     *
      * @param graph {@link ComputationGraph} to wrap
      * @return a new Builder
      */
@@ -47,7 +53,10 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
             ComputationGraph graph,
             MutationState<ComputationGraphConfiguration.GraphBuilder> mutation,
             Crossover<GraphInfo> crossover,
-            Function<Function<String, ComputationGraph>, ParameterTransfer> parameterTransferFactory) {
+            BiFunction<
+                    Function<String, GraphVertex>,
+                    Function<GraphVertex, ComputationGraph>,
+                    ParameterTransfer> parameterTransferFactory) {
         this.graph = graph;
         this.mutation = mutation;
         this.crossover = crossover;
@@ -87,7 +96,7 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
         final ComputationGraphConfiguration.GraphBuilder mutated = newMutationState.mutate(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
                         new NeuralNetConfiguration.Builder(graph.conf().clone())));
-        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(str -> graph);
+        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph::getVertex, gv -> graph);
 
         final ComputationGraph newGraph = new ComputationGraph(mutated.build());
         newGraph.init();
@@ -100,7 +109,10 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
         private final ComputationGraph graph;
         private MutationState<ComputationGraphConfiguration.GraphBuilder> mutation = new NoMutationStateWapper<>(builder -> builder);
         private Crossover<GraphInfo> crossover = (info1, info2) -> info1;
-        private Function<Function<String, ComputationGraph>, ParameterTransfer> parameterTransferFactory = ParameterTransfer::new;
+        private BiFunction<
+                Function<String, GraphVertex>,
+                Function<GraphVertex, ComputationGraph>,
+                ParameterTransfer> parameterTransferFactory = (graph, gvToCg) -> new ParameterTransfer(graph);
 
         private Builder(ComputationGraph graph) {
             this.graph = graph;
@@ -135,7 +147,10 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
          * @param parameterTransferFactory Factory for {@link ParameterTransfer}
          * @return the Builder for fluent API
          */
-        public Builder paramTransfer(Function<Function<String, ComputationGraph>, ParameterTransfer> parameterTransferFactory) {
+        public Builder paramTransfer(BiFunction<
+                Function<String, GraphVertex>,
+                Function<GraphVertex, ComputationGraph>,
+                ParameterTransfer> parameterTransferFactory) {
             this.parameterTransferFactory = parameterTransferFactory;
             return this;
         }

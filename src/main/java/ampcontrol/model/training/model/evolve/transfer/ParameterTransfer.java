@@ -32,7 +32,7 @@ public class ParameterTransfer {
 
     // private static final Logger log = LoggerFactory.getLogger(ParameterTransfer.class);
 
-    private final ComputationGraph sourceCompGraph;
+    private final Function<String, GraphVertex> sourceCompGraph;
     private final Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory;
     private final Set<String> nInTransferredFromPreviousNoutLayers = new HashSet<>();
     private final TransferRegistry registry;
@@ -120,18 +120,16 @@ public class ParameterTransfer {
         this(sourceCompGraph, str -> Optional.empty());
     }
 
-    public ParameterTransfer(Function<String, ComputationGraph> sourceCompGraph) {
+    public ParameterTransfer(Function<String, GraphVertex> sourceCompGraph) {
         this(sourceCompGraph, str -> Optional.empty());
     }
 
     public ParameterTransfer(ComputationGraph sourceCompGraph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
-        this.sourceCompGraph = sourceCompGraph;
-        this.compFactory = compFactory;
-        this.registry = new TransferRegistry();
+        this(sourceCompGraph::getVertex, compFactory);
     }
 
-    public ParameterTransfer(Function<String, ComputationGraph> sourceCompGraph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
-        this.sourceCompGraph = sourceCompGraph.apply("dummy");
+    public ParameterTransfer(Function<String, GraphVertex> sourceCompGraph, Function<String, Optional<Function<Integer, Comparator<Integer>>>> compFactory) {
+        this.sourceCompGraph = sourceCompGraph;
         this.compFactory = compFactory;
         this.registry = new TransferRegistry();
     }
@@ -161,7 +159,7 @@ public class ParameterTransfer {
     private TransferTask.ListBuilder transferParameters(
             ComputationGraph targetCompGraph,
             String layerName) {
-        Optional<ParamPair> paramPairOpt = getParams(layerName, sourceCompGraph, targetCompGraph);
+        Optional<ParamPair> paramPairOpt = getParams(layerName, targetCompGraph);
         return paramPairOpt.map(paramPair -> {
 
             //System.out.println("Transfer start at " + layerName + " nInTransferred: " + nInTransferredFromPreviousNoutLayers);
@@ -196,7 +194,7 @@ public class ParameterTransfer {
         }).orElseGet(() -> {
             // Set weights to ID mapping (if possible) for new layers
             // TODO This decision does not really belong to this class!
-            findLayerVertex(layerName, targetCompGraph)
+            findLayerVertex(layerName, targetCompGraph::getVertex)
                     .map(vertex -> vertex.paramTable(false))
                     .filter(parMap -> parMap.containsKey(W))
                     .map(parMap -> parMap.get(W))
@@ -258,7 +256,7 @@ public class ParameterTransfer {
             final TransferTask.ListBuilder builder = new DependentTaskBuilder();
 
             // Add parameters (if any and if size allows for transfer) as dependent tasks
-            getParams(vertex, sourceCompGraph, targetCompGraph)
+            getParams(vertex, targetCompGraph)
                     .filter(paramPair -> canTransferNoutToNin(transferContext, paramPair))
                     .ifPresent(paramPair -> builder.addDependentTask(
                             addTasksFor(transferContext, paramPair)));
@@ -353,8 +351,8 @@ public class ParameterTransfer {
         });
     }
 
-    private Optional<GraphVertex> findLayerVertex(String name, ComputationGraph graph) {
-        return Optional.ofNullable(graph.getVertex(name))
+    private Optional<GraphVertex> findLayerVertex(String name, Function<String, GraphVertex> graph) {
+        return Optional.ofNullable(graph.apply(name))
                 .filter(GraphVertex::hasLayer)
                 .filter(vertex -> vertex.getLayer().numParams() > 0);
     }
@@ -374,11 +372,10 @@ public class ParameterTransfer {
 
     private Optional<ParamPair> getParams(
             String layerName,
-            ComputationGraph sourceGraph,
             ComputationGraph targetGraph) {
 
-        final Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, sourceGraph);
-        final Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, targetGraph);
+        final Optional<GraphVertex> sourceVertexMaybe = findLayerVertex(layerName, sourceCompGraph);
+        final Optional<GraphVertex> targetVertexMaybe = findLayerVertex(layerName, targetGraph::getVertex);
 
         if (sourceVertexMaybe.isPresent() && targetVertexMaybe.isPresent()) {
             final GraphVertex sourceVertex = sourceVertexMaybe.get();

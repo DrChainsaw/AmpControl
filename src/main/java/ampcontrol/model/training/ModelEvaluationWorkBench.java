@@ -158,7 +158,7 @@ class ModelEvaluationWorkBench {
                                         .mutateNout(nOut -> nOut - 1)
                                         .build()))
                 ))
-                .paramTransfer(graphVar -> new ParameterTransfer(graphVar,
+                .paramTransfer((graphVar, vertexToGraph) -> new ParameterTransfer(graphVar,
                         layerName -> Optional.of(i -> actContribComparator))).build().evolve();
         evaluateExperiment(decreaseNoutOpt, "decreaseNoutOpt: ");
     }

@@ -1,5 +1,7 @@
 package ampcontrol.model.training.model.evolve.crossover.graph;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 
 import java.util.Map;
@@ -12,7 +14,18 @@ import java.util.stream.Stream;
  */
 public interface GraphInfo {
 
-    public final class Input implements GraphInfo {
+    @Getter
+    @AllArgsConstructor
+    final class NameMapping {
+        private final String oldName;
+        private final String newName;
+
+        NameMapping remap(Function<String, String> map) {
+            return new NameMapping(oldName, map.apply(newName));
+        }
+    }
+    
+    final class Input implements GraphInfo {
 
         private final GraphBuilder builder;
 
@@ -26,11 +39,13 @@ public interface GraphInfo {
         }
 
         @Override
-        public Stream<String> verticesFrom(GraphInfo info) {
+        public Stream<NameMapping> verticesFrom(GraphInfo info) {
             if (info != this) {
                 throw new IllegalArgumentException("Incorrect builder!");
             }
-            return this.builder.getVertices().keySet().stream();
+            return this.builder.getVertices().keySet()
+                    .stream()
+                    .map(vertex -> new NameMapping(vertex,vertex));
         }
     }
 
@@ -50,9 +65,11 @@ public interface GraphInfo {
         }
 
         @Override
-        public Stream<String> verticesFrom(GraphInfo info) {
+        public Stream<NameMapping> verticesFrom(GraphInfo info) {
             if (info == this) {
-                return builder.getVertices().keySet().stream();
+                return builder.getVertices().keySet()
+                        .stream()
+                        .map(vertex -> new NameMapping(vertex,vertex));
             }
             return vertices.get(info).verticesFrom(this);
         }
@@ -74,15 +91,15 @@ public interface GraphInfo {
         }
 
         @Override
-        public Stream<String> verticesFrom(GraphInfo info) {
+        public Stream<NameMapping> verticesFrom(GraphInfo info) {
             return info.verticesFrom(info)
-                    .map(nameMap)
-                    .filter(Objects::nonNull);
+                    .map(nameMapping -> nameMapping.remap(nameMap))
+                    .filter(nameMapping -> Objects.nonNull(nameMapping.newName));
         }
     }
 
 
     GraphBuilder builder();
 
-    Stream<String> verticesFrom(GraphInfo info);
+    Stream<NameMapping> verticesFrom(GraphInfo info);
 }

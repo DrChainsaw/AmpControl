@@ -34,9 +34,9 @@ public class SinglePointTest {
         final ComputationGraph graph1 = GraphUtils.getCnnGraph("first1", "first2", "first3");
         final ComputationGraph graph2 = GraphUtils.getCnnGraph("second1", "second2", "second3");
 
-        final InputType inputType = InputType.convolutional(33,33,3);
-        final GraphInfo info1 =  inputOf(graph1, inputType);
-        final GraphInfo info2 =  inputOf(graph2, inputType);
+        final InputType inputType = InputType.convolutional(33, 33, 3);
+        final GraphInfo info1 = inputOf(graph1, inputType);
+        final GraphInfo info2 = inputOf(graph2, inputType);
 
 
         final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.125, 0d)).cross(info1, info2);
@@ -49,18 +49,24 @@ public class SinglePointTest {
         assertFalse("Not expected vertices are present!",
                 output.builder().getVertices().keySet().stream().anyMatch(notExpected::contains));
 
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info1).anyMatch(vertex -> vertex.matches("first1")));
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info1).noneMatch(vertex -> vertex.matches("second.*")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info1).anyMatch(vertex -> vertex.getNewName().matches("first1")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info1).noneMatch(vertex -> vertex.getNewName().matches("second.*")));
         assertFalse("Vertices not mapped to correct info!", output.verticesFrom(info1)
-                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex)));
+                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex.getNewName())));
 
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info2).anyMatch(vertex -> vertex.matches("second[1,2]")));
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info2).noneMatch(vertex -> vertex.matches("first.*")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info2).anyMatch(vertex -> vertex.getNewName().matches("second[1,2]")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info2).noneMatch(vertex -> vertex.getNewName().matches("first.*")));
         assertFalse("Vertices not mapped to correct info!", output.verticesFrom(info2)
-                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex)));
+                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex.getNewName())));
 
         assertEquals("Not all vertices are mapped!", output.builder().getVertices().keySet(),
-                Stream.concat(output.verticesFrom(info1), output.verticesFrom(info2)).collect(Collectors.toSet()));
+                Stream.concat(output.verticesFrom(info1), output.verticesFrom(info2))
+                        .map(GraphInfo.NameMapping::getNewName)
+                        .collect(Collectors.toSet()));
 
         final ComputationGraph newGraph = new ComputationGraph(output.builder().build());
         newGraph.init();
@@ -78,9 +84,9 @@ public class SinglePointTest {
         final ComputationGraph graph1 = GraphUtils.getForkNet("firstBefore", "firstAfter", "first1", "first2", "first3");
         final ComputationGraph graph2 = GraphUtils.getForkResNet("secondBefore", "secondAfter", "second1", "second2", "second3");
 
-        final InputType inputType = InputType.convolutional(33,33,3);
-        final GraphInfo info1 =  inputOf(graph1, inputType);
-        final GraphInfo info2 =  inputOf(graph2, inputType);
+        final InputType inputType = InputType.convolutional(33, 33, 3);
+        final GraphInfo info1 = inputOf(graph1, inputType);
+        final GraphInfo info2 = inputOf(graph2, inputType);
 
 
         final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.7, 0.1)).cross(info1, info2);
@@ -93,18 +99,24 @@ public class SinglePointTest {
         assertFalse("Not expected vertices are present!",
                 output.builder().getVertices().keySet().stream().anyMatch(notExpected::contains));
 
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info1).anyMatch(vertex -> vertex.matches("firstBefore")));
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info1).noneMatch(vertex -> vertex.matches("second.*")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info1).anyMatch(vertex -> vertex.getNewName().matches("firstBefore")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info1).noneMatch(vertex -> vertex.getNewName().matches("second.*")));
         assertFalse("Vertices not mapped to correct info!", output.verticesFrom(info1)
-                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex)));
+                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex.getNewName())));
 
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info2).anyMatch(vertex -> vertex.matches("secondAfter")));
-        assertTrue("Vertices not mapped to correct info!", output.verticesFrom(info2).noneMatch(vertex -> vertex.matches("first.*")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info2).anyMatch(vertex -> vertex.getNewName().matches("secondAfter")));
+        assertTrue("Vertices not mapped to correct info!",
+                output.verticesFrom(info2).noneMatch(vertex -> vertex.getNewName().matches("first.*")));
         assertFalse("Vertices not mapped to correct info!", output.verticesFrom(info2)
-                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex)));
+                .anyMatch(vertex -> !output.builder().getVertices().containsKey(vertex.getNewName())));
 
         assertEquals("Not all vertices are mapped!", output.builder().getVertices().keySet(),
-                Stream.concat(output.verticesFrom(info1), output.verticesFrom(info2)).collect(Collectors.toSet()));
+                Stream.concat(output.verticesFrom(info1), output.verticesFrom(info2))
+                        .map(GraphInfo.NameMapping::getNewName)
+                        .collect(Collectors.toSet()));
 
         final ComputationGraph newGraph = new ComputationGraph(output.builder().build());
         newGraph.init();
@@ -118,6 +130,6 @@ public class SinglePointTest {
         return new GraphInfo.Input(
                 new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
                         new NeuralNetConfiguration.Builder(graph.conf()))
-        .setInputTypes(inputType));
+                        .setInputTypes(inputType));
     }
 }

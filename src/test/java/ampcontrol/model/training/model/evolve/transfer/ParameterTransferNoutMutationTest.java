@@ -6,6 +6,7 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
+import org.deeplearning4j.nn.weights.WeightInit;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -193,7 +194,7 @@ public class ParameterTransferNoutMutationTest {
                 .mutate(
                         new ComputationGraphConfiguration.GraphBuilder(
                                 graph.getConfiguration(),
-                                new NeuralNetConfiguration.Builder(graph.conf())))
+                                new NeuralNetConfiguration.Builder(graph.conf()).weightInit(WeightInit.ZERO)))
                 .build());
         newGraph.init();
         newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
@@ -299,7 +300,8 @@ public class ParameterTransferNoutMutationTest {
                 .mutate(
                         new ComputationGraphConfiguration.GraphBuilder(
                                 graph.getConfiguration(),
-                                new NeuralNetConfiguration.Builder(graph.conf())))
+                                new NeuralNetConfiguration.Builder(graph.conf())
+                        .weightInit(WeightInit.ZERO)))
                 .build());
         newGraph.init();
         newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));

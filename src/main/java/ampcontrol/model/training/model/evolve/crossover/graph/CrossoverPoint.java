@@ -7,6 +7,8 @@ import ampcontrol.model.training.model.evolve.mutate.util.TraverseBuilder;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.graph.GraphVertex;
+import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +69,7 @@ class CrossoverPoint {
 
         alignNoutNin(builder, oldNOut, oldNin);
 
-        //System.out.println("new graph: " + builder.getVertexInputs());
+        //System.out.println("new graph: " + builder.getVertexInputs() + " inputs " + builder.getNetworkInputs());
 
         // What happens here? The user needs to be able to query the result for which vertices are from which "input"
         // info.
@@ -112,7 +114,7 @@ class CrossoverPoint {
         new Traverse<>(new ForwardOf(top.builder())).children(top.name())
                 .forEach(vertex -> builder.addVertex(
                         topVerticesNameMapping.get(vertex),
-                        top.builder().getVertices().get(vertex),
+                        renameVertexIfLayer(top.builder().getVertices().get(vertex), topVerticesNameMapping.get(vertex)),
                         top.builder().getVertexInputs().get(vertex)
                                 .stream()
                                 .map(topVerticesNameMapping::get)
@@ -120,6 +122,15 @@ class CrossoverPoint {
                                 .toArray(new String[0])));
         builder.setOutputs(top.builder().getNetworkOutputs().toArray(new String[0]));
         return topVerticesNameMapping;
+    }
+
+    private static GraphVertex renameVertexIfLayer(GraphVertex vertex, String newName) {
+        if(vertex instanceof LayerVertex) {
+            final LayerVertex newVert = (LayerVertex)vertex.clone();
+            newVert.getLayerConf().getLayer().setLayerName(newName);
+            return  newVert;
+        }
+        return vertex;
     }
 
     private static String checkName(String wantedName, GraphBuilder builder) {
