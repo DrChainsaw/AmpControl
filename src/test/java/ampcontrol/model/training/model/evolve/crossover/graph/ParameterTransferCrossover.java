@@ -28,15 +28,96 @@ import static junit.framework.TestCase.assertEquals;
  */
 public class ParameterTransferCrossover {
 
+    /**
+     * Test parameter transfer when two simple cnns are crossed
+     */
     @Test
     public void crossSimpleConv() {
-        crossover(
-                InputType.convolutional(33, 33, 3),
-                GraphUtils.getCnnGraph("first1", "first2", "first3"),
-                "first2",
-                GraphUtils.getCnnGraph("second1", "second2", "second3"),
-                "second1"
-        );
+        final String[] first = {"first1", "first2", "first3"};
+        final String[] second = {"second1", "second2", "second3"};
+        final ComputationGraph graphFirst = GraphUtils.getCnnGraph(first[0], first[1], first[2]);
+        final ComputationGraph graphSecond = GraphUtils.getCnnGraph(second[0], second[1], second[2]);
+
+        for (String firstCp : first) {
+            for (String secondCp : second) {
+                crossover(
+                        InputType.convolutional(33, 33, 3),
+                        graphFirst,
+                        firstCp,
+                        graphSecond,
+                        secondCp
+                );
+            }
+        }
+    }
+
+    /**
+     * Test parameter transfer when two simple dense networks are crossed
+     */
+    @Test
+    public void crossSimpleDense() {
+        final String[] first = {"first1", "first2", "first3"};
+        final String[] second = {"second1", "second2", "second3"};
+        final ComputationGraph graphFirst = GraphUtils.getGraph(first[0], first[1], first[2]);
+        final ComputationGraph graphSecond = GraphUtils.getGraph(second[0], second[1], second[2]);
+
+        for (String firstCp : first) {
+            for (String secondCp : second) {
+                crossover(
+                        InputType.feedForward(33),
+                        graphFirst,
+                        firstCp,
+                        graphSecond,
+                        secondCp
+                );
+            }
+        }
+    }
+
+    /**
+     * Test parameter transfer when a residual net and a fork net are crossed
+     */
+    @Test
+    public void crossResNetAndForkNet() {
+        final String[] first = {"first1", "first2", "first3"};
+        final String[] second = {"second1", "second2"};
+        final ComputationGraph graphFirst = GraphUtils.getResNet(first[0], first[1], first[2]);
+        final ComputationGraph graphSecond = GraphUtils.getForkNet(second[0], second[1], "secFork1", "secFork2", "secFork3");
+
+        for (String firstCp : first) {
+            for (String secondCp : second) {
+                crossover(
+                        InputType.convolutional(33, 33, 3),
+                        graphFirst,
+                        firstCp,
+                        graphSecond,
+                        secondCp
+                );
+            }
+        }
+    }
+
+    /**
+     * Test parameter transfer when a fork net and a forked residual net are crossed
+     */
+    @Test
+    public void crossForkNetAndResFork() {
+        final String[] first = {"first1", "first2"};
+        final String[] second = {"second1", "second2"};
+        final ComputationGraph graphFirst = GraphUtils.getForkResNet(first[0], first[1], "firFork1", "firFork2");
+        final ComputationGraph graphSecond = GraphUtils.getForkNet(second[0], second[1], "secFork1", "secFork2", "secFork3");
+
+        for (String firstCp : first) {
+            for (String secondCp : second) {
+                crossover(
+                        InputType.convolutional(33, 33, 3),
+                        graphFirst,
+                        firstCp,
+                        graphSecond,
+                        secondCp
+                );
+            }
+        }
     }
 
     private static void crossover(
@@ -54,7 +135,7 @@ public class ParameterTransferCrossover {
                 .build());
         crossoverGraph.init();
 
-        Map<String, GraphVertex> vertexToGraph =
+        final Map<String, GraphVertex> nameToVertex =
                 Stream.concat(
                         result.verticesFrom(vertex1.info())
                                 .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph1.getVertex(nameMapping.getOldName()))),
@@ -65,39 +146,18 @@ public class ParameterTransferCrossover {
                                 Map.Entry::getValue
                         ));
 
-        Function<String, GraphVertex> graphFunction = vertexToGraph::get;
-        final ComputationGraph newGraph = new ParameterTransfer(graphFunction).transferWeightsTo(crossoverGraph);
+        final Function<String, GraphVertex> nameToVertexFunction = nameToVertex::get;
+        final ComputationGraph newGraph = new ParameterTransfer(nameToVertexFunction).transferWeightsTo(crossoverGraph);
 
         final Set<String> testedLayers = new HashSet<>();
-
         Stream.of(newGraph.getVertices())
-                .filter(GraphVertex::hasLayer)
-                .map(GraphVertex::getLayer)
-                .filter(layer -> layer.numParams() > 0)
-                .filter(layer -> result.verticesFrom(vertex1.info())
-                        .map(GraphInfo.NameMapping::getNewName)
-                        .anyMatch(vertex -> layer.conf().getLayer().getLayerName().equals(vertex)))
-                .peek(layer -> testedLayers.add(layer.conf().getLayer().getLayerName()))
-                .forEach(layer ->
-                        assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
-                                graph1.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
-                                layer.params().meanNumber())
-                );
-
-        Stream.of(newGraph.getVertices())
-                .filter(GraphVertex::hasLayer)
-                .map(GraphVertex::getLayer)
-                .filter(layer -> layer.numParams() > 0)
-                .filter(layer -> result.verticesFrom(vertex2.info())
-                        .map(GraphInfo.NameMapping::getNewName)
-                        .anyMatch(vertex -> layer.conf().getLayer().getLayerName().equals(vertex)))
-                .peek(layer -> testedLayers.add(layer.conf().getLayer().getLayerName()))
-                .filter(layer -> !layer.conf().getLayer().getLayerName().equals("second1"))// size changed, so below is not correct
-                .filter(layer -> !layer.conf().getLayer().getLayerName().equals("batchNorm_0"))// same as above?
-                .forEach(layer ->
-                        assertEquals("Weights not transferred to layer " + layer.conf().getLayer().getLayerName() + "!",
-                                graph2.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
-                                layer.params().meanNumber())
+                .filter(vertex -> vertex.numParams() > 0)
+                .peek(vertex -> testedLayers.add(vertex.getVertexName())) // Comparison below does not work when nOut or nIn is changed
+                .filter(vertex -> vertex.numParams() == nameToVertex.get(vertex.getVertexName()).numParams())
+                .forEach(vertex ->
+                        assertEquals("Weights not transferred to vertex " + vertex.getVertexName() + "!",
+                                nameToVertex.get(vertex.getVertexName()).params().meanNumber(),
+                                vertex.params().meanNumber())
                 );
 
         assertEquals("Incorrect tested layers!", testedLayers, TraverseBuilder.forwards(newGraph)

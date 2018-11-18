@@ -1,8 +1,6 @@
-package ampcontrol.model.training.model.evolve.crossover;
+package ampcontrol.model.training.model.evolve.crossover.graph;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
-import ampcontrol.model.training.model.evolve.crossover.graph.GraphInfo;
-import ampcontrol.model.training.model.evolve.crossover.graph.SinglePoint;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
