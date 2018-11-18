@@ -7,6 +7,7 @@ import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.deeplearning4j.nn.conf.graph.ScaleVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -224,7 +225,7 @@ public class NoutMutationTest {
         assertEquals("incorrect nOut!", graph.layerSize(fork1), newGraph.layerSize(fork1));
         assertEquals("Incorrect nOut!", graph.layerSize(fork2), newGraph.layerSize(fork2));
         // Why last path? Because NoutMutation does remainder * layerSize[i] / sumLayerSizes[i:end] in a loop with i = fork1, fork2, fork3
-        assertEquals("incorrect nOut!", graph.layerSize(fork3)- 1, newGraph.layerSize(fork3));
+        assertEquals("incorrect nOut!", graph.layerSize(fork3) - 1, newGraph.layerSize(fork3));
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
@@ -256,9 +257,9 @@ public class NoutMutationTest {
                 .build());
         newGraph.init();
 
-        assertEquals("Incorrect nOut!", graph.layerSize(fork1)+1, newGraph.layerSize(fork1));
+        assertEquals("Incorrect nOut!", graph.layerSize(fork1), newGraph.layerSize(fork1));
         assertEquals("Incorrect nOut!", newNout, newGraph.layerSize(fork2ToMutate));
-        assertEquals("Incorrect nOut!", graph.layerSize(fork3)-1, newGraph.layerSize(fork3));
+        assertEquals("Incorrect nOut!", graph.layerSize(fork3), newGraph.layerSize(fork3));
 
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 33, 33}));
@@ -285,7 +286,7 @@ public class NoutMutationTest {
                 .addVertex("spy_1", new EpsilonSpyVertex(), "1")
                 .addLayer("2", new BatchNormalization.Builder().nOut(13).build(), "spy_1")
                 .addVertex("rbAdd0", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0", "2")
-                .addLayer("3p", new SubsamplingLayer.Builder().kernelSize(2,2).stride(2,2).build(), "rbAdd0")
+                .addLayer("3p", new SubsamplingLayer.Builder().kernelSize(2, 2).stride(2, 2).build(), "rbAdd0")
                 .addLayer("3", new GlobalPoolingLayer(), "3p")
                 .addLayer("4", new DenseLayer.Builder().nOut(13).build(), "3")
                 .addVertex("spy_4", new EpsilonSpyVertex(), "4")
@@ -299,11 +300,11 @@ public class NoutMutationTest {
                 () -> Stream.of(
                         NoutMutation.NoutMutationDescription.builder()
                                 .layerName("fb-1_branch_0_0")
-                                .mutateNout(nOut -> nOut-1)
+                                .mutateNout(nOut -> nOut - 1)
                                 .build(),
                         NoutMutation.NoutMutationDescription.builder()
                                 .layerName("fb-1_branch_1_0")
-                                .mutateNout(nOut -> nOut-1)
+                                .mutateNout(nOut -> nOut - 1)
                                 .build()))
                 .mutate(
                         new ComputationGraphConfiguration.GraphBuilder(
@@ -312,6 +313,49 @@ public class NoutMutationTest {
                 .build());
         newGraph.init();
 
-        newGraph.outputSingle(Nd4j.randn(new long[] {1, 3, 122, 128}));
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
+    }
+
+    /**
+     * Test to mutate a layer inside a residual fork which is just behind a layer which propagates size changes.
+     */
+    @Test
+    public void mutateResidualForkBehindNonLayerVertex() {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(InputType.convolutional(122, 128, 3))
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(6 + 7 + 8).build(), "input")
+                .addLayer("fb-1_branch_0_0", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(6).build(), "1")
+                .addLayer("fb-1_branch_0_1", new BatchNormalization.Builder().build(), "fb-1_branch_0_0")
+                .addVertex("scale_fb-1_branch_0_1", new ScaleVertex(1), "fb-1_branch_0_1")
+                .addLayer("fb-1_branch_1_0", new BatchNormalization.Builder().build(), "1")
+                .addLayer("fb-1_branch_1_1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "fb-1_branch_1_0")
+                .addLayer("fb-1_branch_2_0", new BatchNormalization.Builder().build(), "1")
+                .addLayer("fb-1_branch_2_1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(8).build(), "fb-1_branch_2_0")
+                .addVertex("rbMvInput0", new MergeVertex(), "scale_fb-1_branch_0_1", "fb-1_branch_1_1", "fb-1_branch_2_1")
+                .addVertex("rbAdd0", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0", "1")
+                .addLayer("2", new SubsamplingLayer.Builder().kernelSize(2, 2).stride(2, 2).build(), "rbAdd0")
+                .addLayer("3", new GlobalPoolingLayer(), "2")
+                .addLayer("4", new DenseLayer.Builder().nOut(13).build(), "3")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
+                .build());
+        graph.init();
+
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName("fb-1_branch_0_0")
+                                .mutateNout(nOut -> nOut - 1)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
     }
 }

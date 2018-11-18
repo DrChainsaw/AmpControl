@@ -9,6 +9,7 @@ import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,12 +136,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         final HasVistited visited = new HasVistited();
         visited.addInput(layerName);
 
-        final SizeVisitor nOutDeltaRegistry = new SizeVisitor(
-                new BackwardOf(builder),
-                builder,
-                deltaSize,
-                (layerSize, delta) -> Math.min(layerSize-1, delta));
-        nOutDeltaRegistry.set(layerName, deltaSize);
+        final SizeVisitor nOutDeltaRegistry = prepareSizeVisitor(builder, layerName, deltaSize);
 
         final Graph<String> forwardGraph = getForwardGraph(builder, nOutDeltaRegistry, deltaSize, visited);
         final Graph<String> backwardGraph = getBackwardGraph(builder, nOutDeltaRegistry, visited);
@@ -155,17 +151,42 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 new Connect<>(forwardGraph, backwardGraph)).children(layerName).forEachOrdered(residual -> {/* ignore */});
     }
 
+    @NotNull
+    private static SizeVisitor prepareSizeVisitor(GraphBuilder builder, String layerName, long deltaSize) {
+        final Graph<String> backwards = new BackwardOf(builder);
+        final Graph<String> forwards = new ForwardOf(builder);
+        final SizeVisitor nOutDeltaRegistry = new SizeVisitor(
+                backwards,
+                builder,
+                deltaSize,
+                (layerSize, delta) -> Math.min(layerSize-1, delta));
+        nOutDeltaRegistry.set(layerName, deltaSize);
+        // Also traverse forwards until 1) a MergeVertex is hit or 2) a vertex with more than one outputs is hit
+        // and set size. This is to avoid the situation where the layerName is input to a vertex which is size transparent
+        // which in turn is input to a MergeVertex as this will cause a double change which might lead to size mismatch
+        // if the MergeVertex is followed by an ElementWiseVertex.
+        TraverseBuilder.forwards(builder)
+                .enterCondition(vertex -> forwards.children(vertex).count() == 1)
+                .andTraverseCondition(vertex -> forwards.children(vertex).count() == 1)
+                .andTraverseCondition(vertex -> backwards.children(vertex).count() == 1)
+                .build()
+                .children(layerName)
+               // .peek(vertex -> System.out.println("Preset " + vertex + " to " + deltaSize))
+                .forEach(vertex -> nOutDeltaRegistry.set(vertex, deltaSize));
+        return nOutDeltaRegistry;
+    }
+
     private static Graph<String> getForwardGraph(GraphBuilder builder,
                                                  SizeVisitor nOutDeltaRegistry,
                                                  long deltaSize,
                                                  HasVistited visited) {
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
         return TraverseBuilder.forwards(builder)
-                //                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
-                //                        .filter(entry -> entry.getValue().contains(vertex))
-                //                        .map(Map.Entry::getKey)
-                //                        .collect(Collectors.toSet())))
-                //                .leaveListener(vertex -> System.out.println("\tDone with NOut change " + vertex))
+//                                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
+//                                        .filter(entry -> entry.getValue().contains(vertex))
+//                                        .map(Map.Entry::getKey)
+//                                        .collect(Collectors.toSet())))
+//                                .leaveListener(vertex -> System.out.println("\tDone with NOut change " + vertex))
                 .visitCondition(outputName -> !visited.output(outputName))
                 .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
@@ -207,7 +228,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .visitCondition(inputName -> !visited.input(inputName) && nOutDeltaRegistry.getSize(inputName) != 0)
                 .visitListener(inputName ->
                 {
-                    //System.out.println("\t\t Handle input layer " + inputName + " in context of " + layerName + " visited: " + visited.input(inputName) + " delta: " + nOutDelta);
+                    //System.out.println("\t\t Handle input layer " + inputName + " visited: " + visited.input(inputName));
                     asFf.apply(inputName)
                             .ifPresent(layer -> {
                                 final long nOutDelta = nOutDeltaRegistry.getSize(inputName);
