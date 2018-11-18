@@ -1,6 +1,6 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
-import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
@@ -8,6 +8,7 @@ import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
+import org.deeplearning4j.nn.graph.ComputationGraph;
 
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -15,15 +16,15 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
- * Various hideous utility functions around {@link ComputationGraphConfiguration.GraphBuilder} to assist in traversal.
+ * Various hideous utility functions around {@link GraphBuilder} to assist in traversal.
  */
 public class GraphBuilderUtil {
 
     /**
-     * Returns a {@link LayerVertex} with the given name if one exists in the {@link ComputationGraphConfiguration.GraphBuilder}.
+     * Returns a {@link LayerVertex} with the given name if one exists in the {@link GraphBuilder}.
      * Would very much prefer to do this some other way, but the API does not seem allow for it
      */
-    public static final BiFunction<String, ComputationGraphConfiguration.GraphBuilder, Optional<LayerVertex>> vertexAsLayerVertex =
+    public static final BiFunction<String, GraphBuilder, Optional<LayerVertex>> vertexAsLayerVertex =
             (layerName, graphBuilder) -> Optional.ofNullable(graphBuilder.getVertices().get(layerName))
                     .filter(gv -> gv instanceof LayerVertex)
                     .map(gv -> ((LayerVertex) gv));
@@ -47,7 +48,7 @@ public class GraphBuilderUtil {
      * @param builder Configuration to check against
      * @return Predicate which is true if size change propagates
      */
-    public static Predicate<String> changeSizePropagates(ComputationGraphConfiguration.GraphBuilder builder) {
+    public static Predicate<String> changeSizePropagates(GraphBuilder builder) {
         return vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
                 .map(GraphBuilderUtil::doesSizeChangePropagate)
                 .orElse(false);
@@ -59,7 +60,7 @@ public class GraphBuilderUtil {
      * @param builder Configuration to check against
      * @return Predicate which is true if size change propagates backwards
      */
-    public static Predicate<String> changeSizePropagatesBackwards(ComputationGraphConfiguration.GraphBuilder builder) {
+    public static Predicate<String> changeSizePropagatesBackwards(GraphBuilder builder) {
         return vertex -> Optional.ofNullable(builder.getVertices().get(vertex))
                 .map(GraphBuilderUtil::doesNOutChangePropagateToInputs)
                 .orElse(false);
@@ -70,7 +71,7 @@ public class GraphBuilderUtil {
      * @param builder Configuration containing the sought vertex
      * @return Function mapping a vertex name to an Optional FeedForwardLayer.
      */
-    public static Function<String, Optional<FeedForwardLayer>> asFeedforwardLayer(ComputationGraphConfiguration.GraphBuilder builder) {
+    public static Function<String, Optional<FeedForwardLayer>> asFeedforwardLayer(GraphBuilder builder) {
         return vertex -> GraphBuilderUtil.vertexAsLayerVertex
                 .andThen(layerVertex -> GraphBuilderUtil
                         .layerVertexAsFeedForward.apply(vertex, layerVertex))
@@ -112,13 +113,13 @@ public class GraphBuilderUtil {
      * @param graphBuilder Builder to search
      * @return the output size of the given layer
      */
-    public static long getOutputSize(String layerName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+    public static long getOutputSize(String layerName, GraphBuilder graphBuilder) {
         return findNextSize(layerName, graphBuilder, FeedForwardLayer::getNOut);
     }
 
     private static long findNextSize(
             String layerName,
-            ComputationGraphConfiguration.GraphBuilder graphBuilder,
+            GraphBuilder graphBuilder,
             Function<FeedForwardLayer, Long> sizeMapping) {
         return asFeedforwardLayer(graphBuilder).apply(layerName).map(sizeMapping)
                 .orElseGet(() ->
@@ -137,12 +138,12 @@ public class GraphBuilderUtil {
      * @param graphBuilder Builder to search
      * @return the input size of the given layer
      */
-    public static long getInputSize(String layerName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
+    public static long getInputSize(String layerName, GraphBuilder graphBuilder) {
         return sumPrevSize(layerName, graphBuilder, FeedForwardLayer::getNIn);
     }
 
     private static long sumPrevSize(String layerName,
-                                    ComputationGraphConfiguration.GraphBuilder graphBuilder,
+                                    GraphBuilder graphBuilder,
                                     Function<FeedForwardLayer, Long> sizeMapping) {
         return asFeedforwardLayer(graphBuilder).apply(layerName).map(sizeMapping)
                 .orElseGet(() -> Optional.of(new BackwardOf(graphBuilder).children(layerName)
@@ -153,5 +154,14 @@ public class GraphBuilderUtil {
                                 .mapToLong(inputType -> inputType.getShape(false)[0])
                                 .sum()));
 
+    }
+
+    /**
+     * Creates a {@link GraphBuilder} with the same config as a given {@link ComputationGraph}
+     * @param graph the {@link ComputationGraph}
+     * @return the {@link GraphBuilder}
+     */
+    public static GraphBuilder toBuilder(ComputationGraph graph) {
+        return new GraphBuilder(graph.getConfiguration().clone(), new NeuralNetConfiguration.Builder(graph.conf().clone()));
     }
 }

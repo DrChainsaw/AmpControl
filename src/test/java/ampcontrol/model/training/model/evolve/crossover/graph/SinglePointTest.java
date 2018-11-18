@@ -1,8 +1,7 @@
 package ampcontrol.model.training.model.evolve.crossover.graph;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
-import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
@@ -126,8 +125,7 @@ public class SinglePointTest {
 
     private static GraphInfo inputOf(ComputationGraph graph, InputType inputType) {
         return new GraphInfo.Input(
-                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
-                        new NeuralNetConfiguration.Builder(graph.conf()))
+                GraphBuilderUtil.toBuilder(graph)
                         .setInputTypes(inputType));
     }
 }

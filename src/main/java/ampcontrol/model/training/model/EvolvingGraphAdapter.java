@@ -1,24 +1,31 @@
 package ampcontrol.model.training.model;
 
+import ampcontrol.model.training.model.evolve.CrossBreeding;
 import ampcontrol.model.training.model.evolve.Evolving;
 import ampcontrol.model.training.model.evolve.crossover.Crossover;
 import ampcontrol.model.training.model.evolve.crossover.graph.GraphInfo;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
+import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.AbstractMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -26,7 +33,7 @@ import java.util.function.Function;
  *
  * @author Christian Skärby
  */
-public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<EvolvingGraphAdapter> {
+public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<EvolvingGraphAdapter>, CrossBreeding<EvolvingGraphAdapter> {
 
     private static final Logger log = LoggerFactory.getLogger(EvolvingGraphAdapter.class);
 
@@ -94,10 +101,46 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
         log.info("Evolve " + this);
         final MutationState<ComputationGraphConfiguration.GraphBuilder> newMutationState = mutation.clone();
         final ComputationGraphConfiguration.GraphBuilder mutated = newMutationState.mutate(
-                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(),
-                        new NeuralNetConfiguration.Builder(graph.conf().clone())));
+                GraphBuilderUtil.toBuilder(graph));
         final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph::getVertex, gv -> graph);
 
+        return createOffspring(newMutationState, mutated, parameterTransfer);
+    }
+
+    @Override
+    public EvolvingGraphAdapter cross(EvolvingGraphAdapter mate) {
+        final GraphInfo thisGraph = new GraphInfo.Input(GraphBuilderUtil.toBuilder(graph));
+        final GraphInfo otherGraph = new GraphInfo.Input(GraphBuilderUtil.toBuilder(mate.graph));
+        final GraphInfo result = crossover.cross(thisGraph, otherGraph);
+
+        final Map<String, GraphVertex> nameToVertex =
+                Stream.concat(
+                        result.verticesFrom(thisGraph)
+                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph.getVertex(nameMapping.getOldName()))),
+                        result.verticesFrom(otherGraph)
+                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), mate.graph.getVertex(nameMapping.getOldName()))))
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                Map.Entry::getValue
+                        ));
+
+        final Function<String, GraphVertex> nameToVertexFunction = nameToVertex::get;
+        // Should perhaps be done in a more rigid manner...
+        final Function<GraphVertex, ComputationGraph> vertexToGraph = graphVertex ->
+                Optional.ofNullable(graph.getVertex(graphVertex.getVertexName())).isPresent() ? graph : mate.graph;
+
+        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(nameToVertexFunction, vertexToGraph);
+        return createOffspring(
+                mutation.clone(),
+                result.builder(),
+                parameterTransfer);
+    }
+
+    @NotNull
+    private EvolvingGraphAdapter createOffspring(
+            MutationState<ComputationGraphConfiguration.GraphBuilder> newMutationState,
+            ComputationGraphConfiguration.GraphBuilder mutated,
+            ParameterTransfer parameterTransfer) {
         final ComputationGraph newGraph = new ComputationGraph(mutated.build());
         newGraph.init();
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());

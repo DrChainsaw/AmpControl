@@ -171,10 +171,9 @@ public class ParameterTransferCrossover {
 
     private static VertexData createVertexData(String name, ComputationGraph graph, InputType inputType) {
         return new VertexData(name, new GraphInfo.Input(new ComputationGraphConfiguration.GraphBuilder(
-                graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf())
+                graph.getConfiguration().clone(), new NeuralNetConfiguration.Builder(graph.conf().clone())
                 .weightInit(WeightInit.ZERO)
         )
                 .setInputTypes(inputType)));
-
     }
 }
