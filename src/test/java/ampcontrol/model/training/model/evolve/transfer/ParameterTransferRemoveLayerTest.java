@@ -4,8 +4,8 @@ import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.RemoveVertexFunction;
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
@@ -173,9 +173,8 @@ public class ParameterTransferRemoveLayerTest {
 
     private void removeVertex(String layerName, ComputationGraph graph, InputType inputType) {
 
-        final ComputationGraphConfiguration.GraphBuilder builder = createBuilder(graph);
+        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph).setInputTypes(inputType);
         final ComputationGraph newGraph = new ComputationGraph(mutateRemove(builder, layerName)
-                .setInputTypes(inputType)
                 .build());
         newGraph.init();
 
@@ -189,24 +188,18 @@ public class ParameterTransferRemoveLayerTest {
         mutatedGraph.outputSingle(Nd4j.randn(shape));
     }
 
-    @NotNull
-    private ComputationGraphConfiguration.GraphBuilder createBuilder(ComputationGraph graph) {
-        return new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
-                new NeuralNetConfiguration.Builder(graph.conf()));
-    }
-
     private void removeVertexAndMutateNout(
             ComputationGraph graph,
             String layerNameToRemove,
             String layerNameToNoutMutate,
             InputType inputType) {
 
-        final ComputationGraphConfiguration.GraphBuilder builder = createBuilder(graph);
+        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph)
+                .setInputTypes(inputType);
         final ComputationGraph newGraph = new ComputationGraph(
                 mutateRemove(
                         mutateNout(builder, layerNameToNoutMutate, graph.layerSize(layerNameToNoutMutate) - 1),
                         layerNameToRemove)
-                        .setInputTypes(inputType)
                         .build());
         newGraph.init();
         assertEquals("No vertex was removed!", graph.getVertices().length - 1, newGraph.getVertices().length);
