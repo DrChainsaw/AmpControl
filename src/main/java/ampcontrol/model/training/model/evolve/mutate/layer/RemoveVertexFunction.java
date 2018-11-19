@@ -82,7 +82,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
             removeRedunantMergeVertices(graphBuilder, inputNames, outputNames);
         } else {
             removeVertex(graphBuilder, vertexNameToRemove);
-
         }
        // System.out.println("Size change: " + sizeChange);
 
@@ -138,15 +137,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
                 build();
 
-    }
-
-    private void changeNinOfOutputs(GraphBuilder graphBuilder, List<String> outputNames, long nIn, Collection<String> connectedMergeVertices) {
-        if (connectedMergeVertices.isEmpty()) {
-            changeNinOfOutputs(graphBuilder, outputNames, nIn);
-        } else {
-            setNinOfOutputsToNoutSize(graphBuilder, connectedMergeVertices);
-            setNinOfOutputsToNoutSize(graphBuilder, outputNames);
-        }
     }
 
     private static void removeVertex(GraphBuilder graphBuilder, String vertexNameToRemove) {
@@ -211,6 +201,29 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 outputNames.remove(name);
             }
         });
+    }
+
+    private static void removeRedunantMergeVertices(GraphBuilder builder, Collection<String> inputNames, Collection<String> outputNames) {
+
+        final Graph<String> graph =
+                new Filter<>(vertex -> builder.getVertices().get(vertex) instanceof MergeVertex,
+                        new Filter<>(vertex -> builder.getVertexInputs().get(vertex).size() == 1,
+                                //new Peek<>(vertex -> System.out.println("check redundant merge " + vertex),
+                                TraverseBuilder.forwards(builder)
+                                        .traverseCondition(vertex -> true) // could do better here, something like is an outputname or size change propagates
+                                        .build()));
+
+        inputNames.forEach(name -> graph.children(name).forEach(outputName -> {
+                    if (outputNames.contains(outputName)) {
+                        new ForwardOf(builder).children(outputName).forEach(outputNames::add);
+                        //System.out.println("Remove redundant mergevertex: " + outputName);
+                        outputNames.remove(outputName);
+                    }
+                    new RemoveVertexFunction(outputName).apply(builder);
+
+
+                })
+        );
     }
 
     /**
@@ -306,29 +319,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .collect(Collectors.toSet());
     }
 
-    private static void removeRedunantMergeVertices(GraphBuilder builder, Collection<String> inputNames, Collection<String> outputNames) {
-
-        final Graph<String> graph =
-                new Filter<>(vertex -> builder.getVertices().get(vertex) instanceof MergeVertex,
-                        new Filter<>(vertex -> builder.getVertexInputs().get(vertex).size() == 1,
-                                //new Peek<>(vertex -> System.out.println("check redundant merge " + vertex),
-                                TraverseBuilder.forwards(builder)
-                                        .traverseCondition(vertex -> true) // could do better here, something like is an outputname or size change propagates
-                                        .build()));
-
-        inputNames.stream().forEach(name -> graph.children(name).forEach(outputName -> {
-                    if (outputNames.contains(outputName)) {
-                        new ForwardOf(builder).children(outputName).forEach(outputNames::add);
-                        //System.out.println("Remove redundant mergevertex: " + outputName);
-                        outputNames.remove(outputName);
-                    }
-                    new RemoveVertexFunction(outputName).apply(builder);
-
-
-                })
-        );
-    }
-
     private static void changeNoutOfInputs(GraphBuilder graphBuilder, Collection<String> inputNames, long nOut) {
 
        // System.out.println("inputnames: " + inputNames);
@@ -391,6 +381,15 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 graphBuilder,
                 nOut,
                 (layerSize, size) -> Math.max(1, size));
+    }
+
+    private void changeNinOfOutputs(GraphBuilder graphBuilder, List<String> outputNames, long nIn, Collection<String> connectedMergeVertices) {
+        if (connectedMergeVertices.isEmpty()) {
+            changeNinOfOutputs(graphBuilder, outputNames, nIn);
+        } else {
+            setNinOfOutputsToNoutSize(graphBuilder, connectedMergeVertices);
+            setNinOfOutputsToNoutSize(graphBuilder, outputNames);
+        }
     }
 
     private static void changeNinOfOutputs(GraphBuilder graphBuilder, Collection<String> outputNames, long nIn) {
