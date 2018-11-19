@@ -322,7 +322,67 @@ public class RemoveVertexTest {
         final ComputationGraph newGraph = new ComputationGraph(builder.build());
         newGraph.init();
         newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+    }
 
+    /**
+     * Test to remove a layer after a fork where one of the layers in the fork is a residual layer
+     */
+    @Test
+    public void removeAfterForkWithResInFork() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(11).convolutionMode(ConvolutionMode.Same).build(), "input")
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(11).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addVertex("merge2And3And4", new MergeVertex(), "2", "add1And3", "4")
+                .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
+                .addLayer("gp", new GlobalPoolingLayer(), "5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
+        new RemoveVertexFunction("5").apply(builder);
+
+        final ComputationGraph newGraph = new ComputationGraph(builder.build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+    }
+
+    /**
+     * Test to remove a layer in a fork in such a way that nIn of the output after the fork is altered
+     */
+    @Test
+    public void removeInForkWithResBeforeFork() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(11).convolutionMode(ConvolutionMode.Same).build(), "input")
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(11).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addVertex("add1And2", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "2")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(2).convolutionMode(ConvolutionMode.Same).build(), "add1And2")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "add1And2")
+                .addLayer("5", new ConvolutionLayer.Builder().nOut(4).convolutionMode(ConvolutionMode.Same).build(), "add1And2")
+                .addVertex("merge2And3And4", new MergeVertex(), "3", "4", "5")
+                .addLayer("6", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
+                .addLayer("gp", new GlobalPoolingLayer(), "6")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
+        new RemoveVertexFunction("5").apply(builder);
+
+        final ComputationGraph newGraph = new ComputationGraph(builder.build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
     }
 
     @NotNull
@@ -332,8 +392,7 @@ public class RemoveVertexTest {
                         .mutation(new RemoveVertexFunction(vertexToRemove))
                         .build()));
         final ComputationGraph newGraph = new ComputationGraph(mutatation.mutate(
-                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf())))
-                .setInputTypes(inputType)
+               GraphBuilderUtil.toBuilder(graph).setInputTypes(inputType))
                 .build());
         newGraph.init();
 

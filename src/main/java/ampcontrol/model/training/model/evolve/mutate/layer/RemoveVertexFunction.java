@@ -133,9 +133,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                     nOut);
         }
 
-        return GraphMutation.InputsAndOutputNames.builder().
-
-                build();
+        return GraphMutation.InputsAndOutputNames.builder().build();
 
     }
 
@@ -363,6 +361,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                     .collect(Collectors.toSet());
             //System.out.println("Change nIns after changing nOuts");
             changeNinOfOutputs(graphBuilder, needToChangeNin, nOut);
+            //setNinOfOutputsToNoutSize(graphBuilder, needToChangeNin);
         }
     }
 
@@ -437,8 +436,19 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
     private static void setNinOfOutputsToNoutSize(GraphBuilder graphBuilder, Collection<String> outputNames) {
         //System.out.println("output names: " + outputNames);
         log.info("Set NIn of outputs " + outputNames);
+
+        final Deque<Long> limits = new ArrayDeque<>();
         final Graph<String> traverseInputs = TraverseBuilder.backwards(graphBuilder)
                 .enterCondition(vertex -> true)
+                .enterListener(vertex -> {
+                    if(graphBuilder.getVertices().get(vertex) instanceof ElementWiseVertex) {
+                        limits.push(1L);
+                    } else {
+                        limits.push(Long.MAX_VALUE);
+                    }
+                })
+                .leaveListener(vertex -> limits.pop())
+                .limitTraverse(limits::peekFirst)
                 .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
                 .allowRevisit()
                 .build();
@@ -451,12 +461,16 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .forEachOrdered(layer -> {
                     final long nInToUse = traverseInputs.children(layer.getLayerName())
                             .distinct()
-                            .map(GraphBuilderUtil.asFeedforwardLayer(graphBuilder))
-                            .filter(Optional::isPresent)
-                            .map(Optional::get)
-                            .mapToLong(FeedForwardLayer::getNOut)
+                            .mapToLong(vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex)
+                                    .map(FeedForwardLayer::getNOut)
+                            .orElseGet(() -> graphBuilder.getNetworkInputs().contains(vertex)
+                                    ? graphBuilder.getNetworkInputTypes().get(graphBuilder.getNetworkInputs().indexOf(vertex)).getShape(false)[0]
+                                    : 0L))
                             .sum();
                     log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
+                    if(nInToUse == 0) {
+                        throw new RuntimeException("0 size for " + layer.getLayerName());
+                    }
                     //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
                     layer.setNIn(nInToUse);
                     if (!isSizeChangePossible(layer)) {

@@ -4,18 +4,19 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 /**
  * Builder for recursive graph traversal
- * 
+ *
  * @author Christian Skärby
  */
 public class TraverseBuilder<T> {
-    
+
     private final Graph<T> baseGraph;
-    
+
     private Predicate<T> enterCondition = vertex -> true;
     private Predicate<T> traverseCondition = vertex -> true;
     private Consumer<T> enterListener = vertex -> {/* ignore */};
@@ -23,9 +24,11 @@ public class TraverseBuilder<T> {
     private Predicate<T> visitCondition = vertex -> true;
     private Consumer<T> visitListener = vertex -> {/* ignore */};
     private UnaryOperator<Graph<T>> wrapBaseGraph = SingleVisit::new;
+    private LongSupplier limit = () -> Long.MAX_VALUE;
 
     /**
      * Constructor
+     *
      * @param baseGraph base graph
      */
     public TraverseBuilder(Graph<T> baseGraph) {
@@ -34,6 +37,7 @@ public class TraverseBuilder<T> {
 
     /**
      * Builder for the standard way to traverse ComputationGraphs in the backward direction
+     *
      * @param builder Has the configuration to traverse
      * @return a {@link TraverseBuilder}
      */
@@ -45,6 +49,7 @@ public class TraverseBuilder<T> {
 
     /**
      * Builder for the standard way to traverse ComputationGraphs in the forward direction
+     *
      * @param builder Has the configuration to traverse
      * @return a {@link TraverseBuilder}
      */
@@ -55,6 +60,7 @@ public class TraverseBuilder<T> {
 
     /**
      * Builder for the standard way to traverse ComputationGraphs in the forward direction
+     *
      * @param config Has the configuration to traverse
      * @return a {@link TraverseBuilder}
      */
@@ -64,6 +70,7 @@ public class TraverseBuilder<T> {
 
     /**
      * Builder for the standard way to traverse ComputationGraphs in the forward direction
+     *
      * @param compGraph Has the configuration to traverse
      * @return a {@link TraverseBuilder}
      */
@@ -157,10 +164,21 @@ public class TraverseBuilder<T> {
 
     /**
      * Allows the same vertex to be visited twice. Use with care as it might lead to infinite recursion.
+     *
      * @return the builder for fluent API
      */
     public TraverseBuilder<T> allowRevisit() {
         wrapBaseGraph = UnaryOperator.identity();
+        return this;
+    }
+
+    /**
+     * Sets a limit on how many children are visited for each vertex.
+     *
+     * @return the builder for fluent API
+     */
+    public TraverseBuilder<T> limitTraverse(LongSupplier limit) {
+        this.limit = limit;
         return this;
     }
 
@@ -177,7 +195,8 @@ public class TraverseBuilder<T> {
                                 enterListener,
                                 leaveListener,
                                 new Peek<>(visitListener,
-                                        new Filter<>(visitCondition,
-                                                wrapBaseGraph.apply(baseGraph)))));
+                                        new Limit<>(limit,
+                                                new Filter<>(visitCondition,
+                                                        wrapBaseGraph.apply(baseGraph))))));
     }
 }
