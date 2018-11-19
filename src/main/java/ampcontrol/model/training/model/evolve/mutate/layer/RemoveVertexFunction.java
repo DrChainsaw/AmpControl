@@ -36,13 +36,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
     @Override
     public GraphMutation.InputsAndOutputNames apply(GraphBuilder graphBuilder) {
 
-        // WTF is this about? graphBuilder.removeVertex(vertexName, true) will go through all vertexInputs and
-        // remove vertexToRemove from the list of inputs. However, this list is typically created by Array.asList
-        // which returns an immutable list. Here we replace that list with a mutable instance.
-        graphBuilder.getVertexInputs().entrySet().stream()
-                .filter(entry -> entry.getValue().contains(vertexNameToRemove))
-                .forEach(entry -> graphBuilder.getVertexInputs().put(entry.getKey(), new ArrayList<>(entry.getValue())));
-
         final List<String> outputNames = new ForwardOf(graphBuilder).children(vertexNameToRemove)
                 .collect(Collectors.toList());
 
@@ -61,6 +54,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         .map(Optional::get)
                         .mapToLong(FeedForwardLayer::getNOut)
                         .sum());
+
         final long nIn = GraphBuilderUtil.getInputSize(vertexNameToRemove, graphBuilder);
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
@@ -72,8 +66,11 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         // Skip the below if removal is trivial as handleMergeVertexOutputs tends to mess up stuff around MergeVertices in
         // a way so that it becomes harder to remove parts of the fork.
-        if (isSizeChangePossible(graphBuilder.getVertices().get(vertexNameToRemove))
-                || graphBuilder.getVertices().get(vertexNameToRemove) instanceof ElementWiseVertex) {
+        final boolean sizeChange = isSizeChangePossible(graphBuilder.getVertices().get(vertexNameToRemove))
+                || graphBuilder.getVertices().get(vertexNameToRemove) instanceof ElementWiseVertex;
+
+        final boolean wasMergeVertex = graphBuilder.getVertices().get(vertexNameToRemove) instanceof MergeVertex;
+        if (sizeChange) {
             connectedMergeVertices.addAll(handleMergeVertexOutputs(graphBuilder, outputNames));
 
             //System.out.println("after merge handling: " + outputNames);
@@ -84,8 +81,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
             removeRedunantMergeVertices(graphBuilder, inputNames, outputNames);
         } else {
-            graphBuilder.removeVertex(vertexNameToRemove, true);
+            removeVertex(graphBuilder, vertexNameToRemove);
+
         }
+       // System.out.println("Size change: " + sizeChange);
 
         //System.out.println("after redundant merge handling: " + outputNames + " input " + inputNames);
 
@@ -101,6 +100,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                                 outputName,
                                 graphBuilder.getVertices().get(outputName),
                                 inputNamesPerOutput.get(outputName).toArray(new String[1])));
+
+        if (!sizeChange && !wasMergeVertex) {
+            return GraphMutation.InputsAndOutputNames.builder().build();
+        }
 
         // Not possible to change network inputs (e.g. image size)
         final boolean isAnyLayerInputNetworkInput = graphBuilder.getNetworkInputs().stream()
@@ -118,10 +121,9 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         // previous layers which are changed either because they are to be connected with the removed layers
         // outputs or because one of the paths in a fork was just removed.
         if (nIn > nOut || isAnyLayerInputNetworkInput) {
-            //.out.println("change nIn " + nIn);
-            changeNinOfOutputs(graphBuilder, outputNames, nIn);
+           // System.out.println("change nIn " + nIn);
+            changeNinOfOutputs(graphBuilder, outputNames, nIn, connectedMergeVertices);
         } else {
-
             //System.out.println("change nout : " + nOut);
             changeNoutOfInputs(graphBuilder, inputNames, nOut);
 
@@ -132,7 +134,29 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                     nOut);
         }
 
-        return GraphMutation.InputsAndOutputNames.builder().build();
+        return GraphMutation.InputsAndOutputNames.builder().
+
+                build();
+
+    }
+
+    private void changeNinOfOutputs(GraphBuilder graphBuilder, List<String> outputNames, long nIn, Collection<String> connectedMergeVertices) {
+        if (connectedMergeVertices.isEmpty()) {
+            changeNinOfOutputs(graphBuilder, outputNames, nIn);
+        } else {
+            setNinOfOutputsToNoutSize(graphBuilder, connectedMergeVertices);
+            setNinOfOutputsToNoutSize(graphBuilder, outputNames);
+        }
+    }
+
+    private static void removeVertex(GraphBuilder graphBuilder, String vertexNameToRemove) {
+        // WTF is this about? graphBuilder.removeVertex(vertexName, true) will go through all vertexInputs and
+        // remove vertexToRemove from the list of inputs. However, this list is typically created by Array.asList
+        // which returns an immutable list. Here we replace that list with a mutable instance.
+        graphBuilder.getVertexInputs().entrySet().stream()
+                .filter(entry -> entry.getValue().contains(vertexNameToRemove))
+                .forEach(entry -> graphBuilder.getVertexInputs().put(entry.getKey(), new ArrayList<>(entry.getValue())));
+        graphBuilder.removeVertex(vertexNameToRemove, true);
     }
 
     @NotNull
@@ -270,7 +294,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
             // "Loneley" mergevertices will be part of pathToMerge, need to remove them
             //System.out.println("Remove " + vertex);
             inputsToConnectedMergeVertex.remove(vertex);
-            builder.removeVertex(vertex, true);
+            removeVertex(builder, vertex);
         });
 
         // Whats going on here? We only need the "top" mergevertex when traversing downwards as we will visit all the
@@ -295,6 +319,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         inputNames.stream().forEach(name -> graph.children(name).forEach(outputName -> {
                     if (outputNames.contains(outputName)) {
                         new ForwardOf(builder).children(outputName).forEach(outputNames::add);
+                        //System.out.println("Remove redundant mergevertex: " + outputName);
                         outputNames.remove(outputName);
                     }
                     new RemoveVertexFunction(outputName).apply(builder);
@@ -306,7 +331,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
     private static void changeNoutOfInputs(GraphBuilder graphBuilder, Collection<String> inputNames, long nOut) {
 
-        //System.out.println("inputnames: " + inputNames);
+       // System.out.println("inputnames: " + inputNames);
         // What we want here is to traverse in topological order really. Just so happens to be so that inputNames
         // is always in reverse topological order since this is how it is constructed?
         final List<String> names = new ArrayList<>(inputNames);
@@ -324,10 +349,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         .build(),
                 graphBuilder,
                 names)
-                //.peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + sizeRegistry.getSize(layer.getLayerName())))
+                .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + sizeRegistry.getSize(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNout = sizeRegistry.getSize(layer.getLayerName());
-                    //System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNout);
+                   // System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNout);
                     layer.setNOut(thisNout);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNIn(thisNout);
@@ -406,6 +431,37 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                     layer.setNIn(thisNIn);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNOut(thisNIn);
+                    }
+                });
+    }
+
+    private static void setNinOfOutputsToNoutSize(GraphBuilder graphBuilder, Collection<String> outputNames) {
+        //System.out.println("output names: " + outputNames);
+        log.info("Set NIn of outputs " + outputNames);
+        final Graph<String> traverseInputs = TraverseBuilder.backwards(graphBuilder)
+                .enterCondition(vertex -> true)
+                .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
+                .allowRevisit()
+                .build();
+        toLayerStream(
+                TraverseBuilder.forwards(graphBuilder)
+                        .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
+                        .build(),
+                graphBuilder,
+                outputNames)
+                .forEachOrdered(layer -> {
+                    final long nInToUse = traverseInputs.children(layer.getLayerName())
+                            .distinct()
+                            .map(GraphBuilderUtil.asFeedforwardLayer(graphBuilder))
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .mapToLong(FeedForwardLayer::getNOut)
+                            .sum();
+                    log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
+                    //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
+                    layer.setNIn(nInToUse);
+                    if (!isSizeChangePossible(layer)) {
+                        layer.setNOut(nInToUse);
                     }
                 });
     }

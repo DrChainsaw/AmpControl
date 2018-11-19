@@ -2,6 +2,7 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
@@ -195,7 +196,7 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeAfterResBlock() {
-        final InputType inputType = InputType.convolutional(10,10, 2);
+        final InputType inputType = InputType.convolutional(10, 10, 2);
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .graphBuilder()
                 .setInputTypes(inputType)
@@ -211,7 +212,7 @@ public class RemoveVertexTest {
                 .build());
         graph.init();
 
-       removeVertex("4", graph, inputType);
+        removeVertex("4", graph, inputType);
     }
 
     /**
@@ -220,7 +221,7 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeAfterResBlockWithFork() {
-        final InputType inputType = InputType.convolutional(10,10, 2);
+        final InputType inputType = InputType.convolutional(10, 10, 2);
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .graphBuilder()
                 .setInputTypes(inputType)
@@ -245,7 +246,7 @@ public class RemoveVertexTest {
      */
     @Test
     public void removeRightBeforeFork() {
-        final InputType inputType = InputType.convolutional(10,10, 2);
+        final InputType inputType = InputType.convolutional(10, 10, 2);
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .graphBuilder()
                 .setInputTypes(inputType)
@@ -262,6 +263,66 @@ public class RemoveVertexTest {
                 .build());
         graph.init();
         removeVertex("2", graph, inputType);
+    }
+
+    /**
+     * Test to remove a layer in a fork in such a way that nIn of the output after the fork is altered
+     */
+    @Test
+    public void removeInForkWithNInLargest() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(11).convolutionMode(ConvolutionMode.Same).build(), "input")
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(2).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addVertex("merge2And3And4", new MergeVertex(), "2", "3", "4")
+                .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
+                .addLayer("gp", new GlobalPoolingLayer(), "5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
+        new RemoveVertexFunction("2").apply(builder);
+
+        final ComputationGraph newGraph = new ComputationGraph(builder.build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+    }
+
+    /**
+     * Test to remove a layer in a fork in such a way that nIn of the output after the fork is altered
+     */
+    @Test
+    public void removeInForkWithNInLargestAfterBatchNorm() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(11).convolutionMode(ConvolutionMode.Same).build(), "input")
+                .addLayer("2bn", new BatchNormalization.Builder().nOut(11).build(), "1")
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "2bn")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(2).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addVertex("merge2And3And4", new MergeVertex(), "2", "3", "4")
+                .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
+                .addLayer("gp", new GlobalPoolingLayer(), "5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
+        new RemoveVertexFunction("2").apply(builder);
+
+        final ComputationGraph newGraph = new ComputationGraph(builder.build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+
     }
 
     @NotNull
