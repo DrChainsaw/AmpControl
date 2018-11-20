@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
@@ -13,9 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -180,8 +179,27 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                                  SizeVisitor nOutDeltaRegistry,
                                                  long deltaSize,
                                                  HasVistited visited) {
+
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
-        final Graph<String> backward = Traverse.leaves(GraphBuilderUtil.changeSizePropagates(builder), new BackwardOf(builder));
+        final Deque<Long> limits = new ArrayDeque<>();
+        final Set<String> entered = new HashSet<>();
+        final Graph<String> backward = new Filter<>(vertex -> !entered.contains(vertex),
+                TraverseBuilder.backwards(builder)
+                .enterCondition(vertex -> true)
+                .enterListener(vertex -> {
+                    entered.add(vertex);
+                    if (builder.getVertices().get(vertex) instanceof ElementWiseVertex) {
+                        limits.push(1L);
+                    } else {
+                        limits.push(Long.MAX_VALUE);
+                    }
+                })
+                .leaveListener(vertex -> limits.pop())
+                .limitTraverse(limits::peekFirst)
+                .traverseCondition(GraphBuilderUtil.changeSizePropagates(builder))
+                .allowRevisit()
+                .build());
+
         return TraverseBuilder.forwards(builder)
 //                                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
 //                                        .filter(entry -> entry.getValue().contains(vertex))
@@ -192,15 +210,17 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
 
-                            final long thisDelta = Math.max(deltaSize, backward.children(layer.getLayerName())
+                            final long thisDelta = backward.children(layer.getLayerName())
                                     //.peek(vertex -> System.out.println("Child of " + layer.getLayerName() + " is " + vertex))
                                     .map(vertex -> Optional.ofNullable(nOutDeltaRegistry.getSize(vertex)))
                                     .filter(Optional::isPresent)
                                     .mapToLong(Optional::get)
-                                    .sum());
+                                    .reduce((l1, l2) -> l1 + l2)
+                                    .orElse(deltaSize);
 
                             //System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
+                            //System.out.println("delta: " + thisDelta + " deltaSize " + deltaSize);
                             layer.setNIn(layer.getNIn() - thisDelta);
                             if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
                                 layer.setNOut(layer.getNOut() - thisDelta);

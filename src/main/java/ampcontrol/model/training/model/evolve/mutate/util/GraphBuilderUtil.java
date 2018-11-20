@@ -57,6 +57,7 @@ public class GraphBuilderUtil {
     /**
      * Returns true if the given vertex requires that all its inputs have the same size. So far, only the
      * {@link ElementWiseVertex} is known to have this property.
+     *
      * @param builder Configuration to check against
      * @return Predicate which is true if size change propagates backwards
      */
@@ -68,6 +69,7 @@ public class GraphBuilderUtil {
 
     /**
      * Return the given vertex as a {@link FeedForwardLayer} if this is the type. Otherwise return empty.
+     *
      * @param builder Configuration containing the sought vertex
      * @return Function mapping a vertex name to an Optional FeedForwardLayer.
      */
@@ -124,9 +126,9 @@ public class GraphBuilderUtil {
         return asFeedforwardLayer(graphBuilder).apply(layerName).map(sizeMapping)
                 .orElseGet(() ->
                         new ForwardOf(graphBuilder).children(layerName)
-                        .mapToLong(inputLayerName -> findNextSize(inputLayerName, graphBuilder, FeedForwardLayer::getNIn))
-                        .findAny()
-                        .orElseThrow(() -> new IllegalStateException("Could not find any feedforward layers after " + layerName)));
+                                .mapToLong(inputLayerName -> findNextSize(inputLayerName, graphBuilder, FeedForwardLayer::getNIn))
+                                .findAny()
+                                .orElseThrow(() -> new IllegalStateException("Could not find any feedforward layers after " + layerName)));
     }
 
     /**
@@ -147,9 +149,9 @@ public class GraphBuilderUtil {
                                     Function<FeedForwardLayer, Long> sizeMapping) {
         return asFeedforwardLayer(graphBuilder).apply(layerName).map(sizeMapping)
                 .orElseGet(() -> Optional.of(new BackwardOf(graphBuilder).children(layerName)
-                                .limit(graphBuilder.getVertices().get(layerName) instanceof MergeVertex ? Long.MAX_VALUE : 1)
-                                .mapToLong(inputLayerName -> sumPrevSize(inputLayerName, graphBuilder, FeedForwardLayer::getNOut))
-                                .sum())
+                        .limit(graphBuilder.getVertices().get(layerName) instanceof MergeVertex ? Long.MAX_VALUE : 1)
+                        .mapToLong(inputLayerName -> sumPrevSize(inputLayerName, graphBuilder, FeedForwardLayer::getNOut))
+                        .sum())
                         .orElseGet(() -> graphBuilder.getNetworkInputTypes().stream()
                                 .mapToLong(inputType -> inputType.getShape(false)[0])
                                 .sum()));
@@ -158,6 +160,7 @@ public class GraphBuilderUtil {
 
     /**
      * Creates a {@link GraphBuilder} with the same config as a given {@link ComputationGraph}
+     *
      * @param graph the {@link ComputationGraph}
      * @return the {@link GraphBuilder}
      */
