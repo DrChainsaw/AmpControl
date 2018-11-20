@@ -1,25 +1,17 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
-import ampcontrol.model.training.data.iterators.MockDataSetIterator;
-import ampcontrol.model.training.model.EvolvingGraphAdapter;
 import ampcontrol.model.training.model.evolve.GraphUtils;
-import ampcontrol.model.training.model.evolve.fitness.InstrumentEpsilonSpies;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.RemoveVertexFunction;
-import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
 import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
-import ampcontrol.model.training.model.evolve.selection.ModelComparatorRegistry;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.util.ModelSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
-import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -194,45 +186,6 @@ public class ParameterTransferRemoveLayerTest {
         graph.outputSingle(Nd4j.randn(shape));
         newGraph.outputSingle(Nd4j.randn(shape));
         mutatedGraph.outputSingle(Nd4j.randn(shape));
-    }
-
-    @Test
-    public void tmp() throws IOException {
-        final ComputationGraph graph = ModelSerializer.restoreComputationGraph("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\1598149236\\19", true);
-
-        final ModelComparatorRegistry registry = new ModelComparatorRegistry();
-        final EvolvingGraphAdapter adapter = EvolvingGraphAdapter.builder(graph)
-                .mutation(new NoMutationStateWapper<>(new GraphMutation(() -> Stream.of(
-                                GraphMutation.GraphMutationDescription.builder()
-                                        .mutation(new RemoveVertexFunction("spy_fb5_branch_0_7"))
-                                        .build(),
-                                GraphMutation.GraphMutationDescription.builder()
-                                        .mutation(new RemoveVertexFunction("fb5_branch_0_7"))
-                                        .build()))))
-                .paramTransfer((nameToVert, vertToGraph) -> new ParameterTransfer(nameToVert,
-                        registry.get(graph)))
-                .build();
-
-        new InstrumentEpsilonSpies<EvolvingGraphAdapter>(registry).apply(adapter, fitness -> System.out.println("got fitness: " + fitness));
-
-        adapter.fit(new MockDataSetIterator() {
-
-            private boolean hasNext = true;
-
-            @Override
-            public DataSet next() {
-                hasNext = false;
-                return new DataSet(Nd4j.randn(new long[] {1, 3, 122, 128}), Nd4j.randn(new long[] {1, 4}));
-            }
-
-            @Override
-            public boolean hasNext() {
-                return hasNext;
-            }
-        });
-
-        adapter.evolve();
-
     }
 
     private void removeVertexAndMutateNout(
