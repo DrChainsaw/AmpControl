@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Getter;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
-import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
@@ -14,7 +13,9 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -158,7 +159,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 backwards,
                 builder,
                 deltaSize,
-                (layerSize, delta) -> Math.min(layerSize-1, delta));
+                (layerSize, delta) -> Math.min(layerSize - 1, delta));
         nOutDeltaRegistry.set(layerName, deltaSize);
         // Also traverse forwards until 1) a MergeVertex is hit or 2) a vertex with more than one outputs is hit
         // and set size. This is to avoid the situation where the layerName is input to a vertex which is size transparent
@@ -181,24 +182,13 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                                  HasVistited visited) {
 
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
-        final Deque<Long> limits = new ArrayDeque<>();
         final Set<String> entered = new HashSet<>();
         final Graph<String> backward = new Filter<>(vertex -> !entered.contains(vertex),
-                TraverseBuilder.backwards(builder)
-                .enterCondition(vertex -> true)
-                .enterListener(vertex -> {
-                    entered.add(vertex);
-                    if (builder.getVertices().get(vertex) instanceof ElementWiseVertex) {
-                        limits.push(1L);
-                    } else {
-                        limits.push(Long.MAX_VALUE);
-                    }
-                })
-                .leaveListener(vertex -> limits.pop())
-                .limitTraverse(limits::peekFirst)
-                .traverseCondition(GraphBuilderUtil.changeSizePropagates(builder))
-                .allowRevisit()
-                .build());
+                GraphBuilderUtil.inputSizeTravere(builder)
+                        .addEnterListener(entered::add)
+                        .traverseCondition(GraphBuilderUtil.changeSizePropagates(builder))
+                        .allowRevisit()
+                        .build());
 
         return TraverseBuilder.forwards(builder)
 //                                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()

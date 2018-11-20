@@ -380,18 +380,8 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         //System.out.println("output names: " + outputNames);
         log.info("Set NIn of outputs " + outputNames);
 
-        final Deque<Long> limits = new ArrayDeque<>();
-        final Graph<String> traverseInputs = TraverseBuilder.backwards(graphBuilder)
-                .enterCondition(vertex -> true)
-                .enterListener(vertex -> {
-                    if (graphBuilder.getVertices().get(vertex) instanceof ElementWiseVertex) {
-                        limits.push(1L);
-                    } else {
-                        limits.push(Long.MAX_VALUE);
-                    }
-                })
-                .leaveListener(vertex -> limits.pop())
-                .limitTraverse(limits::peekFirst)
+
+        final Graph<String> traverseInputs = GraphBuilderUtil.inputSizeTravere(graphBuilder)
                 .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
                 .allowRevisit()
                 .build();

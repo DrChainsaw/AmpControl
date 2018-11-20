@@ -117,13 +117,27 @@ public class TraverseBuilder<T> {
 
     /**
      * Set listener to listen for when the scope of a new vertex is entered and its children will be queried. Any
-     * subsequent vertices given to visitListener are descendants of this vertex.
+     * subsequent vertices given to visitListener are descendants of this vertex. All previous listeners will be
+     * removed
      *
      * @param enterListener the listener
      * @return the builder for fluent API
      */
     public TraverseBuilder<T> enterListener(Consumer<T> enterListener) {
         this.enterListener = enterListener;
+        return this;
+    }
+
+    /**
+     * Add listener to listen for when the scope of a new vertex is entered and its children will be queried. Any
+     * subsequent vertices given to visitListener are descendants of this vertex. All previously added listeners
+     * will still be notified as well
+     *
+     * @param enterListener the listener
+     * @return the builder for fluent API
+     */
+    public TraverseBuilder<T> addEnterListener(Consumer<T> enterListener) {
+        this.enterListener = this.enterListener.andThen(enterListener);
         return this;
     }
 

@@ -10,6 +10,8 @@ import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -166,5 +168,26 @@ public class GraphBuilderUtil {
      */
     public static GraphBuilder toBuilder(ComputationGraph graph) {
         return new GraphBuilder(graph.getConfiguration().clone(), new NeuralNetConfiguration.Builder(graph.conf().clone()));
+    }
+
+    /**
+     * Creates a {@link TraverseBuilder} which is set up to provide children which can be used to compute size based on
+     * inputs
+     * @param builder Has the config to traverse
+     * @return a {@link TraverseBuilder}
+     */
+    public static TraverseBuilder<String> inputSizeTravere(GraphBuilder builder) {
+        final Deque<Long> limits = new ArrayDeque<>();
+        return TraverseBuilder.backwards(builder)
+                .enterCondition(vertex -> true)
+                .enterListener(vertex -> {
+                    if (builder.getVertices().get(vertex) instanceof ElementWiseVertex) {
+                        limits.push(1L);
+                    } else {
+                        limits.push(Long.MAX_VALUE);
+                    }
+                })
+                .leaveListener(vertex -> limits.pop())
+                .limitTraverse(limits::peekFirst);
     }
 }
