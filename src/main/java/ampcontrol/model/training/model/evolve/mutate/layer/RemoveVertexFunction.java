@@ -411,9 +411,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                                             : 0L))
                             .sum();
                     log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
-                    if (nInToUse == 0) {
-                        throw new RuntimeException("0 size for " + layer.getLayerName());
-                    }
                     //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
                     layer.setNIn(nInToUse);
                     if (!isSizeChangePossible(layer)) {

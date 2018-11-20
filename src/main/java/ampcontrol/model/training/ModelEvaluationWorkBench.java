@@ -250,7 +250,6 @@ class ModelEvaluationWorkBench {
             log.debug("Contributions: " + arr);
         }));
 
-
         // Do a few training iterations to train the NoutMutation
         for (int i = 0; i < 3; i++) {
             withEpsSpy.fit(trainIter);

@@ -189,8 +189,9 @@ public class TrainingDescription {
         new MutatingConv2dFactory(trainIter, evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
 
 //        try {
-//            final ComputationGraph graph = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("-245743825_best\\0")), true);
+//            final ComputationGraph graph = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("380537952_best\\0")), true);
 //            new ModelEvaluationWorkBench(trainIter, evalIter).evalute(graph, "4");
+//            System.exit(0);
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
