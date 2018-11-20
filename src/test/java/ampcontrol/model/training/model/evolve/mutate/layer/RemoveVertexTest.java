@@ -211,7 +211,6 @@ public class RemoveVertexTest {
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
                 .build());
         graph.init();
-
         removeVertex("4", graph, inputType);
     }
 
@@ -286,12 +285,7 @@ public class RemoveVertexTest {
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
                 .build());
         graph.init();
-        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
-        new RemoveVertexFunction("2").apply(builder);
-
-        final ComputationGraph newGraph = new ComputationGraph(builder.build());
-        newGraph.init();
-        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+        removeVertex("2", graph, inputType);
     }
 
     /**
@@ -316,12 +310,7 @@ public class RemoveVertexTest {
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
                 .build());
         graph.init();
-        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
-        new RemoveVertexFunction("2").apply(builder);
-
-        final ComputationGraph newGraph = new ComputationGraph(builder.build());
-        newGraph.init();
-        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+        removeVertex("2", graph, inputType);
     }
 
     /**
@@ -346,12 +335,7 @@ public class RemoveVertexTest {
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
                 .build());
         graph.init();
-        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
-        new RemoveVertexFunction("5").apply(builder);
-
-        final ComputationGraph newGraph = new ComputationGraph(builder.build());
-        newGraph.init();
-        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+        removeVertex("5", graph, inputType);
     }
 
     /**
@@ -377,12 +361,31 @@ public class RemoveVertexTest {
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
                 .build());
         graph.init();
-        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph);
-        new RemoveVertexFunction("5").apply(builder);
+        removeVertex("5", graph, inputType);
+    }
 
-        final ComputationGraph newGraph = new ComputationGraph(builder.build());
-        newGraph.init();
-        newGraph.output(Nd4j.randn(new long[]{1, 2, 10, 10}));
+    /**
+     * Test to remove a layer in a fork when it is the input which is forked
+     */
+    @Test
+    public void removeInForkOfInputs() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new BatchNormalization.Builder().nOut(2).build(), "input")
+                .addLayer("2", new BatchNormalization.Builder().nOut(2).build(), "input")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "1")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addVertex("merge3And4", new MergeVertex(), "3", "4")
+                .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge3And4")
+                .addLayer("gp", new GlobalPoolingLayer(), "5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("3", graph, inputType);
     }
 
     @NotNull

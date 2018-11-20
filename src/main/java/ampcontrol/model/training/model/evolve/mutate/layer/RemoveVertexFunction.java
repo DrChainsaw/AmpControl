@@ -104,9 +104,11 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         }
 
         // Not possible to change network inputs (e.g. image size)
-        final boolean isAnyLayerInputNetworkInput = graphBuilder.getNetworkInputs().stream()
-                .anyMatch(inputNames::contains);
+        final boolean isAnyLayerTouchingNetworkInput =
+        //graphBuilder.getNetworkInputs().stream().anyMatch(inputNames::contains);
+        isAnyLayerTouchingNetworkInput(graphBuilder, inputNames);
 
+        //System.out.println("\t\t Touches input " + isAnyLayerTouchingNetworkInput);
         // Do the change which adds neurons rather than the one which removes them
         // What about if nIn == nOut? Can't do early return it seems as this is no guarantee
         // that the below is not needed. Example when it is not involve pooling layers
@@ -118,8 +120,8 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         // backwards when it encounters an ElementWiseVertex. Here we need to go backwards and fix the nOuts of
         // previous layers which are changed either because they are to be connected with the removed layers
         // outputs or because one of the paths in a fork was just removed.
-        if (nIn > nOut || isAnyLayerInputNetworkInput) {
-            // System.out.println("change nIn " + nIn);
+        if (nIn > nOut || isAnyLayerTouchingNetworkInput) {
+            //System.out.println("change nIn " + nIn);
             setNinOfOutputsToNoutSize(graphBuilder, connectedMergeVertices);
             setNinOfOutputsToNoutSize(graphBuilder, outputNames);
         } else {
@@ -135,6 +137,16 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         return GraphMutation.InputsAndOutputNames.builder().build();
 
+    }
+
+    private static boolean isAnyLayerTouchingNetworkInput(GraphBuilder graphBuilder, List<String> inputNames) {
+        final Graph<String> traverseBackwards = TraverseBuilder.backwards(graphBuilder)
+                .enterCondition(vertex -> !isSizeChangePossible(graphBuilder.getVertices().get(vertex)))
+                .allowRevisit()
+                .build();
+
+        return Stream.concat(inputNames.stream(), inputNames.stream().flatMap(traverseBackwards::children))
+               .anyMatch(vertex -> graphBuilder.getNetworkInputs().contains(vertex));
     }
 
     private static void removeVertex(GraphBuilder graphBuilder, String vertexNameToRemove) {
@@ -319,7 +331,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
     private static void changeNoutOfInputs(GraphBuilder graphBuilder, Collection<String> inputNames, long nOut) {
 
-        // System.out.println("inputnames: " + inputNames);
+        //System.out.println("inputnames: " + inputNames);
         // What we want here is to traverse in topological order really. Just so happens to be so that inputNames
         // is always in reverse topological order since this is how it is constructed?
         final List<String> names = new ArrayList<>(inputNames);
@@ -355,7 +367,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 // We only want to process feedforward layers.
                 .filter(vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
                 .collect(Collectors.toSet());
-        //System.out.println("Change nIns after changing nOuts");
+        //System.out.println("Change nIns after changing nOuts " + needToChangeNin + " changed layers " + changedLayers);
         setNinOfOutputsToNoutSize(graphBuilder, needToChangeNin);
     }
 
@@ -394,11 +406,13 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .forEachOrdered(layer -> {
                     final long nInToUse = traverseInputs.children(layer.getLayerName())
                             .distinct()
+                            //.peek(vertex -> System.out.println("visit " + vertex ))
                             .mapToLong(vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex)
                                     .map(FeedForwardLayer::getNOut)
                                     .orElseGet(() -> graphBuilder.getNetworkInputs().contains(vertex)
                                             ? graphBuilder.getNetworkInputTypes().get(graphBuilder.getNetworkInputs().indexOf(vertex)).getShape(false)[0]
                                             : 0L))
+                            //.peek(size -> System.out.println("size: " + size))
                             .sum();
                     log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
                     //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
