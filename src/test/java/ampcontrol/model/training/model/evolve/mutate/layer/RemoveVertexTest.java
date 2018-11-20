@@ -9,6 +9,7 @@ import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.deeplearning4j.nn.conf.graph.ScaleVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -389,7 +390,7 @@ public class RemoveVertexTest {
     }
 
     /**
-     * Test to remove a layer in a fork when it is the input which is forked
+     * Test to remove a layer after a size transparent layer which in turn is right after a fork
      */
     @Test
     public void removeAfterSizeTransparentAfterFork() {
@@ -409,6 +410,33 @@ public class RemoveVertexTest {
                 .build());
         graph.init();
         removeVertex("4", graph, inputType);
+    }
+
+    /**
+     * Test to remove a layer after a size transparent layer which in turn is right after an residual block
+     * where the input to the res block has a size transparent vertex as output followed by an output which
+     * needs a change in nIn
+     */
+    @Test
+    public void removeAfterSizeTransparentAfterResWithSizeTransparent() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addVertex("scale1", new ScaleVertex(1), "1")
+                .addLayer("2", new BatchNormalization.Builder().nOut(3).build(), "scale1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
+                .addLayer("4", new BatchNormalization.Builder().nOut(3).build(), "add1And3")
+                .addLayer("5", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "4")
+                .addLayer("gp", new GlobalPoolingLayer(), "5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("5", graph, inputType);
     }
 
     @NotNull

@@ -108,7 +108,8 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         //graphBuilder.getNetworkInputs().stream().anyMatch(inputNames::contains);
         isAnyLayerTouchingNetworkInput(graphBuilder, inputNames);
 
-        //System.out.println("\t\t Touches input " + isAnyLayerTouchingNetworkInput);
+        //System.out.println("Touches input " + isAnyLayerTouchingNetworkInput);
+
         // Do the change which adds neurons rather than the one which removes them
         // What about if nIn == nOut? Can't do early return it seems as this is no guarantee
         // that the below is not needed. Example when it is not involve pooling layers
@@ -362,8 +363,11 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 });
 
         // Set Nin of layers which have changed and are not part of inputNames
+        final Graph<String> forward = TraverseBuilder.forwards(graphBuilder)
+                .allowRevisit()
+                .build();
         final Set<String> needToChangeNin = changedLayers.stream()
-                .flatMap(vertex -> new ForwardOf(graphBuilder).children(vertex))
+                .flatMap(forward::children)
                 // We only want to process feedforward layers.
                 .filter(vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
                 .collect(Collectors.toSet());
