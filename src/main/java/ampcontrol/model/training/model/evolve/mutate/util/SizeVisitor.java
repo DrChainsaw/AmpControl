@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 
 import java.util.Arrays;
@@ -57,7 +58,9 @@ public class SizeVisitor {
             return;
         }
 
-        if (builder.getVertices().get(vertex) instanceof MergeVertex) {
+        // TODO: This will break easily. Better to provide some "shallSplit" predicate which depends on how the graph is configured
+        if (inputs.size() > 1
+                && !(builder.getVertices().get(vertex) instanceof ElementWiseVertex)) {
             long remainder = visitedToSize.getOrDefault(vertex, startSize);
             final long[] layerSizes = new long[inputs.size()];
             final Boolean[] validLayers = new Boolean[inputs.size()];

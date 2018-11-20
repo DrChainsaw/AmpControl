@@ -352,7 +352,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + sizeRegistry.getSize(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNout = sizeRegistry.getSize(layer.getLayerName());
-                    // System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNout);
+                    //System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNout);
                     layer.setNOut(thisNout);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNIn(thisNout);

@@ -388,6 +388,29 @@ public class RemoveVertexTest {
         removeVertex("3", graph, inputType);
     }
 
+    /**
+     * Test to remove a layer in a fork when it is the input which is forked
+     */
+    @Test
+    public void removeAfterSizeTransparentAfterFork() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(2).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "input")
+                .addVertex("merge1And2", new MergeVertex(), "1", "2")
+                .addLayer("3", new BatchNormalization.Builder().nOut(5).build(), "merge1And2")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "3")
+                .addLayer("gp", new GlobalPoolingLayer(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("4", graph, inputType);
+    }
+
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {
         final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(
