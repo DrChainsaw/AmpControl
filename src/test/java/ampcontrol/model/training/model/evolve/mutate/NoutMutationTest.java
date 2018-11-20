@@ -358,4 +358,41 @@ public class NoutMutationTest {
 
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
     }
+
+    /**
+     * Test to mutate a layer just before a size transparent fork
+     */
+    @Test
+    public void mutateBeforeSizeTransparentFork() {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(InputType.convolutional(122, 128, 3))
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "input")
+                .addLayer("fb1_branch_0_0", new BatchNormalization.Builder().build(), "1")
+                .addVertex("scale_fb1_branch_0_0", new ScaleVertex(1),"fb1_branch_0_0")
+                .addLayer("fb1_branch_1_0", new BatchNormalization.Builder().build(), "1")
+                 .addVertex("rbMvInput0", new MergeVertex(), "scale_fb1_branch_0_0", "fb1_branch_1_0")
+                .addLayer("2", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "rbMvInput0")
+                .addLayer("3", new GlobalPoolingLayer(), "2")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "3")
+                .build());
+        graph.init();
+
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName("1")
+                                .mutateNout(nOut -> nOut - 1)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
+    }
 }

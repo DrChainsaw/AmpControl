@@ -104,7 +104,7 @@ public class SizeVisitor {
      * @param vertex Vertex (input vertex must have been visited)
      * @return The size of the vertex
      */
-    public long getSize(String vertex) {
+    public Long getSize(String vertex) {
         return visitedToSize.get(vertex);
     }
 }

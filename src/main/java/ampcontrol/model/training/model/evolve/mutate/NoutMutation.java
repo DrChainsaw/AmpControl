@@ -171,7 +171,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .andTraverseCondition(vertex -> backwards.children(vertex).count() == 1)
                 .build()
                 .children(layerName)
-               // .peek(vertex -> System.out.println("Preset " + vertex + " to " + deltaSize))
+                //.peek(vertex -> System.out.println("Preset " + vertex + " to " + deltaSize))
                 .forEach(vertex -> nOutDeltaRegistry.set(vertex, deltaSize));
         return nOutDeltaRegistry;
     }
@@ -181,6 +181,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                                  long deltaSize,
                                                  HasVistited visited) {
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
+        final Graph<String> backward = Traverse.leaves(GraphBuilderUtil.changeSizePropagates(builder), new BackwardOf(builder));
         return TraverseBuilder.forwards(builder)
 //                                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
 //                                        .filter(entry -> entry.getValue().contains(vertex))
@@ -190,14 +191,22 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .visitCondition(outputName -> !visited.output(outputName))
                 .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
-                            //System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
-                            log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - deltaSize));
-                            layer.setNIn(layer.getNIn() - deltaSize);
+
+                            final long thisDelta = Math.max(deltaSize, backward.children(layer.getLayerName())
+                                    //.peek(vertex -> System.out.println("Child of " + layer.getLayerName() + " is " + vertex))
+                                    .map(vertex -> Optional.ofNullable(nOutDeltaRegistry.getSize(vertex)))
+                                    .filter(Optional::isPresent)
+                                    .mapToLong(Optional::get)
+                                    .sum());
+
+                            //System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
+                            log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
+                            layer.setNIn(layer.getNIn() - thisDelta);
                             if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
-                                layer.setNOut(layer.getNOut() - deltaSize);
+                                layer.setNOut(layer.getNOut() - thisDelta);
                                 visited.addInput(outputName);
                                 // We must also note down the delta size in case we go through a sibling of this vertex on the way back though a MergeVertex
-                                nOutDeltaRegistry.set(layer.getLayerName(), deltaSize);
+                                nOutDeltaRegistry.set(layer.getLayerName(), thisDelta);
                             }
                         }))
                 .build();
