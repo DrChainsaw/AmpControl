@@ -300,11 +300,12 @@ public class ParameterTransferNoutMutationTest {
                         NoutMutation.NoutMutationDescription.builder()
                                 .layerName(fork1NameToMutate)
                                 .mutateNout(nOut -> newNout1)
-                                .build(),
-                        NoutMutation.NoutMutationDescription.builder()
-                                .layerName(fork2NameToMutate)
-                                .mutateNout(nOut -> newNout2)
                                 .build()
+//                        ,
+//                        NoutMutation.NoutMutationDescription.builder()
+//                                .layerName(fork2NameToMutate)
+//                                .mutateNout(nOut -> newNout2)
+//                                .build()
                 ))
                 .mutate(
                         new ComputationGraphConfiguration.GraphBuilder(
