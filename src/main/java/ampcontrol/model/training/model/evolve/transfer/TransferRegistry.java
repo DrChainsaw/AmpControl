@@ -48,6 +48,7 @@ class TransferRegistry {
         }
 
         void addIndArrayIndex(int dim, INDArrayIndex index) {
+            System.out.println("\tPut dim " + dim + " for " + debugName);
             indexMap.put(dim, merge(index, Optional.ofNullable(indexMap.get(dim))));
         }
 

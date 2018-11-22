@@ -7,7 +7,7 @@ import ampcontrol.model.training.model.evolve.crossover.graph.GraphInfo;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
-import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
+import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
@@ -101,7 +101,7 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
         log.info("Evolve " + this);
         final MutationState<ComputationGraphConfiguration.GraphBuilder> newMutationState = mutation.clone();
         final ComputationGraphConfiguration.GraphBuilder mutated = newMutationState.mutate(
-                GraphBuilderUtil.toBuilder(graph));
+                CompGraphUtil.toBuilder(graph));
         final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph::getVertex, gv -> graph);
 
         return createOffspring(newMutationState, mutated, parameterTransfer);
@@ -109,8 +109,8 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
 
     @Override
     public EvolvingGraphAdapter cross(EvolvingGraphAdapter mate) {
-        final GraphInfo thisGraph = new GraphInfo.Input(GraphBuilderUtil.toBuilder(graph));
-        final GraphInfo otherGraph = new GraphInfo.Input(GraphBuilderUtil.toBuilder(mate.graph));
+        final GraphInfo thisGraph = new GraphInfo.Input(CompGraphUtil.toBuilder(graph));
+        final GraphInfo otherGraph = new GraphInfo.Input(CompGraphUtil.toBuilder(mate.graph));
         final GraphInfo result = crossover.cross(thisGraph, otherGraph);
 
         final Map<String, GraphVertex> nameToVertex =

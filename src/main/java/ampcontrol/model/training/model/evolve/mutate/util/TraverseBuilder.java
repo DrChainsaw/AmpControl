@@ -48,6 +48,18 @@ public class TraverseBuilder<T> {
     }
 
     /**
+     * Builder for the standard way to traverse ComputationGraphs in the backward direction
+     *
+     * @param computationGraph  Has the configuration to traverse
+     * @return a {@link TraverseBuilder}
+     */
+    public static TraverseBuilder<String> backwards(ComputationGraph computationGraph) {
+        return new TraverseBuilder<>(new BackwardOf(computationGraph))
+                .traverseCondition(CompGraphUtil.changeSizePropagates(computationGraph))
+                .enterCondition(CompGraphUtil.changeSizePropagatesBackwards(computationGraph));
+    }
+
+    /**
      * Builder for the standard way to traverse ComputationGraphs in the forward direction
      *
      * @param builder Has the configuration to traverse

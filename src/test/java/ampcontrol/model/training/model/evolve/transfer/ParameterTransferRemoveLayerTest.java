@@ -4,7 +4,7 @@ import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.GraphMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.RemoveVertexFunction;
-import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
+import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -173,7 +173,7 @@ public class ParameterTransferRemoveLayerTest {
 
     private void removeVertex(String layerName, ComputationGraph graph, InputType inputType) {
 
-        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph).setInputTypes(inputType);
+        final ComputationGraphConfiguration.GraphBuilder builder = CompGraphUtil.toBuilder(graph).setInputTypes(inputType);
         final ComputationGraph newGraph = new ComputationGraph(mutateRemove(builder, layerName)
                 .build());
         newGraph.init();
@@ -194,7 +194,7 @@ public class ParameterTransferRemoveLayerTest {
             String layerNameToNoutMutate,
             InputType inputType) {
 
-        final ComputationGraphConfiguration.GraphBuilder builder = GraphBuilderUtil.toBuilder(graph)
+        final ComputationGraphConfiguration.GraphBuilder builder = CompGraphUtil.toBuilder(graph)
                 .setInputTypes(inputType);
         final ComputationGraph newGraph = new ComputationGraph(
                 mutateRemove(

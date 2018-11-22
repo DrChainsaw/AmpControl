@@ -86,7 +86,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         layerConf.setNOut(newNout);
 
         log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
-        //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
+        System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
 
         propagateNOutChange(
                 builder,
@@ -208,9 +208,9 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                     .reduce((l1, l2) -> l1 + l2)
                                     .orElse(deltaSize);
 
-                            //System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
+                            System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
-                            //System.out.println("delta: " + thisDelta + " deltaSize " + deltaSize);
+                            System.out.println("delta: " + thisDelta + " deltaSize " + deltaSize);
                             layer.setNIn(layer.getNIn() - thisDelta);
                             if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
                                 layer.setNOut(layer.getNOut() - thisDelta);
@@ -251,7 +251,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                     asFf.apply(inputName)
                             .ifPresent(layer -> {
                                 final long nOutDelta = nOutDeltaRegistry.getSize(inputName);
-                                //System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
+                                System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 log.info("Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 visited.addInput(inputName);
                                 layer.setNOut(layer.getNOut() - nOutDelta);

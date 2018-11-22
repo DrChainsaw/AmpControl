@@ -3,7 +3,16 @@ package ampcontrol.model.training.model.evolve.transfer;
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
+import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.deeplearning4j.nn.conf.graph.ScaleVertex;
+import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.BatchNormalization;
+import org.deeplearning4j.nn.conf.layers.CenterLossOutputLayer;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
+import org.deeplearning4j.nn.conf.layers.GlobalPoolingLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.deeplearning4j.nn.weights.WeightInit;
@@ -318,6 +327,54 @@ public class ParameterTransferNoutMutationTest {
                                 graph.getLayer(layer.conf().getLayer().getLayerName()).params().meanNumber(),
                                 layer.params().meanNumber())
                 );
+    }
+
+    /**
+     * The trick to not fail this transfer is to not traverse the {@link ElementWiseVertex} twice as this will cause
+     * weights for the {@link MergeVertex} to be added twice
+     */
+    @Test
+    public void decreaseInputToElemVertexBeforeFork() {
+        final InputType inputType = InputType.convolutional(33, 33, 3);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addVertex("scale1", new ScaleVertex(1), "1")
+                .addLayer("2", new BatchNormalization.Builder().nOut(3).build(), "scale1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
+                .addLayer("4", new BatchNormalization.Builder().nOut(3).build(), "add1And3")
+                .addLayer("5", new BatchNormalization.Builder().nOut(3).build(), "add1And3")
+                .addVertex("merge4And5", new MergeVertex(), "4", "5")
+                .addLayer("gp", new GlobalPoolingLayer(), "merge4And5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+
+        graph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        final long newNout = 2;
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName("1")
+                                .mutateNout(nOut -> newNout)
+                                .build()
+                ))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())
+                                        .weightInit(WeightInit.ZERO)))
+                .build());
+        newGraph.init();
+        newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+
+        final ComputationGraph mutatedGraph = new ParameterTransfer(graph).transferWeightsTo(newGraph);
+        mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
     }
 
 

@@ -8,7 +8,6 @@ import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
 import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
-import org.deeplearning4j.nn.graph.ComputationGraph;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -158,16 +157,6 @@ public class GraphBuilderUtil {
                                 .mapToLong(inputType -> inputType.getShape(false)[0])
                                 .sum()));
 
-    }
-
-    /**
-     * Creates a {@link GraphBuilder} with the same config as a given {@link ComputationGraph}
-     *
-     * @param graph the {@link ComputationGraph}
-     * @return the {@link GraphBuilder}
-     */
-    public static GraphBuilder toBuilder(ComputationGraph graph) {
-        return new GraphBuilder(graph.getConfiguration().clone(), new NeuralNetConfiguration.Builder(graph.conf().clone()));
     }
 
     /**

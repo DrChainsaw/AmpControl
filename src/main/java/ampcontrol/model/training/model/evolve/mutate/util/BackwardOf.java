@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate.util;
 
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.graph.ComputationGraph;
 
 import java.util.stream.Stream;
 
@@ -15,6 +16,10 @@ public class BackwardOf implements Graph<String> {
 
     public BackwardOf(ComputationGraphConfiguration.GraphBuilder graphBuilder) {
         actualGraph = new BackwardOfBuilder(graphBuilder);
+    }
+
+    public BackwardOf(ComputationGraph computationGraph) {
+        actualGraph = new BackwardOfCompGraph(computationGraph);
     }
 
     @Override

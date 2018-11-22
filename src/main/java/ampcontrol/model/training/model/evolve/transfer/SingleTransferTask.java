@@ -6,6 +6,7 @@ import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.indexing.SpecifiedIndex;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.Set;
@@ -46,6 +47,7 @@ public class SingleTransferTask implements TransferTask {
 
         void addWantedElements(int dim, int[] wantedElementInds) {
             final int mappedDim = dimensionMapper.applyAsInt(dim);
+            System.out.println("\tdim " + dim + " mapped to " + mappedDim);
             final INDArrayIndex newIndex = new SpecifiedIndex(IntStream.of(wantedElementInds).map(remapper.apply(mappedDim)).toArray());
             entry.addIndArrayIndex(mappedDim, newIndex);
         }
@@ -86,6 +88,7 @@ public class SingleTransferTask implements TransferTask {
         final long[] sourceShape = source.getEntry().shape();
         final long[] targetShape = target.getEntry().shape();
 
+        System.out.println("Exec source " + Arrays.toString(sourceShape) + " tgt " + Arrays.toString(targetShape));
         IntStream.range(0, targetShape.length)
                 .filter(dim -> !dimensionMask.contains(dim))
                 .filter(dim -> targetShape[dim] < sourceShape[dim])
@@ -101,7 +104,7 @@ public class SingleTransferTask implements TransferTask {
                             .mapToInt(e -> e)
                             .sorted()
                             .toArray();
-
+                    System.out.println("transfer dim " + dim);
                     addWantedElementsFromSource(dim, wantedElements);
                 });
         IntStream.range(0, targetShape.length)

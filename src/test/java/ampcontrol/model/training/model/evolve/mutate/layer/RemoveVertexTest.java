@@ -2,7 +2,7 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
-import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
+import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
@@ -446,7 +446,7 @@ public class RemoveVertexTest {
                         .mutation(new RemoveVertexFunction(vertexToRemove))
                         .build()));
         final ComputationGraph newGraph = new ComputationGraph(mutatation.mutate(
-               GraphBuilderUtil.toBuilder(graph).setInputTypes(inputType))
+               CompGraphUtil.toBuilder(graph).setInputTypes(inputType))
                 .build());
         newGraph.init();
 
