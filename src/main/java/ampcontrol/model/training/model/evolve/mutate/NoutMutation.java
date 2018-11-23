@@ -13,10 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -84,11 +81,10 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         final FeedForwardLayer layerConf = (FeedForwardLayer) ((LayerVertex) builder.getVertices().get(layerName)).getLayerConf().getLayer();
         final long oldNout = layerConf.getNOut();
         final long newNout = Math.max(mutation.getMutateNout().apply(oldNout),
-                                getMinNOut(builder, layerName));
+                getMinNOut(builder, layerName));
         layerConf.setNOut(getMinDeltaNout(builder, layerName)
                 .map(minDelta -> Math.min(oldNout - minDelta, newNout)).orElse(newNout));
 
-        System.out.println("Min delta: " + getMinDeltaNout(builder, layerName).orElse(-1L));
         log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
         System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
 
@@ -187,17 +183,13 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
         final Function<String, Optional<FeedForwardLayer>> asFf = GraphBuilderUtil.asFeedforwardLayer(builder);
         final Set<String> entered = new HashSet<>();
-        final Graph<String> backward = new Filter<>(vertex -> !entered.contains(vertex),
+        final Graph<String> backward = new Filter<>(vertex -> !entered.contains(vertex) || Objects.nonNull(nOutDeltaRegistry.getSize(vertex)),
                 GraphBuilderUtil.inputSizeTravere(builder)
                         .addEnterListener(entered::add)
-                        .traverseCondition(GraphBuilderUtil.changeSizePropagates(builder))
+                        .traverseCondition(vertex -> Objects.isNull(nOutDeltaRegistry.getSize(vertex)))
+                        .andTraverseCondition(GraphBuilderUtil.changeSizePropagates(builder))
                         .allowRevisit()
                         .build());
-
-        Graph<String> forward = TraverseBuilder.forwards(builder)
-                .andTraverseCondition(vertex -> !(builder.getVertices().get(vertex) instanceof MergeVertex))
-                .andTraverseCondition(vertex -> builder.getNetworkOutputs().contains(vertex))
-                .build();
 
         return TraverseBuilder.forwards(builder)
 //                                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
@@ -217,16 +209,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                     .reduce((l1, l2) -> l1 + l2)
                                     .orElse(deltaSize);
 
-                            if (
-                                    !visited.input(outputName) &&
-                                            forward
-                                                    .children(outputName)
-                                                    .peek(vertex -> System.out.println("search for deltaout " + vertex))
-                                                    .anyMatch(vertex -> Optional.ofNullable(nOutDeltaRegistry.getSize(vertex)).orElse(deltaSize) == 0L)) {
-                                System.out.println("Found 0!");
-                                //return;
-                                //visited.addInput(outputName);
-                            }
 
                             System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
                             System.out.println("delta: " + thisDelta + " deltaSize " + deltaSize);
@@ -234,7 +216,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
 
                             if (changeNinMeansChangeNout(layer) && !visited.input(outputName)) {
-                                System.out.println("Actually applied it?");
                                 layer.setNIn(layer.getNIn() - thisDelta);
                                 layer.setNOut(layer.getNOut() - thisDelta);
                                 visited.addInput(outputName);
@@ -312,22 +293,18 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
         final Graph<String> countMergeInputs =
                 new EnterIf<>(vertex -> builder.getVertices().get(vertex) instanceof MergeVertex,
                         new Filter<>(vertex -> !visited.contains(vertex),
-                        new BackwardOf(builder)));
+                                new BackwardOf(builder)));
 
-        return new Connect<>(TraverseBuilder.forwards(builder)
-                .visitListener(visited::add)
-                .build(),
-                        TraverseBuilder.backwards(builder)
-                                .andTraverseCondition(vertex -> !visited.contains(vertex))
-                                .enterListener(vertex -> System.out.println("visit " + vertex + " visited: " + visited))
-                                .visitCondition(vertex -> !vertex.equals(vertexName))
-                                .build())
+        return new Connect<>(
+                TraverseBuilder.forwards(builder)
+                        .visitListener(visited::add)
+                        .build(),
+                TraverseBuilder.backwards(builder)
+                        .andTraverseCondition(vertex -> !visited.contains(vertex))
+                        .visitCondition(vertex -> !vertex.equals(vertexName))
+                        .build())
                 .children(vertexName)
-                .peek(vertex -> System.out.println("Visited: " + visited))
-                .map(vertex -> countMergeInputs.children(vertex)
-                        .peek(vert -> System.out.println("count mv: " + vert))
-                        //.filter(vert -> !visited.contains(vert))
-                        .count())
+                .map(vertex -> countMergeInputs.children(vertex).count())
                 .filter(nrofOutputs -> nrofOutputs > 1)
                 .max(Comparator.comparingLong(l -> l));
     }

@@ -402,6 +402,44 @@ public class NoutMutationTest {
      * Test to mutate a layer just before a size transparent fork
      */
     @Test
+    public void mutateAfterResBeforeSizeTransparentFork() {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(InputType.convolutional(122, 128, 3))
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "input")
+                .addLayer("2", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "1")
+                .addVertex("add1And2", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "2")
+                .addLayer("fb1_branch_0_0", new BatchNormalization.Builder().build(), "add1And2")
+                .addLayer("fb1_branch_1_0", new BatchNormalization.Builder().build(), "add1And2")
+                .addVertex("rbMvInput0", new MergeVertex(), "fb1_branch_0_0", "fb1_branch_1_0")
+                .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "rbMvInput0")
+                .addLayer("4", new GlobalPoolingLayer(), "3")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
+                .build());
+        graph.init();
+
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName("2")
+                                .mutateNout(nOut -> nOut - 1)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
+    }
+
+    /**
+     * Test to mutate a layer just before a size transparent fork
+     */
+    @Test
     public void mutateBeforeSizeTransparentForkWithRes() {
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .graphBuilder()
