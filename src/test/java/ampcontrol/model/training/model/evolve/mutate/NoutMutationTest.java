@@ -137,7 +137,7 @@ public class NoutMutationTest {
         final String fork3 = "fork3";
         final ComputationGraph graph = GraphUtils.getForkResNet(beforeFork, afterFork, fork1, fork2ToMutate, fork3);
 
-        final long newNout = 4;
+        final long newNout = 3;
         final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
                 () -> Stream.of(
                         NoutMutation.NoutMutationDescription.builder()
@@ -477,9 +477,54 @@ public class NoutMutationTest {
         newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
     }
 
+    /**
+     * Test to mutate a layer just before a size transparent fork
+     */
+    @Test
+    public void mutateBeforeSizeTransparentResForkWithInnerFork() {
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(InputType.convolutional(122, 128, 3))
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(15).build(), "input")
+                .addLayer("2", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(5).build(), "1")
+                .addLayer("fb2_branch_0_0", new BatchNormalization.Builder().build(), "2")
+                .addLayer("fb2_branch_0_0_branch_0_0", new BatchNormalization.Builder().build(), "fb2_branch_0_0")
+                .addLayer("fb2_branch_0_0_branch_1_0", new BatchNormalization.Builder().build(), "fb2_branch_0_0")
+                .addVertex("mergeInner", new ElementWiseVertex(ElementWiseVertex.Op.Add),
+                        "fb2_branch_0_0_branch_0_0", "fb2_branch_0_0_branch_1_0")
+                .addLayer("fb2_branch_0_1", new BatchNormalization.Builder().build(), "mergeInner")
+                .addLayer("fb2_branch_1_0", new BatchNormalization.Builder().build(), "2")
+                .addLayer("fb2_branch_2_0", new BatchNormalization.Builder().build(), "2")
+                .addVertex("rbMvInput0", new MergeVertex(), "fb2_branch_0_1", "fb2_branch_1_0", "fb2_branch_2_0")
+                .addVertex("addMergeAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0","1")
+                .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "addMergeAnd1")
+                .addLayer("4", new GlobalPoolingLayer(), "3")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
+                .build());
+        graph.init();
+        graph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
+
+        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
+                () -> Stream.of(
+                        NoutMutation.NoutMutationDescription.builder()
+                                .layerName("1")
+                                .mutateNout(nOut -> nOut - 1)
+                                .build()))
+                .mutate(
+                        new ComputationGraphConfiguration.GraphBuilder(
+                                graph.getConfiguration(),
+                                new NeuralNetConfiguration.Builder(graph.conf())))
+                .build());
+        newGraph.init();
+
+        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
+    }
+
     @Test
     public void tmp() throws IOException {
-        final ComputationGraph graph = ModelSerializer.restoreComputationGraph("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\1598149236\\19", true);
+        final ComputationGraph graph = ModelSerializer.restoreComputationGraph("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\1598149236\\19todebug", true);
         final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
                 () -> Stream.of(
                         NoutMutation.NoutMutationDescription.builder()

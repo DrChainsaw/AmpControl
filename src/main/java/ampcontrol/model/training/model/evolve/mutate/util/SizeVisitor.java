@@ -39,8 +39,9 @@ public class SizeVisitor {
 
     /**
      * Set the given vertex to the given value. Typically used for initialization
+     *
      * @param vertex vertex to set
-     * @param size value to set
+     * @param size   value to set
      */
     public void set(String vertex, long size) {
         visitedToSize.put(vertex, size);
@@ -48,13 +49,14 @@ public class SizeVisitor {
 
     /**
      * Determine the size of any ancestor vertices
+     *
      * @param vertex vertex to visit
      */
     public void visit(String vertex) {
 
         final List<String> inputs = graph.children(vertex).collect(Collectors.toList());
 
-        if(inputs.stream().allMatch(visitedToSize::containsKey)) {
+        if (inputs.stream().allMatch(visitedToSize::containsKey)) {
             return;
         }
 
@@ -96,14 +98,15 @@ public class SizeVisitor {
             visitedToSize.putAll(inputs.stream()
                     .filter(input -> !visitedToSize.containsKey(input))
                     .collect(Collectors.toMap(
-                    name -> name,
-                    name -> visitedToSize.getOrDefault(vertex, startSize)
-            )));
+                            name -> name,
+                            name -> visitedToSize.getOrDefault(vertex, startSize)
+                    )));
         }
     }
 
     /**
      * Return the size of a visited vertex
+     *
      * @param vertex Vertex (input vertex must have been visited)
      * @return The size of the vertex
      */
