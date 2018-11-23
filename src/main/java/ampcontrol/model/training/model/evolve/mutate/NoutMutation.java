@@ -86,7 +86,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .map(minDelta -> Math.min(oldNout - minDelta, newNout)).orElse(newNout));
 
         log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
-        System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
+        //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
 
         propagateNOutChange(
                 builder,
@@ -210,8 +210,8 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                                     .orElse(deltaSize);
 
 
-                            System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
-                            System.out.println("delta: " + thisDelta + " deltaSize " + deltaSize);
+                           // System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
+                           // System.out.println("delta: " + thisDelta + " deltaSize " + deltaSize);
 
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
 
@@ -258,7 +258,7 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                     asFf.apply(inputName)
                             .ifPresent(layer -> {
                                 final long nOutDelta = nOutDeltaRegistry.getSize(inputName);
-                                System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
+                                //System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 log.info("Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 visited.addInput(inputName);
                                 if (changeNinMeansChangeNout(layer) && !visited.output(inputName)) {
@@ -287,6 +287,17 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .orElse(0);
     }
 
+    /**
+     * This also belongs to the Brainf*ck category. If multiple "size transparent" (e.g. batchnorm) layers are merged
+     * that they all will have nIn (and therefore nOut) changed with size delta. However, we might traverse to these
+     * backwards through an ElementWiseVertex so that their output already has its size set. If this size change was less
+     * than number of size transparent vertices in the fork we are now screwed and would need to go back to correct this.
+     * As this action would create all kinds of ripple effects the defensive thing to do is to look for such forks and
+     * determine the smallest allowed delta beforehand.
+     * @param builder The builder which has the config to change
+     * @param vertexName Name of first vertex to change
+     * @return Minimum delta Nout if such structures exists which requires such a minimum, empty otherwise.
+     */
     private Optional<Long> getMinDeltaNout(GraphBuilder builder, String vertexName) {
         final Set<String> visited = new HashSet<>();
 

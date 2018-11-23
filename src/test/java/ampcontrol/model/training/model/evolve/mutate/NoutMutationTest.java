@@ -11,11 +11,9 @@ import org.deeplearning4j.nn.conf.graph.ScaleVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.util.ModelSerializer;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
-import java.io.IOException;
 import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertEquals;
@@ -373,9 +371,9 @@ public class NoutMutationTest {
                 .setOutputs("output")
                 .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "input")
                 .addLayer("fb1_branch_0_0", new BatchNormalization.Builder().build(), "1")
-                .addVertex("scale_fb1_branch_0_0", new ScaleVertex(1),"fb1_branch_0_0")
+                .addVertex("scale_fb1_branch_0_0", new ScaleVertex(1), "fb1_branch_0_0")
                 .addLayer("fb1_branch_1_0", new BatchNormalization.Builder().build(), "1")
-                 .addVertex("rbMvInput0", new MergeVertex(), "scale_fb1_branch_0_0", "fb1_branch_1_0")
+                .addVertex("rbMvInput0", new MergeVertex(), "scale_fb1_branch_0_0", "fb1_branch_1_0")
                 .addLayer("2", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "rbMvInput0")
                 .addLayer("3", new GlobalPoolingLayer(), "2")
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "3")
@@ -448,7 +446,7 @@ public class NoutMutationTest {
                 .setOutputs("output")
                 .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "input")
                 .addLayer("fb1_branch_0_0", new BatchNormalization.Builder().build(), "1")
-                .addVertex("scale_fb1_branch_0_0", new ScaleVertex(1),"fb1_branch_0_0")
+                .addVertex("scale_fb1_branch_0_0", new ScaleVertex(1), "fb1_branch_0_0")
                 .addVertex("addScaleAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "scale_fb1_branch_0_0")
                 .addLayer("fb1_branch_1_0", new BatchNormalization.Builder().build(), "1")
                 .addVertex("rbMvInput0", new MergeVertex(), "addScaleAnd1", "fb1_branch_1_0")
@@ -487,11 +485,11 @@ public class NoutMutationTest {
                 .addLayer("1", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(14).build(), "input")
                 .addLayer("2", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "1")
                 .addLayer("fb2_branch_0_0", new BatchNormalization.Builder().build(), "2")
-                .addVertex("scale_fb2_branch_0_0", new ScaleVertex(1),"fb2_branch_0_0")
+                .addVertex("scale_fb2_branch_0_0", new ScaleVertex(1), "fb2_branch_0_0")
                 .addVertex("addScaleAnd2", new ElementWiseVertex(ElementWiseVertex.Op.Add), "2", "scale_fb2_branch_0_0")
                 .addLayer("fb2_branch_1_0", new BatchNormalization.Builder().build(), "2")
                 .addVertex("rbMvInput0", new MergeVertex(), "addScaleAnd2", "fb2_branch_1_0")
-                .addVertex("addMergeAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0","1")
+                .addVertex("addMergeAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0", "1")
                 .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "addMergeAnd1")
                 .addLayer("4", new GlobalPoolingLayer(), "3")
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
@@ -536,7 +534,7 @@ public class NoutMutationTest {
                 .addLayer("fb2_branch_1_0", new BatchNormalization.Builder().build(), "2")
                 .addLayer("fb2_branch_2_0", new BatchNormalization.Builder().build(), "2")
                 .addVertex("rbMvInput0", new MergeVertex(), "fb2_branch_0_1", "fb2_branch_1_0", "fb2_branch_2_0")
-                .addVertex("addMergeAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0","1")
+                .addVertex("addMergeAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0", "1")
                 .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "addMergeAnd1")
                 .addLayer("4", new GlobalPoolingLayer(), "3")
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
@@ -548,25 +546,6 @@ public class NoutMutationTest {
                 () -> Stream.of(
                         NoutMutation.NoutMutationDescription.builder()
                                 .layerName("1")
-                                .mutateNout(nOut -> nOut - 1)
-                                .build()))
-                .mutate(
-                        new ComputationGraphConfiguration.GraphBuilder(
-                                graph.getConfiguration(),
-                                new NeuralNetConfiguration.Builder(graph.conf())))
-                .build());
-        newGraph.init();
-
-        newGraph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
-    }
-
-    @Test
-    public void tmp() throws IOException {
-        final ComputationGraph graph = ModelSerializer.restoreComputationGraph("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\1598149236\\19todebug", true);
-        final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
-                () -> Stream.of(
-                        NoutMutation.NoutMutationDescription.builder()
-                                .layerName("5")
                                 .mutateNout(nOut -> nOut - 1)
                                 .build()))
                 .mutate(
