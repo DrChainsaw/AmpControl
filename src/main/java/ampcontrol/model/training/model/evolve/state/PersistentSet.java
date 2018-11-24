@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.evolve.mutate;
+package ampcontrol.model.training.model.evolve.state;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

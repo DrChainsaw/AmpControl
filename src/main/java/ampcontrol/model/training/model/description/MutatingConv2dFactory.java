@@ -11,11 +11,18 @@ import ampcontrol.model.training.model.evolve.CachedPopulation;
 import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.Population;
 import ampcontrol.model.training.model.evolve.TransformPopulation;
+import ampcontrol.model.training.model.evolve.crossover.graph.GraphInfo;
 import ampcontrol.model.training.model.evolve.fitness.*;
 import ampcontrol.model.training.model.evolve.mutate.*;
 import ampcontrol.model.training.model.evolve.mutate.layer.*;
-import ampcontrol.model.training.model.evolve.mutate.state.*;
+import ampcontrol.model.training.model.evolve.mutate.state.AggMutationState;
+import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
+import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
+import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
 import ampcontrol.model.training.model.evolve.selection.*;
+import ampcontrol.model.training.model.evolve.state.GenericState;
+import ampcontrol.model.training.model.evolve.state.PersistentSet;
+import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.AddVertexGraphAdapter;
@@ -110,6 +117,18 @@ public final class MutatingConv2dFactory {
                     .mutateKernelSize(new LinkedHashSet<>(mutateKernelSize))
                     .removeLayers(new LinkedHashSet<>(removeLayers))
                     .build();
+        }
+
+        public void modify(Consumer<Set<String>> modification) {
+            modification.accept(mutateNout);
+            modification.accept(mutateKernelSize);
+            modification.accept(removeLayers);
+        }
+
+        public void merge(MutationLayerState other) {
+            mutateNout.addAll(other.mutateNout);
+            mutateKernelSize.addAll(other.mutateKernelSize);
+            removeLayers.addAll(other.removeLayers);
         }
 
         static MutationLayerState fromFile(String baseName, MutationLayerState mutationLayerState) throws IOException {
@@ -223,11 +242,11 @@ public final class MutatingConv2dFactory {
                     .mutation(mutation)
                     .paramTransfer((nameToVertex, vertexToGraph) -> new ParameterTransfer(
                             nameToVertex,
-                                    // ParameterTransfer wants a mapping from vertex name to comparator. comparatorRegistry
-                                    // has one such mapping for each ComputationGraph, but we first need to determine
-                                    // which ComputationGraph is used for the given vertex
-                                    Objects.requireNonNull(
-                                            vertexName -> comparatorRegistry.get(
+                            // ParameterTransfer wants a mapping from vertex name to comparator. comparatorRegistry
+                            // has one such mapping for each ComputationGraph, but we first need to determine
+                            // which ComputationGraph is used for the given vertex
+                            Objects.requireNonNull(
+                                    vertexName -> comparatorRegistry.get(
                                             vertexToGraph.apply(nameToVertex.apply(vertexName))).apply(vertexName))
                     ))
                     .build();
@@ -310,6 +329,38 @@ public final class MutatingConv2dFactory {
         }
     }
 
+    private void createCrossover(SharedSynchronizedState<MutationLayerState> mutationState) {
+
+        final GenericState<SharedSynchronizedState.View<MutationLayerState>> genericState =
+                new GenericState<>(
+                        mutationState.view(),
+                        view -> view.copy().update(view.get().clone()),
+                        (str, state) -> {/* No need to*/}
+                );
+
+    }
+
+    private void mergeMutationState(
+            MutationLayerState first,
+            MutationLayerState second,
+            GraphInfo firstInput,
+            GraphInfo secondInput,
+            GraphInfo result
+    ) {
+        first.modify(set -> filterSet(set, firstInput, result));
+        second.modify(set -> filterSet(set, secondInput, result));
+        first.merge(second);
+    }
+
+    private Stream<String> filterSet(
+            Set<String> set,
+            GraphInfo input,
+            GraphInfo result) {
+        return result.verticesFrom(input)
+                .filter(nameMapping -> set.contains(nameMapping.getOldName()))
+                .map(GraphInfo.NameMapping::getNewName);
+    }
+
     @NotNull
     private Population<ModelHandle> createPopulation(
             ModelComparatorRegistry comparatorRegistry,
@@ -336,7 +387,7 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(107))
+                                        .andThen(new FitnessPolicyTraining<>(307))
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
@@ -503,10 +554,10 @@ public final class MutatingConv2dFactory {
         final Function<Long, LayerBlockConfig> one = beforeGpBlocks.get(rng.nextInt(beforeGpBlocks.size()));
 
         final Function<Long, LayerBlockConfig> forkFunction = nOut -> {
-            final long nrofPaths = Math.min(nOut, rng.nextInt(3)+2);
+            final long nrofPaths = Math.min(nOut, rng.nextInt(3) + 2);
             long reminder = nOut;
             final ForkAgg fork = new ForkAgg();
-            for(int pathInd = 0 ; pathInd < nrofPaths; pathInd++) {
+            for (int pathInd = 0; pathInd < nrofPaths; pathInd++) {
                 final long thisNout = reminder / (nrofPaths - pathInd);
                 reminder -= thisNout;
                 fork.add(one.apply(thisNout));
@@ -657,7 +708,7 @@ public final class MutatingConv2dFactory {
             final int thisAvgNout = avgNoutPerBlock * (poolingBlockInd + 1) / nrofLayersThisBlock;
             final long nOut = rng.nextInt(Math.max(0, thisAvgNout - minNout)) + minNout;
             for (int layerInd = 0; layerInd < nrofLayersThisBlock; layerInd++) {
-                if(layerInd > 0) {
+                if (layerInd > 0) {
                     builder.andThen(beforeGp
                             .andThen(maybeResBlock)
                             .apply(nOut));

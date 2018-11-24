@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model.evolve.mutate.state;
+package ampcontrol.model.training.model.evolve.state;
 
 import java.util.ArrayList;
 import java.util.List;
