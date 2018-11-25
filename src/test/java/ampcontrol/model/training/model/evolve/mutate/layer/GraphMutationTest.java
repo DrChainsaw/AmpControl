@@ -2,6 +2,7 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
 import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.ForkAgg;
@@ -152,8 +153,7 @@ public class GraphMutationTest {
                 GraphMutation.GraphMutationDescription.builder()
                         .mutation(blockMutation)
                         .build()));
-        final ComputationGraph newGraph = new ComputationGraph(mutation.mutate(
-                new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(), new NeuralNetConfiguration.Builder(graph.conf())))
+        final ComputationGraph newGraph = new ComputationGraph(mutation.mutate(CompGraphUtil.toBuilder(graph))
                 .setInputTypes(inputType)
                 .build());
         newGraph.init();

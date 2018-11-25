@@ -1,6 +1,5 @@
-package ampcontrol.model.training.model.evolve.mutate.state;
+package ampcontrol.model.training.model.evolve.state;
 
-import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState;
 import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState.View;
 import org.junit.Test;
 

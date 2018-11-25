@@ -7,14 +7,12 @@ import ampcontrol.model.training.model.layerblocks.adapters.VertexSpyAdapter;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
-import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -97,11 +95,7 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
                 .build();
 
         final long nOut = Stream.of(inputNames)
-                .flatMap(inputName -> graphBuilder.getVertexInputs().entrySet()
-                        .stream()
-                        .filter(entry -> entry.getValue().contains(inputName))
-                        .map(Map.Entry::getKey))
-                .mapToLong(layerName -> getInputSizeForward(layerName, graphBuilder))
+                .mapToLong(inputName -> GraphBuilderUtil.getOutputSize(inputName, graphBuilder))
                 .sum();
 
         final InputLayersSpy layersSpy = new InputLayersSpy(Stream.of(inputNames).collect(Collectors.toSet()));
@@ -117,20 +111,7 @@ public class BlockMutationFunction implements Function<ComputationGraphConfigura
         return GraphMutation.InputsAndOutputNames.builder()
                 .outputNames(Arrays.asList(outinfo.getInputsNames()))
                 .inputNames(Arrays.asList(inputNames))
-                .keepInputConnection(name -> layersSpy.firstLayers.contains(name) ||verticesSpy.firstLayers.contains(name))
+                .keepInputConnection(name -> layersSpy.firstLayers.contains(name) || verticesSpy.firstLayers.contains(name))
                 .build();
-    }
-
-    private static long getInputSizeForward(String layerName, ComputationGraphConfiguration.GraphBuilder graphBuilder) {
-        return GraphBuilderUtil.vertexAsLayerVertex
-                .andThen(layerVertex -> GraphBuilderUtil.layerVertexAsFeedForward.apply(layerName, layerVertex))
-                .apply(layerName, graphBuilder)
-                .map(FeedForwardLayer::getNIn)
-                .orElseGet(() -> graphBuilder.getVertexInputs().entrySet().stream()
-                        .filter(layerToInputsEntry -> layerToInputsEntry.getValue().contains(layerName))
-                        .map(Map.Entry::getKey)
-                        .mapToLong(inputLayerName -> getInputSizeForward(inputLayerName, graphBuilder))
-                        .findAny()
-                        .orElseThrow(() -> new IllegalStateException("Could not find any feedforward layers after " + layerName)));
     }
 }
