@@ -183,10 +183,6 @@ public class ParameterTransfer {
             ComputationGraph targetCompGraph,
             String layerName) {
 
-        if (hasTransferred.nOut(layerName)) {
-            return NoTransferTask.builder();
-        }
-
         Optional<ParamPair> paramPairOpt = getParams(layerName, targetCompGraph);
         return paramPairOpt.map(paramPair -> {
 
@@ -204,16 +200,7 @@ public class ParameterTransfer {
                 //System.out.println("\t source " + Arrays.toString(transferContext.sourceShape) + " target " + Arrays.toString(transferContext.targetShape));
                 TransferTask.ListBuilder taskBuilder = initTransfer(transferContext, paramPair);
 
-                final Graph<String> traverseDependent = TraverseBuilder.forwards(targetCompGraph)
-                        .andTraverseCondition(vertex -> !(targetCompGraph.getVertex(vertex) instanceof MergeVertex))
-                        .allowRevisit()
-                        .build();
-
-                taskBuilder.addDependentTask(traverseGraph(
-                        layerName,
-                        targetCompGraph,
-                        traverseDependent,
-                        transferContext));
+                transferDependentLayers(targetCompGraph, paramPair, transferContext, taskBuilder);
 
                 return taskBuilder;
             } else {
@@ -233,6 +220,21 @@ public class ParameterTransfer {
         });
     }
 
+    private void transferDependentLayers(ComputationGraph targetCompGraph, ParamPair paramPair, TransferContext transferContext, TransferTask.ListBuilder taskBuilder) {
+        if(!hasTransferred.nOut(paramPair.layerName)) {
+            final Graph<String> traverseDependent = TraverseBuilder.forwards(targetCompGraph)
+                    .andTraverseCondition(vertex -> !(targetCompGraph.getVertex(vertex) instanceof MergeVertex))
+                    .allowRevisit()
+                    .build();
+
+            taskBuilder.addDependentTask(traverseGraph(
+                    paramPair.layerName,
+                    targetCompGraph,
+                    traverseDependent,
+                    transferContext));
+        }
+    }
+
     private TransferTask.ListBuilder initTransfer(
             TransferContext transferContext,
             ParamPair paramPair) {
@@ -242,6 +244,7 @@ public class ParameterTransfer {
             firstTaskBuilder
                     .maskDim(transferContext.inputDimension);
         }
+
 
         firstTaskBuilder
                 .source(SingleTransferTask.IndMapping.builder()
@@ -254,6 +257,15 @@ public class ParameterTransfer {
         compFactory.apply(paramPair.layerName)
                 .ifPresent(firstTaskBuilder::compFactory);
 
+        if (hasTransferred.nOut(paramPair.layerName)) {
+            firstTaskBuilder.maskDim(transferContext.outputDimension);
+            return firstTaskBuilder;
+        }
+
+        return transferOtherWeights(transferContext, paramPair, firstTaskBuilder);
+    }
+
+    private TransferTask.ListBuilder transferOtherWeights(TransferContext transferContext, ParamPair paramPair, SingleTransferTask.Builder firstTaskBuilder) {
         if (paramPair.source.containsKey(DefaultParamInitializer.BIAS_KEY)) {
             firstTaskBuilder
                     .addDependentTask(createDependentTask(
@@ -321,7 +333,7 @@ public class ParameterTransfer {
                                 TraverseBuilder.backwards(targetCompGraph)
                                         .enterCondition(childVertex -> true)
                                         .andTraverseCondition(childVertex -> !childVertex.equals(inputVertex))
-                                        .andTraverseCondition(childVertex-> !(targetCompGraph.getVertex(childVertex) instanceof MergeVertex))
+                                        .andTraverseCondition(childVertex -> !(targetCompGraph.getVertex(childVertex) instanceof MergeVertex))
                                         .allowRevisit()
                                         .build());
                 builder.addDependentTask(traverseGraphBackwards(
@@ -342,7 +354,7 @@ public class ParameterTransfer {
 
         final TransferTask.ListBuilder taskBuilder = new DependentTaskBuilder();
 
-       // boolean[] first = {true};
+        // boolean[] first = {true};
         for (String parKey : paramPair.source.keySet()) {
             outputToInputDimMapping(parKey, paramPair.source.get(parKey).shape().length).ifPresent(dimMapper -> {
 
@@ -392,33 +404,33 @@ public class ParameterTransfer {
                             addTasksForNinToNout(transferContext, paramPair)));
 
             //if (targetCompGraph.getVertex(vertex) instanceof MergeVertex) {
-                // TODO: Needs handling
-                // Need to select a subset of the dependent elements to select for each input vertex.
-                // For example:
-                //       A------
-                //     / | \   |
-                //    B  C  D  |
-                //     \ | /   |
-                //       M     |
-                //       |     |
-                //       P------
-                // Assume:
-                //  A is changed from 20 to 15
-                //  B is changed from 5 to 3
-                //  C is changed from 6 to 5
-                //  D is changed from 9 to 7
-                //  Elements E[] are selected from A
-                // Then:
-                //  E[0:2]  are selected from B
-                //  E[3:7]  are selected from C
-                //  E[8:14] are selected from D
-                // As of now, B,C and D will not be considered depenent tasks and therefore will select their elements
-                // independently.
+            // TODO: Needs handling
+            // Need to select a subset of the dependent elements to select for each input vertex.
+            // For example:
+            //       A------
+            //     / | \   |
+            //    B  C  D  |
+            //     \ | /   |
+            //       M     |
+            //       |     |
+            //       P------
+            // Assume:
+            //  A is changed from 20 to 15
+            //  B is changed from 5 to 3
+            //  C is changed from 6 to 5
+            //  D is changed from 9 to 7
+            //  Elements E[] are selected from A
+            // Then:
+            //  E[0:2]  are selected from B
+            //  E[3:7]  are selected from C
+            //  E[8:14] are selected from D
+            // As of now, B,C and D will not be considered depenent tasks and therefore will select their elements
+            // independently.
             //}
 
             //if (targetCompGraph.getVertex(vertex) instanceof ElementWiseVertex) {
-                // TODO: Needs handling
-                // Traverse forwards, but don't visit anything already visited
+            // TODO: Needs handling
+            // Traverse forwards, but don't visit anything already visited
             //}
             return builder;
         })

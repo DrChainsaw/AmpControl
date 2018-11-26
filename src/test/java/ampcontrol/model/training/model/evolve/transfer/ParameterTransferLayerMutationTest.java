@@ -1,10 +1,12 @@
 package ampcontrol.model.training.model.evolve.transfer;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
+import ampcontrol.model.training.model.evolve.mutate.NoutMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerContainedMutation;
 import ampcontrol.model.training.model.evolve.mutate.layer.LayerMutationInfo;
+import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.distribution.ConstantDistribution;
 import org.deeplearning4j.nn.conf.layers.Convolution2D;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -63,8 +65,7 @@ public class ParameterTransferLayerMutationTest {
                                         .build())
                         .mutation(layer -> new Convolution2D.Builder(4, 4).weightInit(new ConstantDistribution(nextMutationNewVal)).build())
                         .build()))
-                .mutate(new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration(),
-                        new NeuralNetConfiguration.Builder(graph.conf()))).build());
+                .mutate(CompGraphUtil.toBuilder(graph)).build());
 
         newGraph.init();
         final ComputationGraph mutatedGraph = parameterTransfer.transferWeightsTo(newGraph);
@@ -91,5 +92,35 @@ public class ParameterTransferLayerMutationTest {
         assertEquals("Incorrect value!", nextMutationNewVal, targetNext.get(inds).meanNumber().doubleValue(), 1e-10);
 
         mutatedGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
+    }
+
+    /**
+     * Test that a dependent NOut transfer does not block any subsequent kernel size transfers
+     */
+    @Test
+    public void changeKernelSizeAfterNoutChange() {
+        final ComputationGraph graph = GraphUtils.getResNet("first", "second", "third");
+        ComputationGraphConfiguration.GraphBuilder builder = CompGraphUtil.toBuilder(graph);
+
+        builder = new NoutMutation(() -> Stream.of(
+                NoutMutation.NoutMutationDescription.builder()
+                        .mutateNout(nOut -> nOut - 1)
+                        .layerName("first")
+                        .build())).mutate(builder);
+
+        builder = new LayerContainedMutation(() -> Stream.of(
+                LayerContainedMutation.LayerMutation.builder()
+                        .mutationInfo(
+                                LayerMutationInfo.builder()
+                                        .layerName("second")
+                                        .build())
+                        .mutation(layer -> new Convolution2D.Builder(2, 2).convolutionMode(ConvolutionMode.Same).build())
+                        .build())).mutate(builder);
+
+        final ComputationGraph newGraph = new ComputationGraph(builder.build());
+        newGraph.init();
+
+        new ParameterTransfer(graph).transferWeightsTo(newGraph);
+
     }
 }
