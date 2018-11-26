@@ -1,35 +1,23 @@
 package ampcontrol.model.training.model.evolve.crossover.state;
 
-import ampcontrol.model.training.model.evolve.crossover.Crossover;
-import ampcontrol.model.training.model.evolve.state.PersistentState;
 
 /**
- * {@link Crossover} which (maybe) has state which is mutated as well. Apart from the capabilities of PersistentState,
- * it is also able to merge with another {@link CrossoverState} of the same kind.
+ * Interface for crossover operation based on some state which might also be mutated. Typical use case is that state
+ * describes how crossover may be carried out and that this also changes depending on outcome of the mutation.
  * @param <T>
+ * @param <S>
  *
  * @author Christian Skärby
  */
-public abstract class CrossoverState<T, V> implements Crossover<T>, PersistentState<V> {
+public interface CrossoverState<T, S> {
 
     /**
-     * Merge this CrossoverState with another CrossoverState
-     * @param other CrossoverState to merge with
-     * @param thisInput Input used for this crossover
-     * @param otherInput Input used for other
-     * @param result Result of crossover
+     * Return the crossover between the two given items
+     * @param first First item
+     * @param second Second item
+     * @param stateFirst state for first item
+     * @param stateSecond state for second item
+     * @return The result of the crossover.
      */
-    public abstract void merge(CrossoverState<T,V> other, T thisInput, T otherInput, T result);
-
-    /**
-     * "Fake" override of PersistentState#clone
-     * @return a clone
-     */
-    public abstract CrossoverState<T, V> clone();
-
-    /**
-     * Returns the state
-     * @return the state
-     */
-    protected abstract V getState();
+    T cross(T first, T second, S stateFirst, S stateSecond);
 }

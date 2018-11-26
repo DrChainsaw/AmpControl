@@ -91,8 +91,8 @@ public class EvolvingGraphAdapterTest {
             Mutable<String> stateSpy) {
 
         return EvolvingGraphAdapter.<SharedSynchronizedState.View<Mutable<String>>>builder(GraphUtils.getGraph("1", "2", "3"))
+                .evolutionState(state)
                 .mutation(new GenericMutationState<>(
-                        state,
                         currState -> {
                             currState.get().setValue(currState.get().getValue() + "_mutated");
                             stateSpy.setValue(currState.get().getValue());
@@ -100,7 +100,6 @@ public class EvolvingGraphAdapterTest {
                         }
                 ))
                 .crossover(new GenericCrossoverState<>(
-                        state,
                         (stateThis, stateOther, a, b, c) -> {
                             stateThis.get().setValue(stateThis.get().getValue() + "_cross_" + stateOther.get().getValue());
                             stateSpy.setValue(stateThis.get().getValue());

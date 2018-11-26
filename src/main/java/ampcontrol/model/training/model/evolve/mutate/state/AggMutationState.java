@@ -1,6 +1,5 @@
 package ampcontrol.model.training.model.evolve.mutate.state;
 
-import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -9,17 +8,17 @@ import java.util.Objects;
  *
  * @author Christian Skärby
  */
-public class AggMutationState<T> implements MutationState<T> {
+public class AggMutationState<T,S> implements MutationState<T,S> {
 
-    private final MutationState<T> first;
-    private final MutationState<T> second;
+    private final MutationState<T,S> first;
+    private final MutationState<T,S> second;
 
     /**
      * Creates a new {@link Builder} instance
      *
      * @return a new instance
      */
-    public static <T> Builder<T> builder() {
+    public static <T,S> Builder<T,S> builder() {
         return new Builder<>();
     }
 
@@ -29,30 +28,19 @@ public class AggMutationState<T> implements MutationState<T> {
      * @param first  First MutationState to apply
      * @param second Second MutationState to apply
      */
-    public AggMutationState(MutationState<T> first, MutationState<T> second) {
+    public AggMutationState(MutationState<T,S> first, MutationState<T,S> second) {
         this.first = first;
         this.second = second;
     }
 
     @Override
-    public T mutate(T toMutate) {
-        return second.mutate(first.mutate(toMutate));
+    public T mutate(T toMutate, S state) {
+        return second.mutate(first.mutate(toMutate, state), state);
     }
 
-    @Override
-    public void save(String baseName) throws IOException {
-        first.save(baseName);
-        second.save(baseName);
-    }
-
-    @Override
-    public MutationState<T> clone() {
-        return AggMutationState.<T>builder().first(first.clone()).second(second.clone()).build();
-    }
-
-    public static class Builder<T> {
-        private MutationState<T> first;
-        private MutationState<T> second;
+    public static class Builder<T, S> {
+        private MutationState<T, S> first;
+        private MutationState<T, S> second;
 
         /**
          * Sets the first MutationState
@@ -60,7 +48,7 @@ public class AggMutationState<T> implements MutationState<T> {
          * @param first a first MutationState
          * @return the builder
          */
-        public Builder<T> first(MutationState<T> first) {
+        public Builder<T,S> first(MutationState<T,S> first) {
             this.first = first;
             return this;
         }
@@ -71,7 +59,7 @@ public class AggMutationState<T> implements MutationState<T> {
          * @param second a second MutationState
          * @return the builder
          */
-        public Builder<T> second(MutationState<T> second) {
+        public Builder<T,S> second(MutationState<T,S> second) {
             this.second = second;
             return this;
         }
@@ -83,14 +71,14 @@ public class AggMutationState<T> implements MutationState<T> {
          * @param next a next MutationState
          * @return a builder (might not be the same as call was made to)
          */
-        public Builder<T> andThen(MutationState<T> next) {
+        public Builder<T,S> andThen(MutationState<T,S> next) {
             if (first == null) {
                 return first(next);
             }
             if (second == null) {
                 return second(next);
             }
-            return AggMutationState.<T>builder()
+            return AggMutationState.<T,S>builder()
                     .first(build())
                     .second(next);
         }
@@ -100,7 +88,7 @@ public class AggMutationState<T> implements MutationState<T> {
          *
          * @return a new {@link AggMutationState}
          */
-        public AggMutationState<T> build() {
+        public AggMutationState<T,S> build() {
             return new AggMutationState<>(Objects.requireNonNull(first), Objects.requireNonNull(second));
         }
     }

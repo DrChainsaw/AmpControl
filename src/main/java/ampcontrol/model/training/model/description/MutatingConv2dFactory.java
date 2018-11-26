@@ -20,9 +20,11 @@ import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
 import ampcontrol.model.training.model.evolve.selection.*;
+import ampcontrol.model.training.model.evolve.state.AccessibleState;
 import ampcontrol.model.training.model.evolve.state.GenericState;
 import ampcontrol.model.training.model.evolve.state.PersistentSet;
 import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState;
+import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState.View;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.AddVertexGraphAdapter;
@@ -205,7 +207,7 @@ public final class MutatingConv2dFactory {
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
 
         // Create model population
-        final List<EvolvingGraphAdapter<MutationLayerState>> initialPopulation = new ArrayList<>();
+        final List<EvolvingGraphAdapter<View<MutationLayerState>>> initialPopulation = new ArrayList<>();
         IntStream.range(0, 30).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
@@ -233,12 +235,11 @@ public final class MutatingConv2dFactory {
             final ComputationGraph graph = builder.buildGraph(); // Will also populate mutation layers in case graph is new.
 
             final String baseName = candNamePolicy.toFileName(builder.name());
-            final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation = createMutation(
-                    candInd,
-                    mutationLayerState,
-                    baseName);
+            final MutationState<ComputationGraphConfiguration.GraphBuilder, View<MutationLayerState>> mutation = createMutation(
+                    candInd);
 
-            final EvolvingGraphAdapter<MutationLayerState> adapter = EvolvingGraphAdapter.<MutationLayerState>builder(graph)
+            final EvolvingGraphAdapter<View<MutationLayerState>> adapter = EvolvingGraphAdapter.<View<MutationLayerState>>builder(graph)
+                    .evolutionState(createInitialEvolutionState(mutationLayerState, baseName))
                     .mutation(mutation)
                     .paramTransfer((nameToVertex, vertexToGraph) -> new ParameterTransfer(
                             nameToVertex,
@@ -271,21 +272,8 @@ public final class MutatingConv2dFactory {
         modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
     }
 
-    private MutationState<ComputationGraphConfiguration.GraphBuilder> createMutation(
-            int mutationBaseSeed,
-            MutationLayerState mutationLayerState,
-            String baseName) {
-        try {
-
-            final SharedSynchronizedState<MutationLayerState> initialState =
-                    new SharedSynchronizedState<>(MutationLayerState.fromFile(baseName, mutationLayerState));
-
-            final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState =
-                    view -> view.copy().update(view.get().clone());
-
-            final GenericState<SharedSynchronizedState.View<MutationLayerState>> genericState = new GenericState<>(initialState.view(),
-                    copyState,
-                    (str, state) -> state.get().save(str));
+    private MutationState<ComputationGraphConfiguration.GraphBuilder, SharedSynchronizedState.View<MutationLayerState>> createMutation(
+            int mutationBaseSeed) {
 
             final Random seedGenNout = new Random(mutationBaseSeed);
             final Random seedGenKs = new Random(-mutationBaseSeed);
@@ -293,13 +281,12 @@ public final class MutatingConv2dFactory {
             final Random seedRemoveLayer = new Random(-mutationBaseSeed - 100);
             final Random memUsageRng = new Random(mutationBaseSeed + 1000);
 
-            return AggMutationState.<ComputationGraphConfiguration.GraphBuilder>builder()
+            return AggMutationState.<ComputationGraphConfiguration.GraphBuilder, View<MutationLayerState>>builder()
                     .first(new NoMutationStateWapper<>(gb -> {
                         new ConvType(inputShape).addLayers(gb, new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                         return gb;
                     }))
                     .andThen(new GenericMutationState<>(
-                            genericState,
                             state -> new MemoryAwareMutation<>(memUsage -> {
                                 log.info("Create mutation from memusage: " + memUsage);
                                 if (memUsage + 0.2 > memUsageRng.nextDouble()) {
@@ -326,9 +313,6 @@ public final class MutatingConv2dFactory {
                             })
                     ))
                     .build();
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Failed to create mutation!", e);
-        }
     }
 
     private void createCrossover(SharedSynchronizedState<MutationLayerState> mutationState) {
@@ -363,10 +347,26 @@ public final class MutatingConv2dFactory {
                 .map(GraphInfo.NameMapping::getNewName);
     }
 
+    private AccessibleState<View<MutationLayerState>> createInitialEvolutionState(MutationLayerState mutationLayerState, String baseName)  {
+        try {
+            final SharedSynchronizedState<MutationLayerState> initialState =
+                    new SharedSynchronizedState<>(MutationLayerState.fromFile(baseName, mutationLayerState));
+
+            final UnaryOperator<View<MutationLayerState>> copyState =
+                    view -> view.copy().update(view.get().clone());
+
+            return new GenericState<>(initialState.view(),
+                    copyState,
+                    (str, state) -> state.get().save(str));
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to create mutation!", e);
+        }
+    }
+
     @NotNull
-    private <T> Population<ModelHandle> createPopulation(
+    private <S> Population<ModelHandle> createPopulation(
             ModelComparatorRegistry comparatorRegistry,
-            List<EvolvingGraphAdapter<T>> initialPopulation) {
+            List<EvolvingGraphAdapter<S>> initialPopulation) {
         final Random rng = new Random(666);
         final MutableLong nrofParams = new MutableLong(0);
         final Population<ModelHandle> population = new CachedPopulation<>(
@@ -381,7 +381,7 @@ public final class MutatingConv2dFactory {
 
                                 // Policy for computing fitness and as of now, do some cleanup and add some checks
                                 // TODO: Separate out prepare and clean stuff from actual fitness policy or rename FitnessPolicy to CandidateCreationHook or something
-                                AggPolicy.<EvolvingGraphAdapter<T>>builder()
+                                AggPolicy.<EvolvingGraphAdapter<S>>builder()
                                         // Not a fitness policy
                                         .first(new ClearListeners<>())
                                         // Kind of a fitness policy
@@ -399,10 +399,10 @@ public final class MutatingConv2dFactory {
 
                                 // Polícy for selecting candidates after fitness has been reported
 
-                                CompoundFixedSelection.<EvolvingGraphAdapter<T>>builder()
+                                CompoundFixedSelection.<EvolvingGraphAdapter<S>>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
-                                                new EvolveSelection<EvolvingGraphAdapter<T>>( // Seems javac must have this
+                                                new EvolveSelection<EvolvingGraphAdapter<S>>( // Seems javac must have this
                                                         new RouletteSelection<>(rng::nextDouble)))
                                         .build()
                         )));

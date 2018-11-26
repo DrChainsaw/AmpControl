@@ -7,7 +7,6 @@ package ampcontrol.model.training.model.evolve.crossover;
  */
 public interface Crossover<T> {
 
-
     /**
      * Return the crossover between the two given items.
      * @param first First item

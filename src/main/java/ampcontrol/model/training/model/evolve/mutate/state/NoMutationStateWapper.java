@@ -4,12 +4,12 @@ package ampcontrol.model.training.model.evolve.mutate.state;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 
 /**
- * Wrapper for {@link Mutation}s which does not require any state to be copied or persisted.
+ * Wrapper for {@link Mutation}s which does not require any state.
  * @param <T>
- *
+ * @param <S>
  * @author Christian Skärby
  */
-public class NoMutationStateWapper<T> implements MutationState<T> {
+public class NoMutationStateWapper<T,S> implements MutationState<T,S> {
 
     private final Mutation<T> mutation;
 
@@ -18,18 +18,7 @@ public class NoMutationStateWapper<T> implements MutationState<T> {
     }
 
     @Override
-    public T mutate(T toMutate) {
+    public T mutate(T toMutate, S state) {
         return mutation.mutate(toMutate);
-    }
-
-    @Override
-    public void save(String baseName) {
-        // No state to save
-    }
-
-    @Override
-    public MutationState<T> clone() {
-        // No state to clone
-        return this;
     }
 }
