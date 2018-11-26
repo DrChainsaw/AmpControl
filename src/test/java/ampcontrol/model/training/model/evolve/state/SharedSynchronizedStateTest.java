@@ -56,5 +56,4 @@ public class SharedSynchronizedStateTest {
         assertEquals("Incorrect state!", "newState", view2.get());
         assertEquals("Incorrect state!", "newState", copy.get());
     }
-
 }

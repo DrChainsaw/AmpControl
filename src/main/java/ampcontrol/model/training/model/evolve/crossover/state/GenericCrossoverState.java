@@ -13,7 +13,7 @@ import java.util.function.Function;
  *
  * @author Christian Skärby
  */
-public class GenericCrossoverState<T, V> implements CrossoverState<T, GenericCrossoverState<T, V>> {
+public class GenericCrossoverState<T, V> extends CrossoverState<T,V> {
 
     private final AccessibleState<V> state;
     private final MergeFunction<T, V> mergeFunction;
@@ -43,10 +43,13 @@ public class GenericCrossoverState<T, V> implements CrossoverState<T, GenericCro
     }
 
     @Override
-    public GenericCrossoverState<T, V> merge(GenericCrossoverState<T, V> other , T thisInput, T otherInput, T result) {
-        GenericCrossoverState<T, V> clone = clone();
-        mergeFunction.merge(clone.state.get(), other.state.get(), thisInput, otherInput, result);
-        return clone;
+    public void merge(CrossoverState<T, V> other , T thisInput, T otherInput, T result) {
+        mergeFunction.merge(state.get(), other.getState(), thisInput, otherInput, result);
+    }
+
+    @Override
+    protected V getState() {
+        return state.get();
     }
 
     @Override

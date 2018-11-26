@@ -10,7 +10,7 @@ import ampcontrol.model.training.model.evolve.state.PersistentState;
  *
  * @author Christian Skärby
  */
-public interface CrossoverState<T, V extends CrossoverState<T,V>> extends Crossover<T>, PersistentState<V> {
+public abstract class CrossoverState<T, V> implements Crossover<T>, PersistentState<V> {
 
     /**
      * Merge this CrossoverState with another CrossoverState
@@ -18,14 +18,18 @@ public interface CrossoverState<T, V extends CrossoverState<T,V>> extends Crosso
      * @param thisInput Input used for this crossover
      * @param otherInput Input used for other
      * @param result Result of crossover
-     * @return The result of the merge
      */
-    V merge(V other, T thisInput, T otherInput, T result);
+    public abstract void merge(CrossoverState<T,V> other, T thisInput, T otherInput, T result);
 
     /**
-     * "Fake" override of PersistenState#clone
+     * "Fake" override of PersistentState#clone
      * @return a clone
      */
-    CrossoverState<T, V> clone();
+    public abstract CrossoverState<T, V> clone();
 
+    /**
+     * Returns the state
+     * @return the state
+     */
+    protected abstract V getState();
 }

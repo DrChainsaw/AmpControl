@@ -34,28 +34,28 @@ public class GenericCrossoverStateTest {
     @Test
     public void crossMerge() {
         final List<String> state1 = Stream.of("The", "fox", "swims", "across", "a", "lake").collect(Collectors.toList());
-        final List<String> state2 = Stream.of("jumps", "over", "the", "dog", "may", "cause", "nausea").collect(Collectors.toList());
+        final List<String> state2 = Stream.of("The", "flea", "jumps", "over", "the", "dog", "may", "cause", "nausea").collect(Collectors.toList());
         final List<String> stateList = new ArrayList<>();
 
-        final GenericCrossoverState<List<String>, List<String>> cross1 = createListStateCrossover(
+        final CrossoverState<List<String>, List<String>> cross1 = createListStateCrossover(
                 state1,
                 (str, state) -> stateList.addAll(state),
-                4, 5);
+                4, 3);
 
-        final GenericCrossoverState<List<String>, List<String>> cross2 = createListStateCrossover(
+        final CrossoverState<List<String>, List<String>> cross2 = createListStateCrossover(
                 state2,
                 (str, state) -> fail("Should not happen!"),
                 0, 0);
 
         final List<String> input1 = Stream.of("The", "quick", "brown", "fox", "swims", "across", "a", "lake").collect(Collectors.toList());
-        final List<String> input2 = Stream.of("jumps", "over", "the", "lazy", "dog", "may", "cause", "nausea").collect(Collectors.toList());
+        final List<String> input2 = Stream.of("A", "tiny", "flea", "jumps", "over", "the", "lazy", "dog").collect(Collectors.toList());
         final List<String> result = cross1.cross(input1, input2);
 
         assertEquals("Incorrect result!", Arrays.asList("The", "quick", "brown", "fox","jumps", "over", "the", "lazy", "dog"), result);
 
-        final CrossoverState<List<String>, ? extends CrossoverState<List<String>, ?>> merged = cross1.merge(cross2, input1, input2, result);
+        cross1.merge(cross2, input1, input2, result);
         try {
-            merged.save("dummy");
+            cross1.save("dummy");
             assertEquals("Incorrect state!", Arrays.asList("The", "fox","jumps", "over", "the", "dog"), stateList);
         } catch (IOException e) {
             fail("Unexpected exception!");
@@ -75,8 +75,8 @@ public class GenericCrossoverStateTest {
     private static GenericCrossoverState<List<String>, List<String>> createListStateCrossover(
             List<String> startState,
             GenericState.PersistState<List<String>> persistState,
-            int limit1,
-            int limit2) {
+            int point1,
+            int point2) {
         return new GenericCrossoverState<List<String>, List<String>>( // Compiler randomly fails if removed (?!)
                 new GenericState<>(
                         startState,
@@ -91,8 +91,8 @@ public class GenericCrossoverStateTest {
                     state1.addAll(newState);
                 },
                 state -> (set1, set2) -> Stream.concat(
-                        set1.stream().limit(limit1),
-                        set2.stream().limit(limit2))
+                        set1.stream().limit(point1),
+                        set2.stream().skip(point2))
                         .collect(Collectors.toList()));
     }
 }

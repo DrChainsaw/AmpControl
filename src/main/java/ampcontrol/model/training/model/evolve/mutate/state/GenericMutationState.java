@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve.mutate.state;
 
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
+import ampcontrol.model.training.model.evolve.state.AccessibleState;
 
 import java.io.IOException;
 import java.util.function.Function;
@@ -16,37 +17,26 @@ import java.util.function.UnaryOperator;
  */
 public class GenericMutationState<T,V> implements MutationState<T> {
 
-    private final V state;
-    private final UnaryOperator<V> copyState;
-    private final PersistState<V> persistState;
+    private final AccessibleState<V> state;
     private final Function<V, Mutation<T>> factory;
 
-    /**
-     * Interface for persisting state
-     */
-    public interface PersistState<V> {
-        void save(String baseName, V state) throws IOException;
-    }
-
-    public GenericMutationState(V state, UnaryOperator<V> copyState, PersistState<V> persistState, Function<V, Mutation<T>> factory) {
+    public GenericMutationState(AccessibleState<V> state, Function<V, Mutation<T>> factory) {
         this.state = state;
-        this.copyState = copyState;
-        this.persistState = persistState;
         this.factory = factory;
     }
 
     @Override
     public void save(String baseName) throws IOException {
-        persistState.save(baseName, state);
+        state.save(baseName);
     }
 
     @Override
     public MutationState<T> clone() {
-        return new GenericMutationState<>(copyState.apply(state), copyState, persistState, factory);
+        return new GenericMutationState<>(state.clone(), factory);
     }
 
     @Override
     public T mutate(T toMutate) {
-        return factory.apply(state).mutate(toMutate);
+        return factory.apply(state.get()).mutate(toMutate);
     }
 }

@@ -2,8 +2,9 @@ package ampcontrol.model.training.model;
 
 import ampcontrol.model.training.model.evolve.CrossBreeding;
 import ampcontrol.model.training.model.evolve.Evolving;
-import ampcontrol.model.training.model.evolve.crossover.Crossover;
 import ampcontrol.model.training.model.evolve.crossover.graph.GraphInfo;
+import ampcontrol.model.training.model.evolve.crossover.state.CrossoverState;
+import ampcontrol.model.training.model.evolve.crossover.state.NoStateWapper;
 import ampcontrol.model.training.model.evolve.mutate.Mutation;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
@@ -33,13 +34,13 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<EvolvingGraphAdapter>, CrossBreeding<EvolvingGraphAdapter> {
+public class EvolvingGraphAdapter<S> implements CompGraphAdapter, Evolving<EvolvingGraphAdapter<S>>, CrossBreeding<EvolvingGraphAdapter<S>> {
 
     private static final Logger log = LoggerFactory.getLogger(EvolvingGraphAdapter.class);
 
     private final ComputationGraph graph;
     private final MutationState<ComputationGraphConfiguration.GraphBuilder> mutation;
-    private final Crossover<GraphInfo> crossover;
+    private final CrossoverState<GraphInfo, S> crossover;
     private final BiFunction<
             Function<String, GraphVertex>,
             Function<GraphVertex, ComputationGraph>,
@@ -51,15 +52,15 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
      * @param graph {@link ComputationGraph} to wrap
      * @return a new Builder
      */
-    public static Builder builder(ComputationGraph graph) {
-        return new Builder(graph);
+    public static <S> Builder<S> builder(ComputationGraph graph) {
+        return new Builder<>(graph);
     }
 
     // Use builder to create
     private EvolvingGraphAdapter(
             ComputationGraph graph,
             MutationState<ComputationGraphConfiguration.GraphBuilder> mutation,
-            Crossover<GraphInfo> crossover,
+            CrossoverState<GraphInfo, S> crossover,
             BiFunction<
                     Function<String, GraphVertex>,
                     Function<GraphVertex, ComputationGraph>,
@@ -97,21 +98,27 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
      * @return the evolved adapter
      */
     @Override
-    public EvolvingGraphAdapter evolve() {
+    public EvolvingGraphAdapter<S> evolve() {
         log.info("Evolve " + this);
         final MutationState<ComputationGraphConfiguration.GraphBuilder> newMutationState = mutation.clone();
+        final CrossoverState<GraphInfo, S> newCrossoverState = crossover.clone();
         final ComputationGraphConfiguration.GraphBuilder mutated = newMutationState.mutate(
                 CompGraphUtil.toBuilder(graph));
         final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph::getVertex, gv -> graph);
 
-        return createOffspring(newMutationState, mutated, parameterTransfer);
+        return createOffspring(newMutationState, newCrossoverState, mutated, parameterTransfer);
     }
 
     @Override
-    public EvolvingGraphAdapter cross(EvolvingGraphAdapter mate) {
+    public EvolvingGraphAdapter<S> cross(EvolvingGraphAdapter<S> mate) {
+        final MutationState<ComputationGraphConfiguration.GraphBuilder> newMutationState = mutation.clone();
+        final CrossoverState<GraphInfo, S> newCrossoverState = crossover.clone();
+
         final GraphInfo thisGraph = new GraphInfo.Input(CompGraphUtil.toBuilder(graph));
         final GraphInfo otherGraph = new GraphInfo.Input(CompGraphUtil.toBuilder(mate.graph));
-        final GraphInfo result = crossover.cross(thisGraph, otherGraph);
+        final GraphInfo result = newCrossoverState.cross(thisGraph, otherGraph);
+
+        newCrossoverState.merge(mate.crossover, thisGraph, otherGraph, result);
 
         final Map<String, GraphVertex> nameToVertex =
                 Stream.concat(
@@ -131,27 +138,29 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
 
         final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(nameToVertexFunction, vertexToGraph);
         return createOffspring(
-                mutation.clone(),
+                newMutationState,
+                newCrossoverState,
                 result.builder(),
                 parameterTransfer);
     }
 
     @NotNull
-    private EvolvingGraphAdapter createOffspring(
+    private EvolvingGraphAdapter<S> createOffspring(
             MutationState<ComputationGraphConfiguration.GraphBuilder> newMutationState,
+            CrossoverState<GraphInfo, S> newCrossoverState,
             ComputationGraphConfiguration.GraphBuilder mutated,
             ParameterTransfer parameterTransfer) {
         final ComputationGraph newGraph = new ComputationGraph(mutated.build());
         newGraph.init();
         newGraph.getConfiguration().setIterationCount(graph.getIterationCount());
         newGraph.getConfiguration().setEpochCount(graph.getEpochCount());
-        return new EvolvingGraphAdapter(parameterTransfer.transferWeightsTo(newGraph), newMutationState, crossover, parameterTransferFactory);
+        return new EvolvingGraphAdapter<>(parameterTransfer.transferWeightsTo(newGraph), newMutationState, newCrossoverState, parameterTransferFactory);
     }
 
-    public static class Builder {
+    public static class Builder<S> {
         private final ComputationGraph graph;
         private MutationState<ComputationGraphConfiguration.GraphBuilder> mutation = new NoMutationStateWapper<>(builder -> builder);
-        private Crossover<GraphInfo> crossover = (info1, info2) -> info1;
+        private CrossoverState<GraphInfo, S> crossover = new NoStateWapper<>((info1, info2) -> info1);
         private BiFunction<
                 Function<String, GraphVertex>,
                 Function<GraphVertex, ComputationGraph>,
@@ -167,7 +176,7 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
          * @param mutation mutation to use
          * @return the Builder for fluent API
          */
-        public Builder mutation(MutationState<ComputationGraphConfiguration.GraphBuilder> mutation) {
+        public Builder<S> mutation(MutationState<ComputationGraphConfiguration.GraphBuilder> mutation) {
             this.mutation = mutation;
             return this;
         }
@@ -178,7 +187,7 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
          * @param crossover crossover to use
          * @return the Builder for fluent API
          */
-        public Builder crossover(Crossover<GraphInfo> crossover) {
+        public Builder<S> crossover(CrossoverState<GraphInfo, S> crossover) {
             this.crossover = crossover;
             return this;
         }
@@ -190,7 +199,7 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
          * @param parameterTransferFactory Factory for {@link ParameterTransfer}
          * @return the Builder for fluent API
          */
-        public Builder paramTransfer(BiFunction<
+        public Builder<S> paramTransfer(BiFunction<
                 Function<String, GraphVertex>,
                 Function<GraphVertex, ComputationGraph>,
                 ParameterTransfer> parameterTransferFactory) {
@@ -198,8 +207,8 @@ public class EvolvingGraphAdapter implements CompGraphAdapter, Evolving<Evolving
             return this;
         }
 
-        public EvolvingGraphAdapter build() {
-            return new EvolvingGraphAdapter(graph, mutation, crossover, parameterTransferFactory);
+        public EvolvingGraphAdapter<S> build() {
+            return new EvolvingGraphAdapter<>(graph, mutation, crossover, parameterTransferFactory);
         }
     }
 }

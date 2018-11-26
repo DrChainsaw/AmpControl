@@ -1,15 +1,18 @@
 package ampcontrol.model.training.model.evolve.mutate.state;
 
+import ampcontrol.model.training.model.evolve.state.GenericState;
+import lombok.Getter;
 import org.apache.commons.lang.mutable.MutableInt;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static ampcontrol.model.training.model.evolve.mutate.state.GenericMutationStateTest.createIntStateMutation;
-import static ampcontrol.model.training.model.evolve.mutate.state.GenericMutationStateTest.createSaveStateMutation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -71,7 +74,7 @@ public class AggMutationStateTest {
      */
     @Test
     public void save() {
-        final List<GenericMutationStateTest.SaveProbe> probes = IntStream.range(0, 17).mapToObj(GenericMutationStateTest.SaveProbe::new).collect(Collectors.toList());
+        final List<SaveProbe> probes = IntStream.range(0, 17).mapToObj(SaveProbe::new).collect(Collectors.toList());
         final AggMutationState<Integer> aggMutationState = probes.stream()
                 .reduce(AggMutationState.<Integer>builder(),
                         (builder, probe) -> builder.andThen(createSaveStateMutation(probe.getExpectInt(), probe)),
@@ -83,6 +86,33 @@ public class AggMutationStateTest {
             probes.forEach(probe -> assertEquals("Incorrect dirname!", "test", probe.getLastString()));
         } catch (IOException e) {
             fail("Unexpected exception!");
+        }
+    }
+
+    private static MutationState<Integer> createSaveStateMutation(int startState, GenericState.PersistState<Integer> saveOperation) {
+        return new GenericMutationState<>(
+                new GenericState<>(
+                        startState,
+                        UnaryOperator.identity(),
+                        saveOperation),
+                state -> intInput -> intInput + state
+        );
+    }
+
+    @Getter
+    private static final class SaveProbe implements GenericState.PersistState<Integer> {
+
+        private String lastString = "NONE";
+        private final int expectInt;
+
+        SaveProbe(int expectInt) {
+            this.expectInt = expectInt;
+        }
+
+        @Override
+        public void save(String s, Integer integer) {
+            lastString = s;
+            Assert.assertEquals("Incorrect state to save!", expectInt, integer.intValue());
         }
     }
 

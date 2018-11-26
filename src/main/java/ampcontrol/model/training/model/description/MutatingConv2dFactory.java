@@ -205,7 +205,7 @@ public final class MutatingConv2dFactory {
         final ModelComparatorRegistry comparatorRegistry = new ModelComparatorRegistry();
 
         // Create model population
-        final List<EvolvingGraphAdapter> initialPopulation = new ArrayList<>();
+        final List<EvolvingGraphAdapter<MutationLayerState>> initialPopulation = new ArrayList<>();
         IntStream.range(0, 30).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
@@ -238,7 +238,7 @@ public final class MutatingConv2dFactory {
                     mutationLayerState,
                     baseName);
 
-            final EvolvingGraphAdapter adapter = EvolvingGraphAdapter.builder(graph)
+            final EvolvingGraphAdapter<MutationLayerState> adapter = EvolvingGraphAdapter.<MutationLayerState>builder(graph)
                     .mutation(mutation)
                     .paramTransfer((nameToVertex, vertexToGraph) -> new ParameterTransfer(
                             nameToVertex,
@@ -283,6 +283,10 @@ public final class MutatingConv2dFactory {
             final UnaryOperator<SharedSynchronizedState.View<MutationLayerState>> copyState =
                     view -> view.copy().update(view.get().clone());
 
+            final GenericState<SharedSynchronizedState.View<MutationLayerState>> genericState = new GenericState<>(initialState.view(),
+                    copyState,
+                    (str, state) -> state.get().save(str));
+
             final Random seedGenNout = new Random(mutationBaseSeed);
             final Random seedGenKs = new Random(-mutationBaseSeed);
             final Random seedGenGraphAdd = new Random(mutationBaseSeed + 100);
@@ -295,9 +299,7 @@ public final class MutatingConv2dFactory {
                         return gb;
                     }))
                     .andThen(new GenericMutationState<>(
-                            initialState.view(),
-                            copyState,
-                            (str, state) -> state.get().save(str),
+                            genericState,
                             state -> new MemoryAwareMutation<>(memUsage -> {
                                 log.info("Create mutation from memusage: " + memUsage);
                                 if (memUsage + 0.2 > memUsageRng.nextDouble()) {
@@ -362,9 +364,9 @@ public final class MutatingConv2dFactory {
     }
 
     @NotNull
-    private Population<ModelHandle> createPopulation(
+    private <T> Population<ModelHandle> createPopulation(
             ModelComparatorRegistry comparatorRegistry,
-            List<EvolvingGraphAdapter> initialPopulation) {
+            List<EvolvingGraphAdapter<T>> initialPopulation) {
         final Random rng = new Random(666);
         final MutableLong nrofParams = new MutableLong(0);
         final Population<ModelHandle> population = new CachedPopulation<>(
@@ -379,7 +381,7 @@ public final class MutatingConv2dFactory {
 
                                 // Policy for computing fitness and as of now, do some cleanup and add some checks
                                 // TODO: Separate out prepare and clean stuff from actual fitness policy or rename FitnessPolicy to CandidateCreationHook or something
-                                AggPolicy.<EvolvingGraphAdapter>builder()
+                                AggPolicy.<EvolvingGraphAdapter<T>>builder()
                                         // Not a fitness policy
                                         .first(new ClearListeners<>())
                                         // Kind of a fitness policy
@@ -387,7 +389,7 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(307))
+                                        .andThen(new FitnessPolicyTraining<>(1))
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
@@ -397,10 +399,10 @@ public final class MutatingConv2dFactory {
 
                                 // Polícy for selecting candidates after fitness has been reported
 
-                                CompoundFixedSelection.<EvolvingGraphAdapter>builder()
+                                CompoundFixedSelection.<EvolvingGraphAdapter<T>>builder()
                                         .andThen(2, new EliteSelection<>())
                                         .andThen(initialPopulation.size() - 2,
-                                                new EvolveSelection<EvolvingGraphAdapter>( // Seems javac must have this
+                                                new EvolveSelection<EvolvingGraphAdapter<T>>( // Seems javac must have this
                                                         new RouletteSelection<>(rng::nextDouble)))
                                         .build()
                         )));
