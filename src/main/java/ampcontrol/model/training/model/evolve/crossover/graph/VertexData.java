@@ -29,6 +29,10 @@ class VertexData {
         return builder().getLayerActivationTypes().get(name).getType();
     }
 
+    long[] shape() {
+        return builder().getLayerActivationTypes().get(name).getShape(false);
+    }
+
     ComputationGraphConfiguration.GraphBuilder builder() {
         return info.builder();
     }

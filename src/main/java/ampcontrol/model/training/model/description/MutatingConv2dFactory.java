@@ -12,6 +12,7 @@ import ampcontrol.model.training.model.evolve.EvolvingPopulation;
 import ampcontrol.model.training.model.evolve.Population;
 import ampcontrol.model.training.model.evolve.TransformPopulation;
 import ampcontrol.model.training.model.evolve.crossover.graph.GraphInfo;
+import ampcontrol.model.training.model.evolve.crossover.graph.NoCrossover;
 import ampcontrol.model.training.model.evolve.crossover.graph.SinglePoint;
 import ampcontrol.model.training.model.evolve.crossover.state.CrossoverState;
 import ampcontrol.model.training.model.evolve.crossover.state.GenericCrossoverState;
@@ -211,7 +212,7 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter<View<MutationLayerState>>> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 30).forEach(candInd -> {
+        IntStream.range(0, 6).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -328,9 +329,18 @@ public final class MutatingConv2dFactory {
                         thisInput,
                         otherInput,
                         result),
-                state -> new SinglePoint(() -> new SinglePoint.PointSelection(
-                        rng.nextDouble() * 2 - 1,
-                        rng.nextDouble())));
+                state -> (bottom, top) -> {
+                    new ConvType(inputShape).addLayers(bottom.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
+                    new ConvType(inputShape).addLayers(top.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
+
+                    if(rng.nextDouble() < 0.5) {
+                        return new SinglePoint(() ->
+                                new SinglePoint.PointSelection(
+                                        Math.min(1d, Math.max(1d, rng.nextGaussian() / 3)),
+                                        rng.nextDouble())).cross(bottom, top);
+                    }
+                    return new NoCrossover().cross(bottom, top);
+                });
 
     }
 
@@ -375,8 +385,11 @@ public final class MutatingConv2dFactory {
     private <S> Population<ModelHandle> createPopulation(
             ModelComparatorRegistry comparatorRegistry,
             List<EvolvingGraphAdapter<S>> initialPopulation) {
+
         final Random rng = new Random(666);
         final MutableLong nrofParams = new MutableLong(0);
+        final Limit.FixedTotalLimit total = new Limit.FixedTotalLimit(initialPopulation.size());
+
         final Population<ModelHandle> population = new CachedPopulation<>(
                 new TransformPopulation<>(adapter -> new GenericModelHandle(
                         trainIter,
@@ -406,17 +419,18 @@ public final class MutatingConv2dFactory {
                                         .build(),
 
                                 // Polícy for selecting candidates after fitness has been reported
-
-                                CompoundFixedSelection.<EvolvingGraphAdapter<S>>builder()
-                                        .andThen(2, new EliteSelection<>())
-                                        .andThen(initialPopulation.size() - 2,
-                                                new CrossoverSelection<EvolvingGraphAdapter<S>>( // Seems javac must have this
-                                                        cand -> rng.nextDouble() < 0.1,
+                                CompoundSelection.<EvolvingGraphAdapter<S>>builder()
+                                        .andThen(total.limit(2,
+                                                new EliteSelection<>()))
+                                        .andThen(total.limit(4,
+                                                new CrossoverSelection<EvolvingGraphAdapter<S>>(
                                                         (cand, cands) -> cands.get(rng.nextInt(cands.size())),
-                                                        new EvolveSelection<EvolvingGraphAdapter<S>>( // Seems javac must have this
-                                                                new RouletteSelection<>(rng::nextDouble))))
-                                                        .build()
-                                        )));
+                                                        new RouletteSelection<>(rng::nextDouble))))
+                                        .andThen(total.last(
+                                                new EvolveSelection<EvolvingGraphAdapter<S>>(
+                                                        new RouletteSelection<>(rng::nextDouble))))
+                                        .build()
+                        )));
 
         population.onChangeCallback(() -> {
             log.info("Avg nrof params: " + (nrofParams.doubleValue() / initialPopulation.size()));

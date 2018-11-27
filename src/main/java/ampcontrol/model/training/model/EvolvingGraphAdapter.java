@@ -114,6 +114,7 @@ public class EvolvingGraphAdapter<S> implements CompGraphAdapter, Evolving<Evolv
 
     @Override
     public EvolvingGraphAdapter<S> cross(EvolvingGraphAdapter<S> mate) {
+        log.info("Crossbreed " + this + " and " + mate);
         final AccessibleState<S> newState = evolutionState.clone();
 
         final GraphInfo thisGraph = new GraphInfo.Input(CompGraphUtil.toBuilder(graph));

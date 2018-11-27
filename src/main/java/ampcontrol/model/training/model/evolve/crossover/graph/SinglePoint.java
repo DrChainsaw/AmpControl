@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -63,10 +64,11 @@ public final class SinglePoint implements Crossover<GraphInfo> {
         return findValidVertices(bottom)
                 .flatMap(bottomVertex -> findValidVertices(top)
                         .filter(topVertex -> topVertex.type() == bottomVertex.type())
+                        .filter(topVertex -> isShapesSafe(bottomVertex.shape(), topVertex.shape()))
                         .map(topVertex -> new CrossoverPoint(bottomVertex, topVertex)))
                 .min(byDistance.thenComparing(byBottomLocation).thenComparing(byTiebreaker))
                 .map(CrossoverPoint::execute)
-                .orElse(bottom); // Not a single valid crossover point found
+                .orElse(new GraphInfo.NoopResult(bottom)); // Not a single valid crossover point found
     }
 
     private static Stream<VertexData> findValidVertices(GraphInfo info) {
@@ -87,13 +89,23 @@ public final class SinglePoint implements Crossover<GraphInfo> {
         }
 
 
-        final List<String> flattened = new Traverse<>(new ForwardOf(builder)).children(vertex)
+        final List<String> flattened = new Traverse<>(
+                new ForwardOf(builder))
+                .children(vertex)
                 .collect(Collectors.toList());
         flattened.add(vertex);
         //Vertex is not inside any type of skip connection if we find all inputs to each found vertex in the flattened graph
         return flattened.stream()
                 .filter(vert -> !vert.equals(vertex))
-
                 .allMatch(vert -> flattened.containsAll(builder.getVertexInputs().get(vert)));
+    }
+
+    private static boolean isShapesSafe(long[] shapeBottom, long[] shapeTop) {
+        return IntStream.range(1, shapeBottom.length)
+                //.peek(dim -> System.out.println("size " + dim + ": " + shapeBottom[dim] + " vs " + shapeTop[dim]))
+                .mapToDouble(dim -> (shapeBottom[dim] - shapeTop[dim]) / (double)(shapeBottom[dim] + shapeTop[dim]))
+                //.peek(relSize -> System.out.println("relsize: " + relSize))
+                .allMatch(relativeSize -> relativeSize > -0.1);
+
     }
 }

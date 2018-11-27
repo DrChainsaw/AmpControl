@@ -109,7 +109,9 @@ class CrossoverPoint {
         topVerticesNameMapping.put(top.name(), checkName(top.name(), builder));
         //System.out.println("topVerts: " + topVerticesNameMapping.keySet());
 
-        builder.addVertex(topVerticesNameMapping.get(top.name()), top.builder().getVertices().get(top.name()), bottom.name());
+        builder.addVertex(topVerticesNameMapping.get(top.name()),
+                renameVertexIfLayer(top.builder().getVertices().get(top.name()),  topVerticesNameMapping.get(top.name())),
+                bottom.name());
 
         new Traverse<>(new ForwardOf(top.builder())).children(top.name())
                 .forEach(vertex -> builder.addVertex(

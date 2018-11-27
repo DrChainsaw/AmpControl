@@ -11,11 +11,11 @@ import java.util.stream.Stream;
 import static junit.framework.TestCase.assertEquals;
 
 /**
- * Testcases for {@link CompoundFixedSelection}
+ * Testcases for {@link CompoundSelection}
  *
  * @author Christian Skärby
  */
-public class CompoundFixedSelectionTest {
+public class CompoundSelectionTest {
 
     /**
      * Test selection of candidates
@@ -23,10 +23,10 @@ public class CompoundFixedSelectionTest {
     @Test
     public void selectCandiates() {
         final List<Map.Entry<Double, MockEvolvingItem>> fitnessCands = MockEvolvingItem.createFitnessCands(3, i -> i + 1);
-        final List<MockEvolvingItem> selected = CompoundFixedSelection.<MockEvolvingItem>builder()
-                .andThen(4, list -> Stream.generate(() -> list.get(0).getValue()))
-                .andThen(3, list -> Stream.generate(() -> list.get(1).getValue()))
-                .andThen(4, list -> Stream.generate(() -> list.get(2).getValue()))
+        final List<MockEvolvingItem> selected = CompoundSelection.<MockEvolvingItem>builder()
+                .andThen(list -> Stream.generate(() -> list.get(0).getValue()).limit(4))
+                .andThen(list -> Stream.generate(() -> list.get(1).getValue()).limit(3))
+                .andThen(list -> Stream.generate(() -> list.get(2).getValue()).limit(4))
                 .build()
                 .selectCandiates(fitnessCands)
                 .collect(Collectors.toList());

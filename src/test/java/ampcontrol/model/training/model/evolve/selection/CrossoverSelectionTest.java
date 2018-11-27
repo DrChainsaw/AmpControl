@@ -3,10 +3,8 @@ package ampcontrol.model.training.model.evolve.selection;
 import ampcontrol.model.training.model.evolve.CrossBreeding;
 import org.junit.Test;
 
-import java.util.AbstractMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,9 +23,16 @@ public class CrossoverSelectionTest {
     @Test
     public void selectCandiates() {
 
+        final Predicate<String> crossIf = cand -> !cand.equals("selected")
+                && !cand.equals(",")
+                && !cand.equals("and")
+                && !cand.equals("are")
+                && !cand.equals("candidates")
+                && !cand.equals("crossed");
+
         final List<Map.Entry<Double, StringCrossBreeding>> candidates = Stream.of
                 ("ignore", "the", "dummy", "candidates", ",", "they", "shall", "not", "be", "selected", "and", "are", "not", "crossed")
-                .map(StringCrossBreeding::new)
+                .map(string -> new StringCrossBreeding(string, crossIf))
                 .map(str -> new AbstractMap.SimpleEntry<>(666d, str))
                 .collect(Collectors.toList());
 
@@ -38,15 +43,13 @@ public class CrossoverSelectionTest {
 
         final String expected = "the selected candidates , they are selected and are crossed";
         final String actual = new CrossoverSelection<StringCrossBreeding>(
-                cand -> !cand.string.equals("selected")
-                        && !cand.string.equals(",")
-                        && !cand.string.equals("and")
-                        && !cand.string.equals("are")
-                        && !cand.string.equals("candidates")
-                        && !cand.string.equals("crossed"),
 
-                (cand, cands) -> new StringCrossBreeding(pairing.get(cand.string)),
+                (cand, cands) -> Optional.ofNullable(pairing.get(cand.string))
+                        .map(mapped -> new StringCrossBreeding(mapped, crossIf))
+                .orElse(cand),
 
+
+                // Source selection
                 cands -> cands.stream().map(Map.Entry::getValue)
                         .filter(cand -> !cand.string.equals("ignore"))
                         .filter(cand -> !cand.string.equals("dummy"))
@@ -64,14 +67,19 @@ public class CrossoverSelectionTest {
     private final static class StringCrossBreeding implements CrossBreeding<StringCrossBreeding> {
 
         private final String string;
+        private final Predicate<String> crossIf;
 
-        private StringCrossBreeding(String string) {
+        private StringCrossBreeding(String string, Predicate<String> crossIf) {
             this.string = string;
+            this.crossIf = crossIf;
         }
 
         @Override
         public StringCrossBreeding cross(StringCrossBreeding mate) {
-            return new StringCrossBreeding(string + " " + mate.string);
+            if(!crossIf.test(string)) {
+                return new StringCrossBreeding(string, crossIf);
+            }
+            return new StringCrossBreeding(string + " " + mate.string, crossIf);
         }
     }
 }

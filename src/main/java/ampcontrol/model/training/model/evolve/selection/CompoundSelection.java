@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Selects a fixed predetermined number of candidates from each of a set of given {@link Selection}s
+ * Selects a candidates from each of a set of given {@link Selection}s
  * @param <T>
  * @author Christian Skärby
  */
-public final class CompoundFixedSelection<T> implements Selection<T> {
+public final class CompoundSelection<T> implements Selection<T> {
 
     private final List<Selection<T>> selections;
 
@@ -20,7 +20,7 @@ public final class CompoundFixedSelection<T> implements Selection<T> {
         return new Builder<>();
     }
 
-    private CompoundFixedSelection(List<Selection<T>> selections) {
+    private CompoundSelection(List<Selection<T>> selections) {
         this.selections = selections;
     }
 
@@ -37,13 +37,13 @@ public final class CompoundFixedSelection<T> implements Selection<T> {
 
         }
 
-        public Builder<T> andThen(int nrofCandidatesToSelect, Selection<T> selection) {
-            selections.add(list -> selection.selectCandiates(list).limit(nrofCandidatesToSelect));
+        public Builder<T> andThen(Selection<T> selection) {
+            selections.add(selection);
             return this;
         }
 
-        public CompoundFixedSelection<T> build() {
-            return new CompoundFixedSelection<>(new ArrayList<>(selections));
+        public CompoundSelection<T> build() {
+            return new CompoundSelection<>(new ArrayList<>(selections));
         }
 
     }

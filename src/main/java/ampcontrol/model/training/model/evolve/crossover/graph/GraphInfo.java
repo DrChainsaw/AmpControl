@@ -75,6 +75,28 @@ public interface GraphInfo {
         }
     }
 
+    final class NoopResult implements GraphInfo {
+
+        private final GraphInfo info;
+
+        public NoopResult(GraphInfo info) {
+            this.info = info;
+        }
+
+        @Override
+        public GraphBuilder builder() {
+            return info.builder();
+        }
+
+        @Override
+        public Stream<NameMapping> verticesFrom(GraphInfo info) {
+            if(info == this.info) {
+                return info.verticesFrom(this.info);
+            }
+            return Stream.empty();
+        }
+    }
+
     final class NameMap implements GraphInfo {
 
         private final GraphInfo info;
