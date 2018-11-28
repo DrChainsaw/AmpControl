@@ -67,7 +67,10 @@ class CrossoverPoint {
         final Set<String> bottomVertices = new LinkedHashSet<>(builder.getVertices().keySet());
         final Map<String, String> topVerticesNameMapping = addTop(builder);
 
-        alignNoutNin(builder, oldNOut, oldNin);
+        alignNoutNin(builder,
+                topVerticesNameMapping,
+                oldNOut,
+                oldNin);
 
         //System.out.println("new graph: " + builder.getVertexInputs() + " inputs " + builder.getNetworkInputs());
 
@@ -148,13 +151,17 @@ class CrossoverPoint {
                 .orElse(toCheck);
     }
 
-    private void alignNoutNin(GraphBuilder builder, long oldNOut, long oldNIn) {
+    private void alignNoutNin(
+            GraphBuilder builder,
+            Map<String, String> topVerticesNameMapping,
+            long oldNOut,
+            long oldNIn) {
         // Select the option which does not result in removal of weights
         if (oldNIn > oldNOut) {
             final long newNOut = oldNIn;
             TraverseBuilder.backwards(builder)
                     .enterCondition(vertex -> true)
-                    .build().children(top.name())
+                    .build().children(topVerticesNameMapping.get(top.name()))
                     .forEach(vertex ->
                             GraphBuilderUtil.asFeedforwardLayer(builder).apply(vertex)
                                     .ifPresent(layer -> {

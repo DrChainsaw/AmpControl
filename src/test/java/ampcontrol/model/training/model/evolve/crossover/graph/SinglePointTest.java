@@ -2,7 +2,14 @@ package ampcontrol.model.training.model.evolve.crossover.graph;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
+import ampcontrol.model.training.model.evolve.mutate.util.ForwardOf;
+import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
+import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.BatchNormalization;
+import org.deeplearning4j.nn.conf.layers.CnnLossLayer;
+import org.deeplearning4j.nn.conf.layers.Convolution2D;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
@@ -13,8 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 
 /**
  * Test cases for {@link SinglePoint}
@@ -121,6 +127,82 @@ public class SinglePointTest {
         long[] shape = inputType.getShape(true);
         shape[0] = 1;
         newGraph.outputSingle(Nd4j.randn(shape));
+    }
+
+    /**
+     * Test that crossoverpoint is not an {@link EpsilonSpyVertex} as they are typically inserted after very specific layers
+     */
+    @Test
+    public void avoidSpyVertexInTop() {
+        final InputType inputType = InputType.convolutional(4, 4, 2);
+
+        final ComputationGraphConfiguration.GraphBuilder builder1 = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("conv", new Convolution2D.Builder(2,2).build(), "input")
+                .addLayer("batchNorm", new BatchNormalization(), "conv")
+                .addLayer("output", new CnnLossLayer(), "batchNorm")
+                .setInputTypes(inputType);
+
+        final ComputationGraphConfiguration.GraphBuilder builder2 = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("conv", new Convolution2D.Builder(2,2).build(), "input")
+                .addVertex("convSpy", new EpsilonSpyVertex(), "conv")
+                .addLayer("output", new CnnLossLayer(), "convSpy")
+                .setInputTypes(inputType);
+
+        final GraphInfo info1 = new GraphInfo.Input(builder1);
+        final GraphInfo info2 = new GraphInfo.Input(builder2);
+
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.0, 2d/3)).cross(info1, info2);
+
+        new ForwardOf(output.builder()).children("batchNorm")
+                .map(childName -> output.builder().getVertices().get(childName))
+                .forEach(
+                childVertex -> assertNotEquals("Batchnorm must not be input to spy vertex!!",
+                        EpsilonSpyVertex.class, childVertex.getClass()));
+    }
+
+    /**
+     * Test that crossoverpoint is not before an {@link EpsilonSpyVertex} as they are typically inserted after very
+     * specific layers.
+     */
+    @Test
+    public void avoidSpyVertexInBottom() {
+        final InputType inputType = InputType.convolutional(4, 4, 2);
+
+        final ComputationGraphConfiguration.GraphBuilder builder1 = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("conv", new Convolution2D.Builder(2,2).build(), "input")
+                .addVertex("convSpy", new EpsilonSpyVertex(), "conv")
+                .addLayer("output", new CnnLossLayer(), "convSpy")
+                .setInputTypes(inputType);
+
+        final ComputationGraphConfiguration.GraphBuilder builder2 = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("conv", new Convolution2D.Builder(2,2).build(), "input")
+                .addLayer("batchNorm", new BatchNormalization(), "conv")
+                .addLayer("output", new CnnLossLayer(), "batchNorm")
+                .setInputTypes(inputType);
+
+
+        final GraphInfo info1 = new GraphInfo.Input(builder1);
+        final GraphInfo info2 = new GraphInfo.Input(builder2);
+
+        // Conv would lose its eps spy unless SinglePoint takes some action to prevent this
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.0, 1d/3)).cross(info1, info2);
+
+        assertTrue("Conv must still have spy as output!", new ForwardOf(output.builder()).children("conv")
+                .map(childName -> output.builder().getVertices().get(childName))
+                .anyMatch(
+                        childVertex -> childVertex instanceof EpsilonSpyVertex));
     }
 
     private static GraphInfo inputOf(ComputationGraph graph, InputType inputType) {

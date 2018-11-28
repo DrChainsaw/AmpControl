@@ -212,7 +212,7 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter<View<MutationLayerState>>> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 6).forEach(candInd -> {
+        IntStream.range(0, 30).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -333,7 +333,7 @@ public final class MutatingConv2dFactory {
                     new ConvType(inputShape).addLayers(bottom.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                     new ConvType(inputShape).addLayers(top.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
 
-                    if(rng.nextDouble() < 0.5) {
+                    if(rng.nextDouble() < 1.5) {
                         return new SinglePoint(() ->
                                 new SinglePoint.PointSelection(
                                         Math.min(1d, Math.max(1d, rng.nextGaussian() / 3)),
@@ -422,9 +422,13 @@ public final class MutatingConv2dFactory {
                                 CompoundSelection.<EvolvingGraphAdapter<S>>builder()
                                         .andThen(total.limit(2,
                                                 new EliteSelection<>()))
-                                        .andThen(total.limit(4,
+                                        .andThen(total.limit(28,
                                                 new CrossoverSelection<EvolvingGraphAdapter<S>>(
-                                                        (cand, cands) -> cands.get(rng.nextInt(cands.size())),
+                                                        (cand, cands) -> {
+                                                            final int selected = rng.nextInt(cands.size());
+                                                            log.info("Selected crossover mate: " + selected);
+                                                            return cands.get(selected);
+                                                        },
                                                         new RouletteSelection<>(rng::nextDouble))))
                                         .andThen(total.last(
                                                 new EvolveSelection<EvolvingGraphAdapter<S>>(

@@ -3,6 +3,7 @@ package ampcontrol.model.training.model.evolve.crossover.graph;
 import ampcontrol.model.training.model.evolve.crossover.Crossover;
 import ampcontrol.model.training.model.evolve.mutate.util.ForwardOf;
 import ampcontrol.model.training.model.evolve.mutate.util.Traverse;
+import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
@@ -65,6 +66,7 @@ public final class SinglePoint implements Crossover<GraphInfo> {
                 .flatMap(bottomVertex -> findValidVertices(top)
                         .filter(topVertex -> topVertex.type() == bottomVertex.type())
                         .filter(topVertex -> isShapesSafe(bottomVertex.shape(), topVertex.shape()))
+                        .filter(topVertex -> !(top.builder().getVertices().get(topVertex.name()) instanceof EpsilonSpyVertex))
                         .map(topVertex -> new CrossoverPoint(bottomVertex, topVertex)))
                 .min(byDistance.thenComparing(byBottomLocation).thenComparing(byTiebreaker))
                 .map(CrossoverPoint::execute)
@@ -88,6 +90,11 @@ public final class SinglePoint implements Crossover<GraphInfo> {
             return false;
         }
 
+        if (new ForwardOf(builder).children(vertex)
+                .map(childName -> builder.getVertices().get(childName))
+                .anyMatch(childVertex -> childVertex instanceof EpsilonSpyVertex)) {
+            return false;
+        }
 
         final List<String> flattened = new Traverse<>(
                 new ForwardOf(builder))
@@ -103,7 +110,7 @@ public final class SinglePoint implements Crossover<GraphInfo> {
     private static boolean isShapesSafe(long[] shapeBottom, long[] shapeTop) {
         return IntStream.range(1, shapeBottom.length)
                 //.peek(dim -> System.out.println("size " + dim + ": " + shapeBottom[dim] + " vs " + shapeTop[dim]))
-                .mapToDouble(dim -> (shapeBottom[dim] - shapeTop[dim]) / (double)(shapeBottom[dim] + shapeTop[dim]))
+                .mapToDouble(dim -> (shapeBottom[dim] - shapeTop[dim]) / (double) (shapeBottom[dim] + shapeTop[dim]))
                 //.peek(relSize -> System.out.println("relsize: " + relSize))
                 .allMatch(relativeSize -> relativeSize > -0.1);
 
