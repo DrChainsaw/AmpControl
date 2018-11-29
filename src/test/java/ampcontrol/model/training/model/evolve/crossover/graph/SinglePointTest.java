@@ -131,6 +131,42 @@ public class SinglePointTest {
      * Test that crossoverpoint is not an {@link EpsilonSpyVertex} as they are typically inserted after very specific layers
      */
     @Test
+    public void avoidSizeTooSmall() {
+        final InputType inputType1 = InputType.convolutional(3, 3, 2);
+
+        final ComputationGraphConfiguration.GraphBuilder builder1 = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("conv", new Convolution2D.Builder(2,2).nOut(1).build(), "input")
+                .addLayer("output", new CnnLossLayer(), "conv")
+                .setInputTypes(inputType1);
+
+        final InputType inputType2 = InputType.convolutional(6, 6, 2);
+        final ComputationGraphConfiguration.GraphBuilder builder2 = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("conv", new Convolution2D.Builder(4,4).nOut(1).build(), "input")
+                .addLayer("output", new CnnLossLayer(), "conv")
+                .setInputTypes(inputType2);
+
+        final GraphInfo info1 = new GraphInfo.Input(builder1);
+        final GraphInfo info2 = new GraphInfo.Input(builder2);
+
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(0.0, 0)).cross(info1, info2);
+
+        assertEquals("Expected crossover to be noop!", builder1, output.builder());
+
+        final ComputationGraph graph = new ComputationGraph(output.builder().build());
+        graph.init();
+        graph.output(Nd4j.randn(new long[] {1,2,3,3}));
+    }
+
+    /**
+     * Test that crossoverpoint is not an {@link EpsilonSpyVertex} as they are typically inserted after very specific layers
+     */
+    @Test
     public void avoidSpyVertexInTop() {
         final InputType inputType = InputType.convolutional(4, 4, 2);
 
