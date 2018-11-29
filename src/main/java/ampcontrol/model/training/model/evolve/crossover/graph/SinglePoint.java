@@ -1,12 +1,16 @@
 package ampcontrol.model.training.model.evolve.crossover.graph;
 
 import ampcontrol.model.training.model.evolve.crossover.Crossover;
+import ampcontrol.model.training.model.evolve.mutate.util.BackwardOf;
 import ampcontrol.model.training.model.evolve.mutate.util.ForwardOf;
+import ampcontrol.model.training.model.evolve.mutate.util.Graph;
 import ampcontrol.model.training.model.evolve.mutate.util.Traverse;
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
 import java.util.List;
@@ -24,6 +28,8 @@ import java.util.stream.Stream;
  * @author Christian Skärby
  */
 public final class SinglePoint implements Crossover<GraphInfo> {
+
+    private static final Logger log = LoggerFactory.getLogger(CrossoverPoint.class);
 
     private final Supplier<PointSelection> selectionSupplier;
 
@@ -56,16 +62,30 @@ public final class SinglePoint implements Crossover<GraphInfo> {
 
         final PointSelection pointSelection = selectionSupplier.get();
 
+        log.info("Crossover target distance: " + pointSelection.distanceTarget() + " location: " + pointSelection.locationTarget());
+
         final Comparator<CrossoverPoint> byDistance = Comparator.comparingDouble(
                 point -> Math.abs(pointSelection.distanceTarget() - point.distance()));
         final Comparator<CrossoverPoint> byBottomLocation = Comparator.comparingDouble(
                 point -> Math.abs(pointSelection.locationTarget() - point.bottom().location()));
         final Comparator<CrossoverPoint> byTiebreaker = Comparator.comparingInt(point -> (point.bottom().name() + point.top().name()).hashCode());
 
+        final Graph<String> childrenBottom = new ForwardOf(bottom.builder());
+        final Graph<String> parentsTop = new BackwardOf(top.builder());
+
         return findValidVertices(bottom)
+                // Don't allow bottom vertex if it has an EpsilonSpyVertex as a child as it might (and will) lead to
+                // non-weight vertices being spyed on
+                .filter(bottomVertex -> childrenBottom.children(bottomVertex.name())
+                        .map(childName -> bottom.builder().getVertices().get(childName))
+                        .noneMatch(childVertex -> childVertex instanceof EpsilonSpyVertex))
                 .flatMap(bottomVertex -> findValidVertices(top)
-                        .filter(topVertex -> topVertex.type() == bottomVertex.type())
-                        .filter(topVertex -> isShapesSafe(bottomVertex.shape(), topVertex.shape()))
+                       // .filter(topVertex -> topVertex.type() == bottomVertex.type())
+                       // .filter(topVertex -> isShapesSafe(topVertex.shape(), bottomVertex.shape()))
+                        .filter(topVertex -> parentsTop.children(topVertex.name())
+                                .allMatch(childName -> new VertexData(childName, top).type() == bottomVertex.type()))
+                        .filter(topVertex -> parentsTop.children(topVertex.name())
+                                .allMatch(childName -> isShapesSafe(new VertexData(childName, top).shape(), bottomVertex.shape())))
                         .filter(topVertex -> !(top.builder().getVertices().get(topVertex.name()) instanceof EpsilonSpyVertex))
                         .map(topVertex -> new CrossoverPoint(bottomVertex, topVertex)))
                 .min(byDistance.thenComparing(byBottomLocation).thenComparing(byTiebreaker))

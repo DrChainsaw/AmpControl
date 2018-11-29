@@ -7,9 +7,7 @@ import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.inputs.InputType;
-import org.deeplearning4j.nn.conf.layers.BatchNormalization;
-import org.deeplearning4j.nn.conf.layers.CnnLossLayer;
-import org.deeplearning4j.nn.conf.layers.Convolution2D;
+import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
@@ -157,7 +155,7 @@ public class SinglePointTest {
         final GraphInfo info1 = new GraphInfo.Input(builder1);
         final GraphInfo info2 = new GraphInfo.Input(builder2);
 
-        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.0, 2d/3)).cross(info1, info2);
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.0, 2/3d)).cross(info1, info2);
 
         new ForwardOf(output.builder()).children("batchNorm")
                 .map(childName -> output.builder().getVertices().get(childName))
@@ -197,12 +195,42 @@ public class SinglePointTest {
         final GraphInfo info2 = new GraphInfo.Input(builder2);
 
         // Conv would lose its eps spy unless SinglePoint takes some action to prevent this
-        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.0, 1d/3)).cross(info1, info2);
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(-0.0, 1/3d)).cross(info1, info2);
 
         assertTrue("Conv must still have spy as output!", new ForwardOf(output.builder()).children("conv")
                 .map(childName -> output.builder().getVertices().get(childName))
                 .anyMatch(
                         childVertex -> childVertex instanceof EpsilonSpyVertex));
+    }
+
+    /**
+     * Test that crossoverpoint is not before an {@link EpsilonSpyVertex} as they are typically inserted after very
+     * specific layers.
+     */
+    @Test
+    public void avoidGlobalPool() {
+        final InputType inputType = InputType.convolutional(4, 4, 2);
+
+        final ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("conv", new Convolution2D.Builder(2,2).nOut(1).build(), "input")
+                .addLayer("gp", new GlobalPoolingLayer(), "conv")
+                .addLayer("dense", new DenseLayer.Builder().nOut(1).build(), "gp")
+                .addLayer("output", new OutputLayer.Builder().nOut(1).build(), "dense")
+                .setInputTypes(inputType);
+
+
+        final GraphInfo info1 = new GraphInfo.Input(builder);
+        final GraphInfo info2 = new GraphInfo.Input(builder);
+
+        // This will cause SinglePoint to connect a dense layer to a global pooling layer -> crash!
+        final GraphInfo output = new SinglePoint(() -> new SinglePoint.PointSelection(0.2, 3/4d)).cross(info1, info2);
+
+        final ComputationGraph graph = new ComputationGraph(output.builder().build());
+        graph.init();
+        graph.output(Nd4j.randn(new long[] {1,2,4,4}));
     }
 
     private static GraphInfo inputOf(ComputationGraph graph, InputType inputType) {
