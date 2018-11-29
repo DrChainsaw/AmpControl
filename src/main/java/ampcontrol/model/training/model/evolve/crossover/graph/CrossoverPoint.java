@@ -104,14 +104,22 @@ class CrossoverPoint {
     private Map<String, String> addTop(GraphBuilder builder) {
         // Need to access names which are already added to the builder below, so first create the mapping
         // between names in top and a name which is unique in builder.
+        final List<String> existingVertices = TraverseBuilder.forwards(top.builder())
+                .traverseCondition(vertex -> true)
+                .build()
+                .children(top.name())
+                .collect(Collectors.toList());
+
+        existingVertices.addAll(builder.getVertices().keySet());
+
         final Map<String, String> topVerticesNameMapping = TraverseBuilder.forwards(top.builder())
                 .traverseCondition(vertex -> true)
                 .build().children(top.name())
                 .collect(Collectors.toMap(
                         vertex -> vertex,
-                        vertex -> checkName(vertex, builder)
+                        vertex -> checkName(vertex, builder.getVertices().keySet())
                 ));
-        topVerticesNameMapping.put(top.name(), checkName(top.name(), builder));
+        topVerticesNameMapping.put(top.name(), checkName(top.name(), existingVertices));
         //System.out.println("topVerts: " + topVerticesNameMapping.keySet());
 
         builder.addVertex(topVerticesNameMapping.get(top.name()),
@@ -140,15 +148,15 @@ class CrossoverPoint {
         return vertex;
     }
 
-    private static String checkName(String wantedName, GraphBuilder builder) {
-        return createUniqueVertexName(0, wantedName, wantedName, builder);
+    private static String checkName(String wantedName, Collection<String> existingVertices) {
+        return createUniqueVertexName(0, wantedName, wantedName, existingVertices);
     }
 
-    private static String createUniqueVertexName(int cnt, String wantedName, String toCheck, GraphBuilder builder) {
+    private static String createUniqueVertexName(int cnt, String wantedName, String toCheck, Collection<String> existingVertices) {
 
-        return builder.getVertices().keySet().stream()
+        return existingVertices.stream()
                 .filter(toCheck::equals)
-                .map(name -> createUniqueVertexName(cnt + 1, wantedName, wantedName + "_" + cnt, builder))
+                .map(name -> createUniqueVertexName(cnt + 1, wantedName, wantedName + "_" + cnt, existingVertices))
                 .findAny()
                 .orElse(toCheck);
     }

@@ -2,6 +2,8 @@ package ampcontrol.model.training.model.evolve.crossover.graph;
 
 import ampcontrol.model.training.model.evolve.GraphUtils;
 import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
+import ampcontrol.model.training.model.evolve.mutate.util.ForwardOf;
+import ampcontrol.model.training.model.evolve.mutate.util.Traverse;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -18,9 +20,12 @@ import org.nd4j.linalg.factory.Nd4j;
 
 import java.io.IOException;
 import java.util.AbstractMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static junit.framework.TestCase.assertEquals;
 
 /**
  * Test cases for {@link CrossoverPoint}
@@ -48,6 +53,51 @@ public class CrossoverPointTest {
         final ComputationGraph graph = new ComputationGraph(result.builder().build());
         graph.init();
         graph.output(Nd4j.randn(new long[] {1, 33}));
+    }
+
+    /**
+     * Test to do crossover when the vertex name is identical
+     */
+    @Test
+    public void executeCrossTwice() {
+        final ComputationGraph graph = GraphUtils.getGraph("0", "1", "2");
+        final ComputationGraphConfiguration.GraphBuilder builder = CompGraphUtil.toBuilder(graph)
+                .setInputTypes(InputType.feedForward(33));
+
+        final GraphInfo input1 = new GraphInfo.Input(builder);
+        final GraphInfo input2 = new GraphInfo.Input(builder);
+        GraphInfo result = new CrossoverPoint(
+                new VertexData("1", input1),
+                new VertexData("1", input2))
+                .execute();
+
+        final ComputationGraph newGraph = new ComputationGraph(result.builder().build());
+        newGraph.init();
+
+        final GraphInfo input11 = new GraphInfo.Input(result.builder());
+        final GraphInfo input22 = new GraphInfo.Input(result.builder());
+        GraphInfo result1 = new CrossoverPoint(
+                new VertexData("1", input11),
+                new VertexData("1", input22))
+                .execute();
+
+        final List<String> allNames =
+                Stream.concat(
+                        result1.verticesFrom(input11)
+                                .map(GraphInfo.NameMapping::getNewName),
+                        result1.verticesFrom(input22)
+                                .map(GraphInfo.NameMapping::getNewName))
+                        .collect(Collectors.toList());
+
+        final List<String> expectedNames = new Traverse<>(new ForwardOf(result1.builder())).children("input")
+                .collect(Collectors.toList());
+
+        assertEquals("Incorrect names!", expectedNames, allNames);
+
+        final ComputationGraph newNewGraph = new ComputationGraph(result1.builder().build());
+        newNewGraph.init();
+        newNewGraph.output(Nd4j.randn(new long[] {1, 33}));
+
     }
 
     /**
@@ -122,5 +172,23 @@ public class CrossoverPointTest {
         graph.init();
         graph.output(Nd4j.create(new long[] {1,3,122,128}));
 
+        final GraphInfo input11 =  new GraphInfo.Input(CompGraphUtil.toBuilder(graph));
+        final GraphInfo input22 = new GraphInfo.Input(CompGraphUtil.toBuilder(graph));
+        GraphInfo result1 = new CrossoverPoint(
+                new VertexData("1", input11),
+                new VertexData("1", input22))
+                .execute();
+        final Map<String, GraphVertex> nameToVertex1 =
+                Stream.concat(
+                        result1.verticesFrom(input11)
+                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph.getVertex(nameMapping.getOldName()))),
+                        result1.verticesFrom(input22)
+                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph.getVertex(nameMapping.getOldName()))))
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                Map.Entry::getValue
+                        ));
+
+        System.out.println(nameToVertex1);
     }
 }
