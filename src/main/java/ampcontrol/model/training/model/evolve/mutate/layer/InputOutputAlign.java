@@ -3,10 +3,8 @@ package ampcontrol.model.training.model.evolve.mutate.layer;
 import ampcontrol.model.training.model.evolve.mutate.util.*;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
-import org.deeplearning4j.nn.conf.graph.GraphVertex;
-import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
-import org.deeplearning4j.nn.conf.layers.*;
+import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil.isSizeChangePossible;
 
 /**
  * Aligns output sizes to input sizes or vice versa depending on what prevents neurons from being removed.
@@ -23,26 +23,23 @@ import java.util.stream.Stream;
 public class InputOutputAlign {
     private static final Logger log = LoggerFactory.getLogger(InputOutputAlign.class);
 
-    private ComputationGraphConfiguration.GraphBuilder graphBuilder;
-    private List<String> outputNames;
-    private List<String> inputNames;
-    private long nOut;
-    private long nIn;
-    private Collection<String> connectedMergeVertices;
+    private final ComputationGraphConfiguration.GraphBuilder graphBuilder;
+    private final List<String> outputNames;
+    private final List<String> inputNames;
+    private final long nOut;
+    private final long nIn;
 
     public InputOutputAlign(
             ComputationGraphConfiguration.GraphBuilder graphBuilder,
             List<String> outputNames,
             List<String> inputNames,
             long nOut,
-            long nIn,
-            Collection<String> connectedMergeVertices) {
+            long nIn) {
         this.graphBuilder = graphBuilder;
         this.outputNames = outputNames;
         this.inputNames = inputNames;
         this.nOut = nOut;
         this.nIn = nIn;
-        this.connectedMergeVertices = connectedMergeVertices;
     }
 
     public void invoke() {
@@ -66,17 +63,10 @@ public class InputOutputAlign {
         // outputs or because one of the paths in a fork was just removed.
         if (nIn > nOut || isAnyLayerTouchingNetworkInput) {
             //System.out.println("change nIn " + nIn);
-            setNinOfOutputsToNoutSize(graphBuilder, connectedMergeVertices);
             setNinOfOutputsToNoutSize(graphBuilder, outputNames);
         } else {
             //System.out.println("change nout : " + nOut);
             changeNoutOfInputs(graphBuilder, inputNames, nOut);
-
-            //System.out.println("do merges: " + connectedMergeVertices);
-            changeNoutOfInputs(
-                    graphBuilder,
-                    connectedMergeVertices,
-                    nOut);
         }
     }
 
@@ -197,34 +187,4 @@ public class InputOutputAlign {
                         .filter(Optional::isPresent)
                         .map(Optional::get);
     }
-
-    /**
-     * Return true if the given vertex supports nIn != nOut
-     *
-     * @param vertex the vertex to check
-     * @return true if the given vertex supports nIn != nOut
-     */
-    private static boolean isSizeChangePossible(GraphVertex vertex) {
-        if (vertex instanceof LayerVertex) {
-            Layer layer = ((LayerVertex) vertex).getLayerConf().getLayer();
-            if (layer instanceof FeedForwardLayer) {
-                return isSizeChangePossible((FeedForwardLayer) layer);
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Return true if the given layer supports nIn != nOut
-     *
-     * @param layer the layer to check
-     * @return true if the given layer supports nIn != nOut
-     */
-    private static boolean isSizeChangePossible(FeedForwardLayer layer) {
-        return layer instanceof ConvolutionLayer
-                || layer instanceof DenseLayer
-                || layer instanceof BaseRecurrentLayer
-                || layer instanceof BaseOutputLayer;
-    }
-
 }

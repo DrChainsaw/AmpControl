@@ -4,9 +4,8 @@ import ampcontrol.model.training.model.evolve.mutate.util.*;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
-import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
-import org.deeplearning4j.nn.conf.layers.*;
+import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil.isSizeChangePossible;
 
 /**
  * Function to be used with a {@link GraphMutation}. Removes a named layer from the given
@@ -101,7 +102,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         if (!sizeChange && !wasMergeVertex) {
             return GraphMutation.InputsAndOutputNames.builder().build();
         }
-        new InputOutputAlign(graphBuilder, outputNames, inputNames, nOut, nIn, connectedMergeVertices).invoke();
+
+        outputNames.addAll(connectedMergeVertices);
+        inputNames.addAll(connectedMergeVertices);
+        new InputOutputAlign(graphBuilder, outputNames, inputNames, nOut, nIn).invoke();
 
         return GraphMutation.InputsAndOutputNames.builder().build();
 
@@ -286,34 +290,4 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                         .noneMatch(child -> inputsToConnectedMergeVertex.keySet().contains(child)))
                 .collect(Collectors.toSet());
     }
-
-    /**
-     * Return true if the given layer supports nIn != nOut
-     *
-     * @param layer the layer to check
-     * @return true if the given layer supports nIn != nOut
-     */
-    private static boolean isSizeChangePossible(FeedForwardLayer layer) {
-        return layer instanceof ConvolutionLayer
-                || layer instanceof DenseLayer
-                || layer instanceof BaseRecurrentLayer
-                || layer instanceof BaseOutputLayer;
-    }
-
-    /**
-     * Return true if the given vertex supports nIn != nOut
-     *
-     * @param vertex the vertex to check
-     * @return true if the given vertex supports nIn != nOut
-     */
-    private static boolean isSizeChangePossible(GraphVertex vertex) {
-        if (vertex instanceof LayerVertex) {
-            Layer layer = ((LayerVertex) vertex).getLayerConf().getLayer();
-            if (layer instanceof FeedForwardLayer) {
-                return isSizeChangePossible((FeedForwardLayer) layer);
-            }
-        }
-        return false;
-    }
-
 }

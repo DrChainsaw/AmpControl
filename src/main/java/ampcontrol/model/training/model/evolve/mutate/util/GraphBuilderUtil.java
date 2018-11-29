@@ -6,8 +6,7 @@ import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
-import org.deeplearning4j.nn.conf.layers.BatchNormalization;
-import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
+import org.deeplearning4j.nn.conf.layers.*;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -178,5 +177,34 @@ public class GraphBuilderUtil {
                 })
                 .leaveListener(vertex -> limits.pop())
                 .limitTraverse(limits::peekFirst);
+    }
+
+    /**
+     * Return true if the given vertex supports nIn != nOut
+     *
+     * @param vertex the vertex to check
+     * @return true if the given vertex supports nIn != nOut
+     */
+    public static boolean isSizeChangePossible(GraphVertex vertex) {
+        if (vertex instanceof LayerVertex) {
+            Layer layer = ((LayerVertex) vertex).getLayerConf().getLayer();
+            if (layer instanceof FeedForwardLayer) {
+                return isSizeChangePossible((FeedForwardLayer) layer);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return true if the given layer supports nIn != nOut
+     *
+     * @param layer the layer to check
+     * @return true if the given layer supports nIn != nOut
+     */
+    public static boolean isSizeChangePossible(FeedForwardLayer layer) {
+        return layer instanceof ConvolutionLayer
+                || layer instanceof DenseLayer
+                || layer instanceof BaseRecurrentLayer
+                || layer instanceof BaseOutputLayer;
     }
 }
