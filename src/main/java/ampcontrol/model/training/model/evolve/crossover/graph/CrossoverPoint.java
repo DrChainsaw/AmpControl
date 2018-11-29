@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model.evolve.crossover.graph;
 
+import ampcontrol.model.training.model.evolve.mutate.layer.InputOutputAlign;
 import ampcontrol.model.training.model.evolve.mutate.util.ForwardOf;
 import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
 import ampcontrol.model.training.model.evolve.mutate.util.Traverse;
@@ -13,10 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -67,10 +65,14 @@ class CrossoverPoint {
         final Set<String> bottomVertices = new LinkedHashSet<>(builder.getVertices().keySet());
         final Map<String, String> topVerticesNameMapping = addTop(builder);
 
-        alignNoutNin(builder,
-                topVerticesNameMapping,
+
+        new InputOutputAlign(builder,
+                Collections.singletonList(topVerticesNameMapping.get(top.name())),
+                Collections.singletonList(bottom.name()),
                 oldNOut,
-                oldNin);
+                oldNin,
+                Collections.emptyList())
+        .invoke();
 
         //System.out.println("new graph: " + builder.getVertexInputs() + " inputs " + builder.getNetworkInputs());
 
@@ -149,44 +151,5 @@ class CrossoverPoint {
                 .map(name -> createUniqueVertexName(cnt + 1, wantedName, wantedName + "_" + cnt, builder))
                 .findAny()
                 .orElse(toCheck);
-    }
-
-    private void alignNoutNin(
-            GraphBuilder builder,
-            Map<String, String> topVerticesNameMapping,
-            long oldNOut,
-            long oldNIn) {
-        // Select the option which does not result in removal of weights
-        if (oldNIn > oldNOut) {
-            final long newNOut = oldNIn;
-            TraverseBuilder.backwards(builder)
-                    .enterCondition(vertex -> true)
-                    .build().children(topVerticesNameMapping.get(top.name()))
-                    .forEach(vertex ->
-                            GraphBuilderUtil.asFeedforwardLayer(builder).apply(vertex)
-                                    .ifPresent(layer -> {
-                                        layer.setNOut(newNOut);
-                                        if (GraphBuilderUtil.changeSizePropagates(builder).test(vertex)) {
-                                            // Means nOut must be equal to nIn
-                                            layer.setNIn(newNOut);
-                                        }
-                                    })
-                    );
-        } else {
-            final long newNIn = oldNOut;
-            TraverseBuilder.forwards(builder)
-                    .enterCondition(vertex -> true)
-                    .build().children(bottom.name())
-                    .forEach(vertex ->
-                            GraphBuilderUtil.asFeedforwardLayer(builder).apply(vertex)
-                                    .ifPresent(layer -> {
-                                        layer.setNIn(newNIn);
-                                        if (GraphBuilderUtil.changeSizePropagates(builder).test(vertex)) {
-                                            // Means nOut must be equal to nIn
-                                            layer.setNOut(newNIn);
-                                        }
-                                    })
-                    );
-        }
     }
 }
