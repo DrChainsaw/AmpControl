@@ -70,8 +70,7 @@ class CrossoverPoint {
                 Collections.singletonList(topVerticesNameMapping.get(top.name())),
                 Collections.singletonList(bottom.name()),
                 oldNOut,
-                oldNin,
-                Collections.emptyList())
+                oldNin)
         .invoke();
 
         //System.out.println("new graph: " + builder.getVertexInputs() + " inputs " + builder.getNetworkInputs());
