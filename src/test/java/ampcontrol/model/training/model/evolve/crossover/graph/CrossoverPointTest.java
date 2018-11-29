@@ -13,15 +13,10 @@ import org.deeplearning4j.nn.conf.layers.BatchNormalization;
 import org.deeplearning4j.nn.conf.layers.CnnLossLayer;
 import org.deeplearning4j.nn.conf.layers.Convolution2D;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.graph.vertex.GraphVertex;
-import org.deeplearning4j.util.ModelSerializer;
 import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
-import java.io.IOException;
-import java.util.AbstractMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -136,59 +131,5 @@ public class CrossoverPointTest {
         final ComputationGraph graph = new ComputationGraph(result.builder().build());
         graph.init();
         graph.output(Nd4j.randn(new long[] {1, 3, 33, 33}));
-    }
-
-    @Test
-    public void tmp() throws IOException {
-        final ComputationGraph graph1 = ModelSerializer.restoreComputationGraph("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\1598149236\\12", true);
-        final ComputationGraph graph2 = ModelSerializer.restoreComputationGraph("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\1598149236\\26", true);
-
-        final ComputationGraphConfiguration.GraphBuilder builder1 = CompGraphUtil.toBuilder(graph1).setInputTypes(InputType.convolutional(122,128,3));
-        final ComputationGraphConfiguration.GraphBuilder builder2 = CompGraphUtil.toBuilder(graph2).setInputTypes(InputType.convolutional(122,128,3));
-
-        final GraphInfo input1 =  new GraphInfo.Input(builder1);
-        final GraphInfo input2 = new GraphInfo.Input(builder2);
-        GraphInfo result = new CrossoverPoint(
-                new VertexData("1", input1),
-                new VertexData("1", input2))
-                .execute();
-        final Map<String, GraphVertex> nameToVertex =
-                Stream.concat(
-                        result.verticesFrom(input1)
-                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph1.getVertex(nameMapping.getOldName()))),
-                        result.verticesFrom(input2)
-                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph2.getVertex(nameMapping.getOldName()))))
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                Map.Entry::getValue
-                        ));
-
-        System.out.println(nameToVertex);
-
-        final ComputationGraph graph = new ComputationGraph(result.builder()
-                .setInputTypes(InputType.convolutional(122,128, 3))
-                .build());
-
-        graph.init();
-        graph.output(Nd4j.create(new long[] {1,3,122,128}));
-
-        final GraphInfo input11 =  new GraphInfo.Input(CompGraphUtil.toBuilder(graph));
-        final GraphInfo input22 = new GraphInfo.Input(CompGraphUtil.toBuilder(graph));
-        GraphInfo result1 = new CrossoverPoint(
-                new VertexData("1", input11),
-                new VertexData("1", input22))
-                .execute();
-        final Map<String, GraphVertex> nameToVertex1 =
-                Stream.concat(
-                        result1.verticesFrom(input11)
-                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph.getVertex(nameMapping.getOldName()))),
-                        result1.verticesFrom(input22)
-                                .map(nameMapping -> new AbstractMap.SimpleEntry<>(nameMapping.getNewName(), graph.getVertex(nameMapping.getOldName()))))
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                Map.Entry::getValue
-                        ));
-
-        System.out.println(nameToVertex1);
     }
 }
