@@ -58,8 +58,8 @@ class CrossoverPoint {
         log.info("Do crossover between " + bottom.name() + " and " + top.name() + " with distance " + distance);
         //System.out.println("Do crossover between " + bottom.name() + " and " + top.name() + " with distance " + distance);
 
-        final long oldNOut = GraphBuilderUtil.getOutputSize(bottom.name(), bottom.builder());
-        final long oldNin = GraphBuilderUtil.getInputSize(top.name(), top.builder());
+        final long bottomNout = GraphBuilderUtil.getOutputSize(bottom.name(), bottom.builder());
+        final long topNin = GraphBuilderUtil.getInputSize(top.name(), top.builder());
 
         final GraphBuilder builder = initBuilder();
         final Set<String> bottomVertices = new LinkedHashSet<>(builder.getVertices().keySet());
@@ -69,8 +69,9 @@ class CrossoverPoint {
         new InputOutputAlign(builder,
                 Collections.singletonList(topVerticesNameMapping.get(top.name())),
                 Collections.singletonList(bottom.name()),
-                oldNOut,
-                oldNin)
+                // These two are correct despite the apparent swapped naming. For example, topNin shall be Nout of bottom if larger than bottomNout
+                topNin,
+                bottomNout)
         .invoke();
 
         //System.out.println("new graph: " + builder.getVertexInputs() + " inputs " + builder.getNetworkInputs());
