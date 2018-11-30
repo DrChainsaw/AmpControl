@@ -117,9 +117,9 @@ class CrossoverPoint {
                 .build().children(top.name())
                 .collect(Collectors.toMap(
                         vertex -> vertex,
-                        vertex -> checkName(vertex, builder.getVertices().keySet())
+                        vertex -> checkName(vertex, builder.getVertices().keySet(), existingVertices)
                 ));
-        topVerticesNameMapping.put(top.name(), checkName(top.name(), existingVertices));
+        topVerticesNameMapping.put(top.name(), checkName(top.name(), builder.getVertices().keySet(), existingVertices));
         //System.out.println("topVerts: " + topVerticesNameMapping.keySet());
 
         builder.addVertex(topVerticesNameMapping.get(top.name()),
@@ -148,8 +148,13 @@ class CrossoverPoint {
         return vertex;
     }
 
-    private static String checkName(String wantedName, Collection<String> existingVertices) {
-        return createUniqueVertexName(0, wantedName, wantedName, existingVertices);
+    private static String checkName(String wantedName, Collection<String> existingVertices, Collection<String> avoidWhenCreatingNew) {
+        if(existingVertices.contains(wantedName)) {
+            final String newName = createUniqueVertexName(0, wantedName, wantedName, avoidWhenCreatingNew);
+            avoidWhenCreatingNew.add(newName);
+            return newName;
+        }
+        return wantedName;
     }
 
     private static String createUniqueVertexName(int cnt, String wantedName, String toCheck, Collection<String> existingVertices) {

@@ -17,6 +17,7 @@ import org.junit.Test;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -51,7 +52,7 @@ public class CrossoverPointTest {
     }
 
     /**
-     * Test to do crossover when the vertex name is identical
+     * Test to do crossover twice
      */
     @Test
     public void executeCrossTwice() {
@@ -90,6 +91,43 @@ public class CrossoverPointTest {
         assertEquals("Incorrect names!", expectedNames, allNames);
 
         final ComputationGraph newNewGraph = new ComputationGraph(result1.builder().build());
+        newNewGraph.init();
+        newNewGraph.output(Nd4j.randn(new long[] {1, 33}));
+    }
+
+    /**
+     * Test to do when the top graph already contains unique names which happens to be identical to those generated when
+     * trying to come up with a new unique name for the first vertex after the crossover point
+     */
+    @Test
+    public void executeWithTopDuplicateName() {
+        final ComputationGraphConfiguration.GraphBuilder builder1 = CompGraphUtil.toBuilder(GraphUtils.getGraph("0", "1", "2"))
+                .setInputTypes(InputType.feedForward(33));
+
+        final ComputationGraphConfiguration.GraphBuilder builder2 = CompGraphUtil.toBuilder(GraphUtils.getGraph("-1", "0", "0_0"))
+                .setInputTypes(InputType.feedForward(33));
+
+        final GraphInfo input1 = new GraphInfo.Input(builder1);
+        final GraphInfo input2 = new GraphInfo.Input(builder2);
+        GraphInfo result = new CrossoverPoint(
+                new VertexData("0", input1),
+                new VertexData("-1", input2))
+                .execute();
+
+        final Set<String> allNames =
+                Stream.concat(
+                        result.verticesFrom(input1)
+                                .map(GraphInfo.NameMapping::getNewName),
+                        result.verticesFrom(input2)
+                                .map(GraphInfo.NameMapping::getNewName))
+                        .collect(Collectors.toSet());
+
+        final Set<String> expectedNames = new Traverse<>(new ForwardOf(result.builder())).children("input")
+                .collect(Collectors.toSet());
+
+        assertEquals("Incorrect names!", expectedNames, allNames);
+
+        final ComputationGraph newNewGraph = new ComputationGraph(result.builder().build());
         newNewGraph.init();
         newNewGraph.output(Nd4j.randn(new long[] {1, 33}));
 
