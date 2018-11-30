@@ -19,6 +19,9 @@ import ampcontrol.model.training.model.evolve.crossover.state.GenericCrossoverSt
 import ampcontrol.model.training.model.evolve.fitness.*;
 import ampcontrol.model.training.model.evolve.mutate.*;
 import ampcontrol.model.training.model.evolve.mutate.layer.*;
+import ampcontrol.model.training.model.evolve.mutate.layer.blockfunctions.DenseStackFunction;
+import ampcontrol.model.training.model.evolve.mutate.layer.blockfunctions.ForkFunction;
+import ampcontrol.model.training.model.evolve.mutate.layer.blockfunctions.ListFunction;
 import ampcontrol.model.training.model.evolve.mutate.state.AggMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
@@ -34,7 +37,6 @@ import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.adapters.AddVertexGraphAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.GraphBuilderAdapter;
 import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
-import ampcontrol.model.training.model.layerblocks.graph.ForkAgg;
 import ampcontrol.model.training.model.layerblocks.graph.ResBlock;
 import ampcontrol.model.training.model.layerblocks.graph.SpyBlock;
 import ampcontrol.model.training.model.naming.AddSuffix;
@@ -51,7 +53,6 @@ import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
-import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -333,10 +334,10 @@ public final class MutatingConv2dFactory {
                     new ConvType(inputShape).addLayers(bottom.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                     new ConvType(inputShape).addLayers(top.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
 
-                    if(rng.nextDouble() < 1.5) {
+                    if(rng.nextDouble() < 0.02) {
                         return new SinglePoint(() ->
                                 new SinglePoint.PointSelection(
-                                        Math.min(1d, Math.max(1d, rng.nextGaussian() / 3)),
+                                        Math.min(1d, Math.max(-1d, rng.nextGaussian() / 3)),
                                         rng.nextDouble())).cross(bottom, top);
                     }
                     return new NoCrossover().cross(bottom, top);
@@ -410,7 +411,7 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(1))
+                                        .andThen(new FitnessPolicyTraining<>(107))
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
@@ -422,7 +423,7 @@ public final class MutatingConv2dFactory {
                                 CompoundSelection.<EvolvingGraphAdapter<S>>builder()
                                         .andThen(total.limit(2,
                                                 new EliteSelection<>()))
-                                        .andThen(total.limit(28,
+                                        .andThen(total.limit(3,
                                                 new CrossoverSelection<EvolvingGraphAdapter<S>>(
                                                         (cand, cands) -> {
                                                             final int selected = rng.nextInt(cands.size());
@@ -455,7 +456,7 @@ public final class MutatingConv2dFactory {
                         .build())
                 .collect(Collectors.toSet());
         return new NoutMutation(
-                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.1));
+                () -> nOutMutationSet.stream().filter(str -> rng.nextDouble() < 0.08));
     }
 
     private Mutation<GraphBuilder> createKernelSizeMutation(
@@ -464,7 +465,7 @@ public final class MutatingConv2dFactory {
             int rngSign) {
         final Random rng = new Random(seed);
         return new LayerContainedMutation(
-                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.05)
+                () -> mutationLayers.stream().filter(str -> rng.nextDouble() < 0.03)
                         .map(layerName ->
                                 LayerContainedMutation.LayerMutation.builder()
                                         .mutationInfo(
@@ -500,9 +501,9 @@ public final class MutatingConv2dFactory {
         return new GraphMutation(() -> Stream.of(GraphMutation.GraphMutationDescription.builder()
                 .mutation(graphBuilder -> {
                     final Map<String, List<String>> validVertexes = graphBuilder.getVertexInputs().entrySet().stream()
-                            // Skip spy vertexes as this will break Activation contribution
+                            // Skip spy vertices as this will break Activation contribution
                             .filter(vertexInfo -> !vertexInfo.getKey().matches("^spy.*"))
-                            // Skip vertexes which are not input to any other vertex (i.e they are output layers)
+                            // Skip vertices which are not input to any other vertex (i.e they are output layers)
                             .filter(vertexInfo -> graphBuilder.getVertexInputs().values().stream()
                                     .flatMap(Collection::stream)
                                     .anyMatch(input -> vertexInfo.getKey().equals(input)))
@@ -540,65 +541,41 @@ public final class MutatingConv2dFactory {
 
                 }).build()
         )
-                .filter(mut -> rng.nextDouble() < 0.15));
+                .filter(mut -> rng.nextDouble() < 0.1));
     }
 
     @NotNull
     private static Function<Long, LayerBlockConfig> createAfterGlobPoolLayerFactory(UnaryOperator<GraphBuilderAdapter> spyFactory, Random rng) {
-        final List<Function<Long, LayerBlockConfig>> afterGpBlocks = Collections.singletonList(
-                nOut -> new Dense().setHiddenWidth(nOut.intValue()));
+
         final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
                 .setFactory(spyFactory);
-        return nOut -> afterGpBlocks.get(rng.nextInt(afterGpBlocks.size())).andThen(spyConfig).apply(nOut);
+
+        final Function<Long, LayerBlockConfig> afterGpBlocks = ListFunction.builder()
+                .function(nOut -> new Dense().setHiddenWidth(nOut.intValue()))
+                .indexSupplier(rng::nextInt)
+        .build();
+        return nOut -> afterGpBlocks.andThen(spyConfig).apply(nOut);
     }
 
     @NotNull
     private static Function<Long, LayerBlockConfig> createBeforeGlobPoolLayerFactory(UnaryOperator<GraphBuilderAdapter> spyFactory, Random rng) {
         final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
                 .setFactory(spyFactory);
-        final List<Function<Long, LayerBlockConfig>> beforeGpBlocks = Arrays.asList(
-                nOut -> new Conv2D()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()),
-                nOut -> new Conv2DBatchNormAfter()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()),
-                nOut -> new Conv2DBatchNormBefore()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()),
-                nOut -> new Conv2DBatchNormBetween()
-                        .setConvolutionMode(ConvolutionMode.Same)
-                        .setNrofKernels(nOut.intValue())
-                        .setKernelSize_w(1 + rng.nextInt(4) * 2)
-                        .setKernelSize_h(1 + rng.nextInt(4) * 2)
-                        .setActivation(new ActivationReLU()));
 
-        final Function<Long, LayerBlockConfig> one = beforeGpBlocks.get(rng.nextInt(beforeGpBlocks.size()));
+        final Function<Long, LayerBlockConfig> one = ListFunction.allConv2D(rng).build();
 
-        final Function<Long, LayerBlockConfig> forkFunction = nOut -> {
-            final long nrofPaths = Math.min(nOut, rng.nextInt(3) + 2);
-            long reminder = nOut;
-            final ForkAgg fork = new ForkAgg();
-            for (int pathInd = 0; pathInd < nrofPaths; pathInd++) {
-                final long thisNout = reminder / (nrofPaths - pathInd);
-                reminder -= thisNout;
-                fork.add(one.apply(thisNout));
-            }
-            return fork;
-        };
+        // 2-5 paths
+        final Function<Long, LayerBlockConfig> forkFunction = new ForkFunction(() -> rng.nextInt(3) + 2, one);
 
+        // 10% chance of fork
         final Function<Long, LayerBlockConfig> maybeFork = nOut -> rng.nextDouble() < 0.1 ? forkFunction.apply(nOut) : one.apply(nOut);
 
-        return maybeFork.andThen(spyConfig);
+        // Select one random possible dense stack size
+        final Function<Long, LayerBlockConfig> denseFunction = new DenseStackFunction(stackChoices -> rng.nextInt(stackChoices.size()), one);
+
+        // 10% chance of dense stack
+        final Function<Long, LayerBlockConfig> maybeDenseMaybeFork = nOut -> rng.nextDouble() < 0.1 ? denseFunction.apply(nOut) : maybeFork.apply(nOut);
+        return maybeDenseMaybeFork.andThen(spyConfig);
     }
 
     private static boolean isAfterGlobPool(String vertexName, GraphBuilder graphBuilder) {
@@ -635,7 +612,7 @@ public final class MutatingConv2dFactory {
             int seed) {
         Random rng = new Random(seed);
         return new GraphMutation(() -> mutationLayers.stream()
-                .filter(str -> rng.nextDouble() < 0.08 / mutationLayers.size())
+                .filter(str -> rng.nextDouble() < 0.05 / mutationLayers.size())
                 .peek(vertexToRemove -> log.info("Attempt to remove " + vertexToRemove))
                 // Collect subset to avoid that the removeListener causes ConcurrentModificationExceptions
                 .collect(Collectors.toSet()).stream()

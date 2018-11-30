@@ -39,6 +39,7 @@ public class GraphBuilderUtil {
                     .filter(layer -> layer instanceof FeedForwardLayer)
                     .map(layer -> (FeedForwardLayer) layer);
 
+
     /**
      * Returns true if a change of size (NOut or NIn) propagates to the (next or prev) layers (NIn or NOut).
      * For example: If NOut is changed for conv1 in case conv1 -> maxpool -> conv2, then it is conv2 which
@@ -74,9 +75,9 @@ public class GraphBuilderUtil {
      * @return Function mapping a vertex name to an Optional FeedForwardLayer.
      */
     public static Function<String, Optional<FeedForwardLayer>> asFeedforwardLayer(GraphBuilder builder) {
-        return vertex -> GraphBuilderUtil.vertexAsLayerVertex
-                .andThen(layerVertex -> GraphBuilderUtil
-                        .layerVertexAsFeedForward.apply(vertex, layerVertex))
+        return vertex -> vertexAsLayerVertex
+                .andThen(layerVertex -> layerVertexAsFeedForward
+                        .apply(vertex, layerVertex))
                 .apply(vertex, builder);
     }
 
