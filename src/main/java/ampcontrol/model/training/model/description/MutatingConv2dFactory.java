@@ -19,9 +19,7 @@ import ampcontrol.model.training.model.evolve.crossover.state.GenericCrossoverSt
 import ampcontrol.model.training.model.evolve.fitness.*;
 import ampcontrol.model.training.model.evolve.mutate.*;
 import ampcontrol.model.training.model.evolve.mutate.layer.*;
-import ampcontrol.model.training.model.evolve.mutate.layer.blockfunctions.DenseStackFunction;
-import ampcontrol.model.training.model.evolve.mutate.layer.blockfunctions.ForkFunction;
-import ampcontrol.model.training.model.evolve.mutate.layer.blockfunctions.ListFunction;
+import ampcontrol.model.training.model.evolve.mutate.layer.blockfunctions.*;
 import ampcontrol.model.training.model.evolve.mutate.state.AggMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
@@ -56,6 +54,7 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.nn.weights.WeightInit;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
@@ -493,8 +492,11 @@ public final class MutatingConv2dFactory {
 
         final Random rng = new Random(seed);
 
-        final Function<Long, LayerBlockConfig> lbcBeforeGpSupplier = createBeforeGlobPoolLayerFactory(spyFactory, rng)
-                .andThen(block -> rng.nextDouble() < 0.3 ? new ResBlock().setBlockConfig(block) : block);
+        final Function<Long, LayerBlockConfig> lbcBeforeGpSupplierRaw = createBeforeGlobPoolLayerFactory(spyFactory, rng);
+        final Function<Long, LayerBlockConfig> lbcBeforeGpSupplier = nOut ->  rng.nextDouble() < 0.3
+                ? SpyFunction.weightInit(new ResBlockFunction(lbcBeforeGpSupplierRaw), WeightInit.ZERO).apply(nOut)
+                : lbcBeforeGpSupplierRaw.apply(nOut);
+
         final Function<Long, LayerBlockConfig> lbcAfterGpSupplier = createAfterGlobPoolLayerFactory(spyFactory, rng);
 
         final String afterGpStr = "mutafterGp_";

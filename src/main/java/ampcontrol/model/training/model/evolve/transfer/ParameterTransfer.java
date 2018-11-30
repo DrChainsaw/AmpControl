@@ -214,6 +214,8 @@ public class ParameterTransfer {
                     .map(vertex -> vertex.paramTable(false))
                     .filter(parMap -> parMap.containsKey(W))
                     .map(parMap -> parMap.get(W))
+                    // Residual blocks might have weight init 0 to create identity mappings
+                    .filter(weights -> weights.ameanNumber().doubleValue() > 0)
                     .ifPresent(ParameterTransfer::setIdentityMapping);
 
             return NoTransferTask.builder();
