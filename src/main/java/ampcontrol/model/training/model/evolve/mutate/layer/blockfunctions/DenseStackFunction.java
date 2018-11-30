@@ -16,11 +16,11 @@ import java.util.function.Function;
  */
 public class DenseStackFunction implements Function<Long, LayerBlockConfig> {
 
-    private final Function<List<Long>, Integer> nrofStacksSelector;
+    private final Function<List<Long>, Long> nrofStacksSelector;
     private final Function<Long, LayerBlockConfig> source;
 
     public DenseStackFunction(
-            Function<List<Long>, Integer> nrofStacksSelector,
+            Function<List<Long>, Long> nrofStacksSelector,
             Function<Long, LayerBlockConfig> source) {
         this.nrofStacksSelector = nrofStacksSelector;
         this.source = source;
@@ -33,13 +33,12 @@ public class DenseStackFunction implements Function<Long, LayerBlockConfig> {
             // Prime number, no dense block possible so that nOut of block == nOut
             return source.apply(nOut);
         }
-
-        final int nrofStackSelection = nrofStacksSelector.apply(factorization);
-        final int stackSize = factorization.remove(nrofStackSelection).intValue();
-        final long nOutOfComponent = factorization.stream().reduce(1L, (l1, l2) -> l1 * l2);
+        final int nrofStackSelection = nrofStacksSelector.apply(factorization).intValue();
+        final long nOutOfComponent = factorization.stream().reduce(1L, (l1, l2) -> l1 * l2) / nrofStackSelection;
         return new DenseStack()
+                .setMergeInput(false) // Or else we can't control the outputsize
                 .setBlockToStack(source.apply(nOutOfComponent))
-                .setNrofStacks(stackSize);
+                .setNrofStacks(nrofStackSelection);
     }
 
 

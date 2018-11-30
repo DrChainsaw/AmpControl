@@ -8,6 +8,8 @@ import ampcontrol.model.training.model.layerblocks.adapters.LayerSpyAdapter;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.Convolution2D;
 import org.deeplearning4j.nn.conf.layers.FeedForwardLayer;
 import org.junit.Test;
 
@@ -33,17 +35,20 @@ public class DenseStackFunctionTest {
         final Function<Long, LayerBlockConfig>  denseFunction = new DenseStackFunction(
                 stackChoices -> {
                     assertEquals("Incorrect stack choices", expectedStackChoices, stackChoices);
-                    return 1;
+                    return stackChoices.get(1);
                 }, nOut -> new Conv2D().setNrofKernels(nOut.intValue()));
 
         final long expectedNout = 2L*7L;
         final MutableInt cnt = new MutableInt(0);
 
-        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder().graphBuilder();
+        final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder().graphBuilder()
+                .addInputs("input")
+                .setInputTypes(InputType.convolutional(9,9, 5))
+                .addLayer("first", new Convolution2D.Builder(2,2).nOut(5).build(), "input");
         LayerBlockConfig.BlockInfo output = denseFunction.apply(2*3*7L).addLayers(new LayerSpyAdapter((layerName, layer, layerInputs) -> {
             assertEquals("Incorrect nOut!", expectedNout, ((FeedForwardLayer)layer).getNOut());
             cnt.increment();
-        }, new GraphAdapter(graphBuilder)), new LayerBlockConfig.SimpleBlockInfo.Builder().setInputs(new String[] {"input"}).build());
+        }, new GraphAdapter(graphBuilder)), new LayerBlockConfig.SimpleBlockInfo.Builder().setInputs(new String[] {"first"}).build());
 
         assertEquals("Incorrect number of blocks in stack!", 3, cnt.intValue());
 

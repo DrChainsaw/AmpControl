@@ -334,7 +334,7 @@ public final class MutatingConv2dFactory {
                     new ConvType(inputShape).addLayers(bottom.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                     new ConvType(inputShape).addLayers(top.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
 
-                    if(rng.nextDouble() < 0.02) {
+                    if (rng.nextDouble() < 0.02) {
                         return new SinglePoint(() ->
                                 new SinglePoint.PointSelection(
                                         Math.min(1d, Math.max(-1d, rng.nextGaussian() / 3)),
@@ -553,7 +553,7 @@ public final class MutatingConv2dFactory {
         final Function<Long, LayerBlockConfig> afterGpBlocks = ListFunction.builder()
                 .function(nOut -> new Dense().setHiddenWidth(nOut.intValue()))
                 .indexSupplier(rng::nextInt)
-        .build();
+                .build();
         return nOut -> afterGpBlocks.andThen(spyConfig).apply(nOut);
     }
 
@@ -571,7 +571,11 @@ public final class MutatingConv2dFactory {
         final Function<Long, LayerBlockConfig> maybeFork = nOut -> rng.nextDouble() < 0.1 ? forkFunction.apply(nOut) : one.apply(nOut);
 
         // Select one random possible dense stack size
-        final Function<Long, LayerBlockConfig> denseFunction = new DenseStackFunction(stackChoices -> rng.nextInt(stackChoices.size()), one);
+        final Function<Long, LayerBlockConfig> denseFunction = new DenseStackFunction(stackChoices ->
+                rng.ints(0, stackChoices.size())
+                        .limit(Math.max(1,rng.nextInt(stackChoices.size() - 1)))
+                        .mapToLong(stackChoices::get)
+                        .reduce(1L, (l1, l2) -> l1 * l2), maybeFork);
 
         // 10% chance of dense stack
         final Function<Long, LayerBlockConfig> maybeDenseMaybeFork = nOut -> rng.nextDouble() < 0.1 ? denseFunction.apply(nOut) : maybeFork.apply(nOut);
