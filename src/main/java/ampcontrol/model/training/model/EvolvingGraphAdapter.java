@@ -104,23 +104,22 @@ public class EvolvingGraphAdapter<S> implements CompGraphAdapter, Evolving<Evolv
      */
     @Override
     public EvolvingGraphAdapter<S> evolve() {
-        log.info("Evolve " + this);
+        log.info("Evolve " + this + " graph: " + graph);
         final AccessibleState<S> newState = evolutionState.clone();
         final ComputationGraphConfiguration.GraphBuilder mutated = mutation.mutate(CompGraphUtil.toBuilder(graph), newState.get());
-        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph::getVertex, gv -> graph);
 
+        final ParameterTransfer parameterTransfer = parameterTransferFactory.apply(graph::getVertex, gv -> graph);
         return createOffspring(newState, mutated, parameterTransfer);
     }
 
     @Override
     public EvolvingGraphAdapter<S> cross(EvolvingGraphAdapter<S> mate) {
-        log.info("Crossbreed " + this + " and " + mate);
+        log.info("Crossbreed " + this + " and " + mate + " graph this " + graph + " mates graph: " + mate.graph);
         final AccessibleState<S> newState = evolutionState.clone();
 
         final GraphInfo thisGraph = new GraphInfo.Input(CompGraphUtil.toBuilder(graph));
         final GraphInfo otherGraph = new GraphInfo.Input(CompGraphUtil.toBuilder(mate.graph));
         final GraphInfo result = crossover.cross(thisGraph, otherGraph, newState.get(), mate.evolutionState.get());
-
 
         final Map<String, GraphVertex> nameToVertex =
                 Stream.concat(

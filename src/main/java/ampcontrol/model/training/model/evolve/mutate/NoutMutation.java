@@ -78,21 +78,27 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             NoutMutationDescription mutation) {
         final String layerName = mutation.getLayerName();
 
-        final FeedForwardLayer layerConf = (FeedForwardLayer) ((LayerVertex) builder.getVertices().get(layerName)).getLayerConf().getLayer();
-        final long oldNout = layerConf.getNOut();
-        final long newNout = Math.max(mutation.getMutateNout().apply(oldNout),
-                getMinNOut(builder, layerName));
-        layerConf.setNOut(getMinDeltaNout(builder, layerName)
-                .map(minDelta -> Math.min(oldNout - minDelta, newNout)).orElse(newNout));
+        try {
+            final FeedForwardLayer layerConf = (FeedForwardLayer) ((LayerVertex) builder.getVertices().get(layerName)).getLayerConf().getLayer();
+            final long oldNout = layerConf.getNOut();
+            final long newNout = Math.max(mutation.getMutateNout().apply(oldNout),
+                    getMinNOut(builder, layerName));
+            layerConf.setNOut(getMinDeltaNout(builder, layerName)
+                    .map(minDelta -> Math.min(oldNout - minDelta, newNout)).orElse(newNout));
 
-        log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
-        //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
+            log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
+            //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
 
-        propagateNOutChange(
-                builder,
-                layerName,
-                oldNout - layerConf.getNOut());
-        return builder;
+            propagateNOutChange(
+                    builder,
+                    layerName,
+                    oldNout - layerConf.getNOut());
+            return builder;
+        } catch (Exception e) {
+            throw new UnsupportedOperationException("Failed to mutate layer " + layerName + "from builder with vertices: "
+            + "\n vertex names: " + builder.getVertices().keySet()
+            + "\n whole conf:   " + builder.getVertices());
+        }
     }
 
     /**

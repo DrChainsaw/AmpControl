@@ -93,7 +93,7 @@ public final class MutatingConv2dFactory {
 
     @Getter
     @Builder
-    private final static class MutationLayerState implements Consumer<String> {
+    public final static class MutationLayerState implements Consumer<String> {
         @Builder.Default
         final Set<String> mutateNout = new LinkedHashSet<>();
         @Builder.Default
@@ -325,7 +325,7 @@ public final class MutatingConv2dFactory {
         return new GenericCrossoverState<>(
                 (thisState, otherState, thisInput, otherInput, result) -> mergeMutationState(
                         thisState.get(),
-                        otherState.get(),
+                        otherState.get().clone(),
                         thisInput,
                         otherInput,
                         result),
@@ -356,13 +356,16 @@ public final class MutatingConv2dFactory {
         first.merge(second);
     }
 
-    private Stream<String> filterSet(
+    private void filterSet(
             Set<String> set,
             GraphInfo input,
             GraphInfo result) {
-        return result.verticesFrom(input)
-                .filter(nameMapping -> set.contains(nameMapping.getOldName()))
-                .map(GraphInfo.NameMapping::getNewName);
+        final Set<String> existing = new HashSet<>(set);
+        set.clear();
+        set.addAll(result.verticesFrom(input)
+                .filter(nameMapping -> existing.contains(nameMapping.getOldName()))
+                .map(GraphInfo.NameMapping::getNewName)
+                .collect(Collectors.toCollection(LinkedHashSet::new)));
     }
 
     private AccessibleState<View<MutationLayerState>> createInitialEvolutionState(MutationLayerState mutationLayerState, String baseName) {
@@ -690,7 +693,7 @@ public final class MutatingConv2dFactory {
                         .setFactory(spyFactory))
                 .andFinally(new CenterLossOutput(trainIter.totalOutcomes())
                         .setAlpha(0.6)
-                        .setLambda(0.00299));
+                        .setLambda(0.00301));
     }
 
     // Random model
