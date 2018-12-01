@@ -25,10 +25,7 @@ import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
 import ampcontrol.model.training.model.evolve.selection.*;
-import ampcontrol.model.training.model.evolve.state.AccessibleState;
-import ampcontrol.model.training.model.evolve.state.GenericState;
-import ampcontrol.model.training.model.evolve.state.PersistentSet;
-import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState;
+import ampcontrol.model.training.model.evolve.state.*;
 import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState.View;
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.*;
@@ -221,7 +218,6 @@ public final class MutatingConv2dFactory {
             final MutationLayerState mutationLayerState = MutationLayerState.builder()
                     .build();
 
-
             final GraphSpyAppender graphSpyBuilder = new GraphSpyAppender(mutationLayerState);
 
             final ModelBuilder baseBuilder;
@@ -263,16 +259,35 @@ public final class MutatingConv2dFactory {
             Nd4j.getMemoryManager().purgeCaches();
         }
 
-        final Population<ModelHandle> population = createPopulation(comparatorRegistry, initialPopulation);
+        final Population<ModelHandle> population;
+        try {
+            final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
+            final ModelBuilder baseBuilder = createSeedModelBuilder(UnaryOperator.identity());
 
-        final FileNamePolicy referenceSuffix = new AddSuffix("_reference_train");
-        final ModelBuilder baseBuilder = createSeedModelBuilder(UnaryOperator.identity());
-        modelData.add(new GenericModelHandle(trainIter, evalIter,
-                new GraphModelAdapter(
-                        new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
-                                baseBuilder).buildGraph()),
-                referenceSuffix.toFileName(baseBuilder.name())));
-        modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory));
+            final PersistentMap<String, Integer> modelAge = new PersistentMap<>(
+                    modelFileNamePolicy
+                            .compose(evolvingSuffix)
+                            .andThen(new AddSuffix("modelAge.json"))
+                            .toFileName(baseBuilder.name()),
+                    Collections.emptyMap());
+
+            population = createPopulation(modelAge.get(), comparatorRegistry, initialPopulation);
+            modelData.add(new GenericModelHandle(trainIter, evalIter,
+                    new GraphModelAdapter(
+                            new DeserializingModelBuilder(modelFileNamePolicy.compose(referenceSuffix),
+                                    baseBuilder).buildGraph()),
+                    referenceSuffix.toFileName(baseBuilder.name())));
+            modelData.add(new ModelHandlePopulation(population, evolvingSuffix.toFileName(baseBuilder.name()), modelNamePolicyFactory, saveName -> {
+                try {
+                    new ObjectMapper().writeValue(new File(saveName + File.separator + "modelAge.json"), modelAge.get());
+                } catch (IOException e) {
+                    throw new IllegalStateException("Could not save model age!", e);
+                }
+            }));
+
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not create model!", e);
+        }
     }
 
     private MutationState<GraphBuilder, SharedSynchronizedState.View<MutationLayerState>> createMutation(
@@ -380,12 +395,13 @@ public final class MutatingConv2dFactory {
                     copyState,
                     (str, state) -> state.get().save(str));
         } catch (IOException e) {
-            throw new IllegalArgumentException("Failed to create mutation!", e);
+            throw new IllegalArgumentException("Failed to initialize evolution state!", e);
         }
     }
 
     @NotNull
     private <S> Population<ModelHandle> createPopulation(
+            Map<String, Integer> modelAgeMap,
             ModelComparatorRegistry comparatorRegistry,
             List<EvolvingGraphAdapter<S>> initialPopulation) {
 
@@ -413,7 +429,7 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(107))
+                                        .andThen(new FitnessPolicyTraining<>(1))
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
@@ -422,22 +438,24 @@ public final class MutatingConv2dFactory {
                                         .build(),
 
                                 // Polícy for selecting candidates after fitness has been reported
-                                CompoundSelection.<EvolvingGraphAdapter<S>>builder()
-                                        .andThen(total.limit(2,
-                                                new EliteSelection<>()))
-                                        .andThen(total.limit(3,
-                                                new CrossoverSelection<EvolvingGraphAdapter<S>>(
-                                                        (cand, cands) -> {
-                                                            final int selected = rng.nextInt(cands.size());
-                                                            log.info("Selected crossover mate: " + selected);
-                                                            return cands.get(selected);
-                                                        },
-                                                        new RouletteSelection<>(rng::nextDouble))))
-                                        .andThen(total.last(
-                                                new EvolveSelection<EvolvingGraphAdapter<S>>(
-                                                        new RouletteSelection<>(rng::nextDouble))))
-                                        .build()
-                        )));
+                                FixedAgeSelection.byConfig(5,
+                                        modelAgeMap,
+                                        CompoundSelection.<EvolvingGraphAdapter<S>>builder()
+                                                .andThen(total.limit(2,
+                                                        new EliteSelection<>()))
+                                                .andThen(total.limit(3,
+                                                        new CrossoverSelection<EvolvingGraphAdapter<S>>(
+                                                                (cand, cands) -> {
+                                                                    final int selected = rng.nextInt(cands.size());
+                                                                    log.info("Selected crossover mate: " + selected);
+                                                                    return cands.get(selected);
+                                                                },
+                                                                new RouletteSelection<>(rng::nextDouble))))
+                                                .andThen(total.last(
+                                                        new EvolveSelection<EvolvingGraphAdapter<S>>(
+                                                                new RouletteSelection<>(rng::nextDouble))))
+                                                .build()
+                                ))));
 
         population.onChangeCallback(() -> {
             log.info("Avg nrof params: " + (nrofParams.doubleValue() / initialPopulation.size()));
@@ -496,7 +514,7 @@ public final class MutatingConv2dFactory {
         final Random rng = new Random(seed);
 
         final Function<Long, LayerBlockConfig> lbcBeforeGpSupplierRaw = createBeforeGlobPoolLayerFactory(spyFactory, rng);
-        final Function<Long, LayerBlockConfig> lbcBeforeGpSupplier = nOut ->  rng.nextDouble() < 0.3
+        final Function<Long, LayerBlockConfig> lbcBeforeGpSupplier = nOut -> rng.nextDouble() < 0.3
                 ? SpyFunction.weightInit(new ResBlockFunction(lbcBeforeGpSupplierRaw), WeightInit.ZERO).apply(nOut)
                 : lbcBeforeGpSupplierRaw.apply(nOut);
 
@@ -578,7 +596,7 @@ public final class MutatingConv2dFactory {
         // Select one random possible dense stack size
         final Function<Long, LayerBlockConfig> denseFunction = new DenseStackFunction(stackChoices ->
                 rng.ints(0, stackChoices.size())
-                        .limit(Math.max(1,rng.nextInt(stackChoices.size() - 1)))
+                        .limit(Math.max(1, rng.nextInt(stackChoices.size() - 1)))
                         .mapToLong(stackChoices::get)
                         .reduce(1L, (l1, l2) -> l1 * l2), maybeFork);
 

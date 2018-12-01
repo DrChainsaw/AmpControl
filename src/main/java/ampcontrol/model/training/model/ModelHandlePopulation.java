@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,11 +28,17 @@ public class ModelHandlePopulation implements ModelHandle {
     private final List<TrainingListener> listeners = new ArrayList<>();
     private final Function<Integer, FileNamePolicy> candidateFileNamePolicy;
     private final String name;
+    private final Consumer<String> saveNameListener;
 
-    public ModelHandlePopulation(Population<ModelHandle> population, String name, Function<Integer, FileNamePolicy> candidateFileNamePolicy) {
+    public ModelHandlePopulation(
+            Population<ModelHandle> population,
+            String name,
+            Function<Integer, FileNamePolicy> candidateFileNamePolicy,
+            Consumer<String> saveNameListener) {
         this.population = population;
         this.name = name;
         this.candidateFileNamePolicy = candidateFileNamePolicy;
+        this.saveNameListener = saveNameListener;
 
         // When population changes we need to add back listeners and validation since those are wiped at such change.
         population.onChangeCallback(() -> {
@@ -90,5 +97,6 @@ public class ModelHandlePopulation implements ModelHandle {
         for (int i = 0; i < pop.size(); i++) {
             pop.get(i).saveModel(candidateFileNamePolicy.apply(i).toFileName(fileName));
         }
+        saveNameListener.accept(fileName);
     }
 }

@@ -1,6 +1,5 @@
-package ampcontrol.model.training.model.evolve.mutate;
+package ampcontrol.model.training.model.evolve.state;
 
-import ampcontrol.model.training.model.evolve.state.PersistentSet;
 import org.junit.Test;
 
 import java.io.File;

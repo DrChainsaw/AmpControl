@@ -12,10 +12,8 @@ import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
 
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -32,7 +30,7 @@ public class FixedAgeSelectionTest {
      * Test that aging works as expected
      */
     @Test
-    public void selectCandiates() {
+    public void selectCandiates() throws IOException {
         final List<String> population = Arrays.asList("first", "cand", "another cand", "etc");
 
         final Selection<String> selection = new FixedAgeSelection<>(
@@ -67,7 +65,7 @@ public class FixedAgeSelectionTest {
      * Test that byConfig works as expected.
      */
     @Test
-    public void byConfig() {
+    public void byConfig() throws IOException {
         final List<CompGraphAdapter> population = Arrays.asList(
                 createAdapter(3, "a"),
                 createAdapter(4, "a"),
@@ -77,6 +75,7 @@ public class FixedAgeSelectionTest {
         MutableLong newNout = new MutableLong(6);
         Mutable<String> newName = new MutableObject<>("c");
         final Selection<CompGraphAdapter> selection = FixedAgeSelection.byConfig(2,
+                new HashMap<>(),
                 // Keep the two first candidates and make two new ones
                 cands -> Stream.concat(
                         cands.stream()

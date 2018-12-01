@@ -16,12 +16,12 @@ import java.util.stream.Stream;
  *
  * @author Christian Skärby
  */
-public class FixedAgeSelection<T> implements Selection<T> {
+public class FixedAgeSelection<T, V> implements Selection<T> {
 
-    private final Function<T, Object> toHashable;
+    private final Function<T, V> toHashable;
     private final Selection<T> sourceSelection;
     private final int maxAge;
-    private final Map<Object, Integer> ageMap = new HashMap<>();
+    private final Map<V, Integer> ageMap;
 
     /**
      * Constructor
@@ -30,7 +30,20 @@ public class FixedAgeSelection<T> implements Selection<T> {
      * @param sourceSelection Source selection. Will not see any candidates older than maxAge
      * @param maxAge Candidates seen more than this number of times will be removed
      */
-    public FixedAgeSelection(Function<T, Object> toHashable, Selection<T> sourceSelection, int maxAge) {
+    public FixedAgeSelection(Function<T, V> toHashable, Selection<T> sourceSelection, int maxAge) {
+        this(new HashMap<>(), toHashable, sourceSelection, maxAge);
+    }
+
+    /**
+     * Constructor
+     * @param ageMap Mapping between hashable object and candidate age
+     * @param toHashable Function to turn a candidate into a hashable object. Allows for different individuals to still
+     *                   be considered the same, e.g. if the an individual is mutated but mutation did not change anything
+     * @param sourceSelection Source selection. Will not see any candidates older than maxAge
+     * @param maxAge Candidates seen more than this number of times will be removed
+     */
+    public FixedAgeSelection(Map<V, Integer> ageMap, Function<T, V> toHashable, Selection<T> sourceSelection, int maxAge) {
+        this.ageMap = ageMap;
         this.toHashable = toHashable;
         this.sourceSelection = sourceSelection;
         this.maxAge = maxAge;
@@ -38,7 +51,7 @@ public class FixedAgeSelection<T> implements Selection<T> {
 
     @Override
     public Stream<T> selectCandiates(List<Map.Entry<Double, T>> fitnessCandidates) {
-        final Map<T, Object> hashables = fitnessCandidates.stream()
+        final Map<T, V> hashables = fitnessCandidates.stream()
                 .map(Map.Entry::getValue)
                 .collect(Collectors.toMap(
                         t -> t,
@@ -54,7 +67,7 @@ public class FixedAgeSelection<T> implements Selection<T> {
                         .collect(Collectors.toList()));
     }
 
-    private void updateAge(Object candidate) {
+    private void updateAge(V candidate) {
         ageMap.computeIfPresent(candidate, (cand, age) -> age + 1);
         ageMap.putIfAbsent(candidate, 0);
     }
@@ -66,8 +79,12 @@ public class FixedAgeSelection<T> implements Selection<T> {
      * @param sourceSelection source selection
      * @return a new FixedAgeSelection
      */
-    public static <T extends CompGraphAdapter> FixedAgeSelection<T> byConfig(int maxAge, Selection<T> sourceSelection) {
+    public static <T extends CompGraphAdapter> FixedAgeSelection<T, String> byConfig(
+            int maxAge,
+            Map<String, Integer> ageMap,
+            Selection<T> sourceSelection) {
         return new FixedAgeSelection<>(
+                ageMap,
                 adapter -> Stream.of(adapter.asModel().getConfiguration().toYaml().split("\n"))
                         .filter(line -> !line.contains("seed"))
                         .collect(Collectors.joining("\n")),
