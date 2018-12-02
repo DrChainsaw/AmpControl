@@ -3,6 +3,8 @@ package ampcontrol.model.training.model.evolve.fitness;
 import org.apache.commons.lang.mutable.MutableDouble;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -39,6 +41,39 @@ public class CombinePolicyTest {
         assertEquals("Incorrect score!", 1 + (20*30)/2d + 7000/2d, fitness.doubleValue(), 1e-10);
     }
 
+    /**
+     * Test that fitness is calculated correctly
+     */
+    @Test
+    public void applyManyCandidates() {
+        final CallableFitnessPolicy<String> callable1 = new CallableFitnessPolicy<>();
+        final CallableFitnessPolicy<String> callable2 = new CallableFitnessPolicy<>();
+        final FitnessPolicy<String> policy = CombinePolicy.<String>builder()
+                .add(callable1)
+                .add(callable2)
+                .build();
+
+        final MutableDouble fitness1 = new MutableDouble(0);
+        final MutableDouble fitness2 = new MutableDouble(0);
+        policy.apply("test", fitness1::setValue);
+        policy.apply("test", fitness2::setValue);
+        assertEquals("No score shall be reported!", 0, fitness1.doubleValue(), 1e-10);
+        assertEquals("No score shall be reported!", 0, fitness2.doubleValue(), 1e-10);
+
+        callable1.report(3d);
+        assertEquals("No score shall be reported!", 0, fitness1.doubleValue(), 1e-10);
+        assertEquals("No score shall be reported!", 0, fitness2.doubleValue(), 1e-10);
+
+        callable1.report(5d);
+        assertEquals("No score shall be reported!", 0, fitness1.doubleValue(), 1e-10);
+        assertEquals("No score shall be reported!", 0, fitness2.doubleValue(), 1e-10);
+
+        callable2.report(4d);
+        assertEquals("Incorrect score!", 12d, fitness1.doubleValue(), 1e-10);
+        assertEquals("Incorrect score!", 12d, fitness2.doubleValue(), 1e-10);
+
+    }
+
     private final static class FixedFitnessPolicy<T> implements FitnessPolicy<T> {
 
         private final Double[] fitness;
@@ -51,6 +86,21 @@ public class CombinePolicyTest {
         public T apply(T candidate, Consumer<Double> fitnessListener) {
             Stream.of(fitness).forEach(fitnessListener);
             return candidate;
+        }
+    }
+
+    private final static class CallableFitnessPolicy<T> implements FitnessPolicy<T> {
+
+        private List<Consumer<Double>> fitnessListeners = new ArrayList<>();
+
+        @Override
+        public T apply(T candidate, Consumer<Double> fitnessListener) {
+            fitnessListeners.add(fitnessListener);
+            return candidate;
+        }
+
+        private void report(double fitness) {
+            fitnessListeners.forEach(listener -> listener.accept(fitness));
         }
     }
 }

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.DoubleBinaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * Combines fitness from two {@link FitnessPolicy FitnessPolicies} using a provided combiner
@@ -91,7 +92,7 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
     }
 
     public static final class Builder<T> implements FitnessPolicy<T> {
-        private final Set<FitnessState<T>> monitoredFitness = new LinkedHashSet<>();
+        private final Set<StateBuilder<T>> monitoredFitness = new LinkedHashSet<>();
         private DoubleBinaryOperator combiner = (d1,d2) -> d1+d2;
 
         @Override
@@ -101,7 +102,7 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
 
         public static final class StateBuilder<T> {
             private final Builder<T> builder;
-            private FitnessPolicy<T> policy;
+            private final FitnessPolicy<T> policy;
             private DoubleBinaryOperator aggregationMethod = (d1,d2) -> d1+d2;
 
             private StateBuilder(Builder<T> builder, FitnessPolicy<T> policy) {
@@ -124,7 +125,7 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
              * @return a new StateBuilder
              */
             public StateBuilder<T> add(FitnessPolicy<T> policy) {
-                builder.monitoredFitness.add(new FitnessState<>(aggregationMethod, this.policy));
+                builder.monitoredFitness.add(this);
                 return new StateBuilder<>(builder, policy);
             }
 
@@ -132,9 +133,13 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
              * Builds a new {@link CombinePolicy} instance
              * @return a new instance
              */
-            public CombinePolicy<T> build() {
-                builder.monitoredFitness.add(new FitnessState<>(aggregationMethod, policy));
-                return builder.build();
+            public Builder<T> build() {
+                builder.monitoredFitness.add(this);
+                return builder;
+            }
+
+            private FitnessState<T> buildInternal() {
+                return new FitnessState<>(aggregationMethod, policy);
             }
         }
 
@@ -164,8 +169,10 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
          * Builds a new {@link CombinePolicy} instance
          * @return a new instance
          */
-        public CombinePolicy<T> build() {
-            return new CombinePolicy<>(combiner, new LinkedHashSet<>(monitoredFitness));
+        private CombinePolicy<T> build() {
+            return new CombinePolicy<>(combiner, monitoredFitness.stream()
+            .map(StateBuilder::buildInternal)
+            .collect(Collectors.toCollection(LinkedHashSet::new)));
         }
     }
 }

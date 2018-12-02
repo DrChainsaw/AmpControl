@@ -83,8 +83,16 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             final long oldNout = layerConf.getNOut();
             final long newNout = Math.max(mutation.getMutateNout().apply(oldNout),
                     getMinNOut(builder, layerName));
-            layerConf.setNOut(getMinDeltaNout(builder, layerName)
-                    .map(minDelta -> Math.min(oldNout - minDelta, newNout)).orElse(newNout));
+            final long adjustedNewNout = getMinDeltaNout(builder, layerName)
+                    .map(minDelta -> Math.min(oldNout - minDelta, newNout)).orElse(newNout);
+
+            // TODO: Temp until I have time to fix the logic above
+            if(adjustedNewNout < 1) {
+                log.info("Could not mutate. Nout too small: " + adjustedNewNout + " initial: " +newNout);
+                return builder;
+            }
+
+            layerConf.setNOut(adjustedNewNout);
 
             log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
             //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());

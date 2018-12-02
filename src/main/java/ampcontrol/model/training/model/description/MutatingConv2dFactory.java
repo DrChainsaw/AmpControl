@@ -2,6 +2,8 @@ package ampcontrol.model.training.model.description;
 
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.NanScoreWatcher;
+import ampcontrol.model.training.listen.TimeMeasurement;
+import ampcontrol.model.training.listen.TrainScoreListener;
 import ampcontrol.model.training.model.*;
 import ampcontrol.model.training.model.builder.BlockBuilder;
 import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
@@ -80,6 +82,7 @@ import java.util.stream.Stream;
 public final class MutatingConv2dFactory {
 
     private static final Logger log = LoggerFactory.getLogger(MutatingConv2dFactory.class);
+    private static final int evolveInterval = 107;
 
     private final MiniEpochDataSetIterator trainIter;
     private final MiniEpochDataSetIterator evalIter;
@@ -209,7 +212,7 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter<View<MutationLayerState>>> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 2).forEach(candInd -> {
+        IntStream.range(0, 30).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -430,26 +433,26 @@ public final class MutatingConv2dFactory {
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
                                         .andThen(
-                                                new FitnessPolicyTraining<>(107)
-//                                                CombinePolicy.<EvolvingGraphAdapter<S>>builder()
-//                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
-//                                                                new NumberOfParametersPolicy<>())
-//                                                                .transform(nrofParameters-> nrofParameters / 1e10)
-//                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from params "))
-//                                                                .done())
-//                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
-//                                                                new AddListener<>(fitnessConsumer -> new TrainScoreListener((iter, score) -> fitnessConsumer.accept(score))))
-//                                                                .average(1)
-//                                                                .transform(score -> Math.round(score * 1e3) / 1e3)
-//                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from train score "))
-//                                                                .done())
-//                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
-//                                                                new AddListener<>(fitnessConsumer -> new TimeMeasurement((nrofExamples, timeMs) -> fitnessConsumer.accept(timeMs / nrofExamples))))
-//                                                        .average(1)
-//                                                                .transform(timePerExample -> timePerExample / 2e5)
-//                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from time meas "))
-//                                                        .done())
-//                                                        .build()
+                                               // new FitnessPolicyTraining<>(107)
+                                                CombinePolicy.<EvolvingGraphAdapter<S>>builder()
+                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
+                                                                new NumberOfParametersPolicy<>())
+                                                                .transform(nrofParameters-> nrofParameters / 1e10)
+                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from params "))
+                                                                .done())
+                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
+                                                                new AddListener<>(fitnessConsumer -> new TrainScoreListener((iter, score) -> fitnessConsumer.accept(score))))
+                                                                .average(evolveInterval)
+                                                                .transform(score -> Math.round(score * 1e3) / 1e3)
+                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from train score "))
+                                                                .done())
+                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
+                                                                new AddListener<>(fitnessConsumer -> new TimeMeasurement((nrofExamples, timeMs) -> fitnessConsumer.accept(timeMs / nrofExamples))))
+                                                        .average(evolveInterval)
+                                                                .transform(timePerExample -> timePerExample / 2e3)
+                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from time meas "))
+                                                        .done())
+                                                        .build()
                                         )
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
@@ -462,9 +465,9 @@ public final class MutatingConv2dFactory {
                                 FixedAgeSelection.byConfig(5,
                                         modelAgeMap,
                                         CompoundSelection.<EvolvingGraphAdapter<S>>builder()
-                                                .andThen(total.limit(0,
+                                                .andThen(total.limit(2,
                                                         new EliteSelection<>()))
-                                                .andThen(total.limit(0,
+                                                .andThen(total.limit(4,
                                                         new CrossoverSelection<EvolvingGraphAdapter<S>>(
                                                                 (cand, cands) -> {
                                                                     final int selected = rng.nextInt(cands.size());
