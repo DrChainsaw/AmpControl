@@ -1,7 +1,5 @@
 package ampcontrol.model.training.model.evolve.selection;
 
-import ampcontrol.model.training.model.evolve.Evolving;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +14,7 @@ public final class CompoundSelection<T> implements Selection<T> {
 
     private final List<Selection<T>> selections;
 
-    public static <T extends Evolving<T>> Builder<T> builder() {
+    public static <T> Builder<T> builder() {
         return new Builder<>();
     }
 

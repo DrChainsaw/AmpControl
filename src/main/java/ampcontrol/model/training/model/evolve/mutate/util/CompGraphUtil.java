@@ -8,6 +8,8 @@ import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Various hideous utility functions around {@link ComputationGraph} to assist in traversal.
@@ -85,5 +87,16 @@ public class CompGraphUtil {
      */
     public static ComputationGraphConfiguration.GraphBuilder toBuilder(ComputationGraph graph) {
         return new ComputationGraphConfiguration.GraphBuilder(graph.getConfiguration().clone(), new NeuralNetConfiguration.Builder(graph.conf().clone()));
+    }
+
+    /**
+     * Returns a String which can be compared with other Strings to see if the model architecture is identical
+     * @param graph Graph to process
+     * @return a configuration uniqueness String
+     */
+    public static String configUniquenessString(ComputationGraph graph) {
+        return Stream.of(graph.getConfiguration().toYaml().split("\n"))
+                .filter(line -> !line.contains("seed"))
+                .collect(Collectors.joining("\n"));
     }
 }

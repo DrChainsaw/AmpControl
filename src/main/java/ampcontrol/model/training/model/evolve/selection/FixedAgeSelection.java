@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.evolve.selection;
 
 import ampcontrol.model.training.model.CompGraphAdapter;
+import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,9 +99,7 @@ public class FixedAgeSelection<T, V> implements Selection<T> {
             Selection<T> sourceSelection) {
         return new FixedAgeSelection<>(
                 ageMap,
-                adapter -> Stream.of(adapter.asModel().getConfiguration().toYaml().split("\n"))
-                        .filter(line -> !line.contains("seed"))
-                        .collect(Collectors.joining("\n")),
+                adapter -> CompGraphUtil.configUniquenessString(adapter.asModel()),
                 sourceSelection,
                 maxAge
         );

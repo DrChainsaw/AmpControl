@@ -26,6 +26,7 @@ import ampcontrol.model.training.model.evolve.mutate.state.AggMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.GenericMutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.MutationState;
 import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper;
+import ampcontrol.model.training.model.evolve.mutate.util.CompGraphUtil;
 import ampcontrol.model.training.model.evolve.selection.*;
 import ampcontrol.model.training.model.evolve.state.*;
 import ampcontrol.model.training.model.evolve.state.SharedSynchronizedState.View;
@@ -411,6 +412,8 @@ public final class MutatingConv2dFactory {
         final Random rng = new Random(666);
         final MutableLong nrofParams = new MutableLong(0);
         final Limit.FixedTotalLimit total = new Limit.FixedTotalLimit(initialPopulation.size());
+        final DistinctSelection.Builder<EvolvingGraphAdapter<S>, String> distinctSelection =
+                DistinctSelection.builder(adapter -> CompGraphUtil.configUniquenessString(adapter.asModel()));
 
         final Population<ModelHandle> population = new CachedPopulation<>(
                 new TransformPopulation<>(adapter -> new GenericModelHandle(
@@ -433,11 +436,11 @@ public final class MutatingConv2dFactory {
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
                                         .andThen(
-                                               // new FitnessPolicyTraining<>(107)
+                                                // new FitnessPolicyTraining<>(107)
                                                 CombinePolicy.<EvolvingGraphAdapter<S>>builder()
                                                         .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
                                                                 new NumberOfParametersPolicy<>())
-                                                                .transform(nrofParameters-> nrofParameters / 1e10)
+                                                                .transform(nrofParameters -> nrofParameters / 1e10)
                                                                 .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from params "))
                                                                 .done())
                                                         .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
@@ -448,10 +451,10 @@ public final class MutatingConv2dFactory {
                                                                 .done())
                                                         .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
                                                                 new AddListener<>(fitnessConsumer -> new TimeMeasurement((nrofExamples, timeMs) -> fitnessConsumer.accept(timeMs / nrofExamples))))
-                                                        .average(evolveInterval)
+                                                                .average(evolveInterval)
                                                                 .transform(timePerExample -> timePerExample / 2e3)
                                                                 .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from time meas "))
-                                                        .done())
+                                                                .done())
                                                         .build()
                                         )
                                         // Not a fitness policy
@@ -464,20 +467,22 @@ public final class MutatingConv2dFactory {
                                 // Polícy for selecting candidates after fitness has been reported
                                 FixedAgeSelection.byConfig(5,
                                         modelAgeMap,
-                                        CompoundSelection.<EvolvingGraphAdapter<S>>builder()
-                                                .andThen(total.limit(2,
-                                                        new EliteSelection<>()))
-                                                .andThen(total.limit(4,
-                                                        new CrossoverSelection<EvolvingGraphAdapter<S>>(
-                                                                (cand, cands) -> {
-                                                                    final int selected = rng.nextInt(cands.size());
-                                                                    log.info("Selected crossover mate: " + selected);
-                                                                    return cands.get(selected);
-                                                                },
-                                                                new RouletteSelection<>(rng::nextDouble))))
-                                                .andThen(total.last(
-                                                        new EvolveSelection<EvolvingGraphAdapter<S>>(
-                                                                new RouletteSelection<>(rng::nextDouble))))
+                                        distinctSelection.source(
+                                                CompoundSelection.<EvolvingGraphAdapter<S>>builder()
+                                                        .andThen(total.limit(2,
+                                                                distinctSelection.distinct(new EliteSelection<>())))
+                                                        .andThen(total.limit(4,
+                                                                distinctSelection.distinct(new CrossoverSelection<EvolvingGraphAdapter<S>>(
+                                                                        (cand, cands) -> {
+                                                                            final int selected = rng.nextInt(cands.size());
+                                                                            log.info("Selected crossover mate: " + selected);
+                                                                            return cands.get(selected);
+                                                                        },
+                                                                        new RouletteSelection<>(rng::nextDouble)))))
+                                                        .andThen(total.last(
+                                                                distinctSelection.distinct(new EvolveSelection<EvolvingGraphAdapter<S>>(
+                                                                        new RouletteSelection<>(rng::nextDouble)))))
+                                                        .build())
                                                 .build()
                                 ))));
 

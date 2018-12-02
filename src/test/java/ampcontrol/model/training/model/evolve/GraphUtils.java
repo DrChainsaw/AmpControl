@@ -488,7 +488,7 @@ public class GraphUtils {
     public static ComputationGraph getForkResOuterInnerNet(String beforeFork, String afterFork, String[] fork1Names, String[] fork2Names) {
 
         final int[] fork1Nouts = IntStream.range(0, fork1Names.length).map(i -> 7 + i).toArray();
-        final int[] fork2Nouts = IntStream.range(0, fork1Names.length).map(i -> 3 + i).toArray();
+        final int[] fork2Nouts = IntStream.range(0, fork2Names.length).map(i -> 3 + i).toArray();
         final ComputationGraphConfiguration.GraphBuilder builder = new NeuralNetConfiguration.Builder()
                 .weightInit(new ConstantDistribution(666))
                 .biasInit(666)
