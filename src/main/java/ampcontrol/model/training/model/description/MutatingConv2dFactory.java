@@ -209,7 +209,7 @@ public final class MutatingConv2dFactory {
 
         // Create model population
         final List<EvolvingGraphAdapter<View<MutationLayerState>>> initialPopulation = new ArrayList<>();
-        IntStream.range(0, 30).forEach(candInd -> {
+        IntStream.range(0, 2).forEach(candInd -> {
 
             final FileNamePolicy candNamePolicy = modelFileNamePolicy
                     .compose(evolvingSuffix)
@@ -429,7 +429,28 @@ public final class MutatingConv2dFactory {
                                         // Not a fitness policy
                                         .andThen(new InstrumentEpsilonSpies<>(comparatorRegistry))
                                         // This is the actual fitness policy
-                                        .andThen(new FitnessPolicyTraining<>(1))
+                                        .andThen(
+                                                new FitnessPolicyTraining<>(107)
+//                                                CombinePolicy.<EvolvingGraphAdapter<S>>builder()
+//                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
+//                                                                new NumberOfParametersPolicy<>())
+//                                                                .transform(nrofParameters-> nrofParameters / 1e10)
+//                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from params "))
+//                                                                .done())
+//                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
+//                                                                new AddListener<>(fitnessConsumer -> new TrainScoreListener((iter, score) -> fitnessConsumer.accept(score))))
+//                                                                .average(1)
+//                                                                .transform(score -> Math.round(score * 1e3) / 1e3)
+//                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from train score "))
+//                                                                .done())
+//                                                        .add(FitnessPolicy.<EvolvingGraphAdapter<S>>decorate(
+//                                                                new AddListener<>(fitnessConsumer -> new TimeMeasurement((nrofExamples, timeMs) -> fitnessConsumer.accept(timeMs / nrofExamples))))
+//                                                        .average(1)
+//                                                                .transform(timePerExample -> timePerExample / 2e5)
+//                                                                .log(LoggerFactory.getLogger(MutatingConv2dFactory.class.getSimpleName() + " fitness from time meas "))
+//                                                        .done())
+//                                                        .build()
+                                        )
                                         // Not a fitness policy
                                         .andThen((adapter, fitcons) -> {
                                             nrofParams.add(adapter.asModel().numParams());
@@ -441,9 +462,9 @@ public final class MutatingConv2dFactory {
                                 FixedAgeSelection.byConfig(5,
                                         modelAgeMap,
                                         CompoundSelection.<EvolvingGraphAdapter<S>>builder()
-                                                .andThen(total.limit(2,
+                                                .andThen(total.limit(0,
                                                         new EliteSelection<>()))
-                                                .andThen(total.limit(3,
+                                                .andThen(total.limit(0,
                                                         new CrossoverSelection<EvolvingGraphAdapter<S>>(
                                                                 (cand, cands) -> {
                                                                     final int selected = rng.nextInt(cands.size());

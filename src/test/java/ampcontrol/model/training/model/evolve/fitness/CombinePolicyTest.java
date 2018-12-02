@@ -23,11 +23,9 @@ public class CombinePolicyTest {
         final FitnessPolicy<String> policy = CombinePolicy.<String>builder()
                 .combiner((d1,d2) -> d1 + d2 / 2)
                 .add(new FixedFitnessPolicy<>(1d))
-                .add(new FixedFitnessPolicy<>(200d,300d))
+                .add(new FixedFitnessPolicy<>(20d,30d))
                 .aggregationMethod((d1,d2) -> d1*d2)
-                .transform(d -> d / 10)
-                .add(new FixedFitnessPolicy<>(7d))
-                .transform(d -> d*1000)
+                .add(new FixedFitnessPolicy<>(7000d))
                 .build();
 
         final MutableDouble fitness = new MutableDouble(0);

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalTime;
+import java.util.function.BiConsumer;
 
 /**
  * Measures time to complete one epoch of training.
@@ -15,10 +16,21 @@ import java.time.LocalTime;
  */
 public class TimeMeasurement extends BaseTrainingListener {
 
-    private static final Logger log = LoggerFactory.getLogger(TimeMeasurement.class);
+    private final static Logger log = LoggerFactory.getLogger(TimeMeasurement.class);
+
+    private final BiConsumer<Integer, Double> measurementConsumer;
 
     private LocalTime startTime;
     private int nrofExamplesCount = 0;
+
+    public TimeMeasurement() {
+        this((nrofExamples, timeMs) ->
+            log.info("Training took " +timeMs + " ms for " + nrofExamples + " examples, " + timeMs / nrofExamples + " ms per example"));
+    }
+
+    public TimeMeasurement(BiConsumer<Integer, Double> measurementConsumer) {
+        this.measurementConsumer = measurementConsumer;
+    }
 
     @Override
     public void onEpochStart(Model model) {
@@ -29,7 +41,7 @@ public class TimeMeasurement extends BaseTrainingListener {
     @Override
     public void onEpochEnd(Model model) {
         final double endTimeMs = Duration.between(startTime, LocalTime.now()).toMillis();
-        log.info("Training took " + endTimeMs + " ms for " + nrofExamplesCount + " examples, " + endTimeMs / nrofExamplesCount + " ms per example");
+        measurementConsumer.accept(nrofExamplesCount, endTimeMs);
     }
 
     @Override

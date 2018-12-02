@@ -1,10 +1,11 @@
 package ampcontrol.model.training.model.evolve.fitness;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.DoubleBinaryOperator;
-import java.util.function.DoubleUnaryOperator;
 
 /**
  * Combines fitness from two {@link FitnessPolicy FitnessPolicies} using a provided combiner
@@ -22,20 +23,18 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
     private final static class FitnessState<T> implements Consumer<Double> {
 
         private final DoubleBinaryOperator aggregationMethod;
-        private final DoubleUnaryOperator transform;
         private final FitnessPolicy<T> policy;
-        private final Set<Double> fitness = new LinkedHashSet<>();
+        private final List<Double> fitness = new ArrayList<>();
         private Consumer<FitnessState<T>> fitnessCallback;
 
-        private FitnessState(DoubleBinaryOperator aggregationMethod, DoubleUnaryOperator transform, FitnessPolicy<T> policy) {
+        private FitnessState(DoubleBinaryOperator aggregationMethod, FitnessPolicy<T> policy) {
             this.aggregationMethod = aggregationMethod;
-            this.transform = transform;
             this.policy = policy;
         }
 
         @Override
         public void accept(Double fitness) {
-            this.fitness.add(transform.applyAsDouble(fitness));
+            this.fitness.add(fitness);
             fitnessCallback.accept(this);
         }
 
@@ -88,17 +87,22 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
             reportedFitness.clear();
             actualListener.accept(fitness);
         }
+
     }
 
-    public static final class Builder<T> {
+    public static final class Builder<T> implements FitnessPolicy<T> {
         private final Set<FitnessState<T>> monitoredFitness = new LinkedHashSet<>();
         private DoubleBinaryOperator combiner = (d1,d2) -> d1+d2;
 
+        @Override
+        public T apply(T candidate, Consumer<Double> fitnessListener) {
+            return build().apply(candidate, fitnessListener);
+        }
+
         public static final class StateBuilder<T> {
             private final Builder<T> builder;
-            private final FitnessPolicy<T> policy;
+            private FitnessPolicy<T> policy;
             private DoubleBinaryOperator aggregationMethod = (d1,d2) -> d1+d2;
-            private DoubleUnaryOperator transform = DoubleUnaryOperator.identity();
 
             private StateBuilder(Builder<T> builder, FitnessPolicy<T> policy) {
                 this.builder = builder;
@@ -116,21 +120,11 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
             }
 
             /**
-             * Adds a transformation for fitness values, e.g. a scaling
-             * @param transform transforms fitness
-             * @return the Builder for fluent API
-             */
-            public StateBuilder<T> transform(DoubleUnaryOperator transform) {
-                this.transform = transform;
-                return this;
-            }
-
-            /**
              * Add {@link FitnessPolicy}
              * @return a new StateBuilder
              */
             public StateBuilder<T> add(FitnessPolicy<T> policy) {
-                builder.monitoredFitness.add(new FitnessState<>(aggregationMethod, transform, this.policy));
+                builder.monitoredFitness.add(new FitnessState<>(aggregationMethod, this.policy));
                 return new StateBuilder<>(builder, policy);
             }
 
@@ -139,7 +133,7 @@ public class CombinePolicy<T> implements FitnessPolicy<T> {
              * @return a new instance
              */
             public CombinePolicy<T> build() {
-                builder.monitoredFitness.add(new FitnessState<>(aggregationMethod, transform, policy));
+                builder.monitoredFitness.add(new FitnessState<>(aggregationMethod, policy));
                 return builder.build();
             }
         }
