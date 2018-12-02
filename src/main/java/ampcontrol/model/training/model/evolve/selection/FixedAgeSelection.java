@@ -1,6 +1,8 @@
 package ampcontrol.model.training.model.evolve.selection;
 
 import ampcontrol.model.training.model.CompGraphAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +19,8 @@ import java.util.stream.Stream;
  * @author Christian Skärby
  */
 public class FixedAgeSelection<T, V> implements Selection<T> {
+
+    private static final Logger log = LoggerFactory.getLogger(FixedAgeSelection.class);
 
     private final Function<T, V> toHashable;
     private final Selection<T> sourceSelection;
@@ -63,13 +67,22 @@ public class FixedAgeSelection<T, V> implements Selection<T> {
         return sourceSelection.selectCandiates(
                 fitnessCandidates.stream()
                         .peek(entry -> updateAge(hashables.get(entry.getValue())))
-                        .filter(entry -> ageMap.get(hashables.get(entry.getValue())) < maxAge)
+                        .filter(entry -> checkAge(entry, hashables, fitnessCandidates))
                         .collect(Collectors.toList()));
     }
 
     private void updateAge(V candidate) {
         ageMap.computeIfPresent(candidate, (cand, age) -> age + 1);
         ageMap.putIfAbsent(candidate, 0);
+    }
+
+    private boolean checkAge(Map.Entry<Double, T> candidate, Map<T, V> hashables, List<Map.Entry<Double, T>> allCandidates) {
+        final V hashed = hashables.get(candidate.getValue());
+        if(ageMap.get(hashed) < maxAge) {
+            return true;
+        }
+        log.info("Discard candidate " + allCandidates.indexOf(candidate) + " due to old age");
+        return false;
     }
 
     /**

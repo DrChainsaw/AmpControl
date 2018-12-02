@@ -12,7 +12,6 @@ import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -30,7 +29,7 @@ public class FixedAgeSelectionTest {
      * Test that aging works as expected
      */
     @Test
-    public void selectCandiates() throws IOException {
+    public void selectCandiates() {
         final List<String> population = Arrays.asList("first", "cand", "another cand", "etc");
 
         final Selection<String> selection = new FixedAgeSelection<>(
@@ -65,7 +64,7 @@ public class FixedAgeSelectionTest {
      * Test that byConfig works as expected.
      */
     @Test
-    public void byConfig() throws IOException {
+    public void byConfig() {
         final List<CompGraphAdapter> population = Arrays.asList(
                 createAdapter(3, "a"),
                 createAdapter(4, "a"),
