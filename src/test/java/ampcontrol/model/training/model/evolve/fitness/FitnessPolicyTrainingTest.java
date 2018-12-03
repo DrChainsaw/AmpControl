@@ -42,8 +42,8 @@ public class FitnessPolicyTrainingTest {
             }
 
             @Override
-            public int numParams() {
-                return (int) (5* 1e4);
+            public long numParams() {
+                return (long)(5* 1e4);
             }
 
             @Override

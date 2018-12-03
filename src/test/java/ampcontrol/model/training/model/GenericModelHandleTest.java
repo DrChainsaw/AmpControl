@@ -12,7 +12,7 @@ import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.junit.Test;
-import org.nd4j.linalg.activations.impl.ActivationSoftmax;
+import org.nd4j.linalg.activations.impl.ActivationSigmoid;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
@@ -71,7 +71,7 @@ public class GenericModelHandleTest {
                         .lossFunction(new LossBinaryXENT())
                         .nIn(1)
                         .nOut(2)
-                        .activation(new ActivationSoftmax())
+                        .activation(new ActivationSigmoid())
                         .build())
                 .build());
         model.init();

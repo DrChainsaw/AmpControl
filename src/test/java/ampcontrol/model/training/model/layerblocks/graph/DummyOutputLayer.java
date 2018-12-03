@@ -8,6 +8,7 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.lossfunctions.impl.LossMSE;
 
 /**
  * "Dummy" output layer for testing.
@@ -24,6 +25,7 @@ public class DummyOutputLayer implements LayerBlockConfig {
     @Override
     public BlockInfo addLayers(BuilderAdapter builder, BlockInfo info) {
         OutputLayer output = new OutputLayer.Builder()
+                .lossFunction(new LossMSE())
                 .nOut(info.getPrevNrofOutputs())
                 .activation(new ActivationIdentity())
                 .biasInit(0)

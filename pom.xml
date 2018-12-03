@@ -14,18 +14,20 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <java.version>1.8</java.version>
-        <nd4j.version>1.0.0-beta2</nd4j.version>
-        <dl4j.version>1.0.0-beta2</dl4j.version>
+        <nd4j.version>1.0.0-beta3</nd4j.version>
+        <dl4j.version>1.0.0-beta3</dl4j.version>
         <slf4j.version>1.7.21</slf4j.version>
-        <datavec.version>1.0.0-beta2</datavec.version>
-        <arbiter.version>1.0.0-beta2</arbiter.version>
-        <rl4j.version>1.0.0-beta2</rl4j.version>
+        <datavec.version>1.0.0-beta3</datavec.version>
+        <arbiter.version>1.0.0-beta3</arbiter.version>
+        <rl4j.version>1.0.0-beta3</rl4j.version>
         <junit.version>4.11</junit.version>
+        <xchart.version>3.5.0</xchart.version>
+        <jcommander.version>1.72</jcommander.version>
 
         <!-- For Spark examples: change the _1 to _2 to switch between Spark 1 and Spark 2 -->
 
-        <dl4j.spark.version>1.0.0-beta2_spark_1</dl4j.spark.version>
-        <datavec.spark.version>1.0.0-beta2_spark_1</datavec.spark.version>
+        <dl4j.spark.version>1.0.0-beta3_spark_1</dl4j.spark.version>
+        <datavec.spark.version>1.0.0-beta3_spark_1</datavec.spark.version>
 
         <!-- Scala binary version: DL4J's Spark and UI functionality are released with both Scala 2.10 and 2.11 support -->
 
@@ -235,12 +237,12 @@
         <dependency>
             <groupId>org.knowm.xchart</groupId>
             <artifactId>xchart</artifactId>
-            <version>3.5.0</version>
+            <version>${xchart.version}</version>
         </dependency>
         <dependency>
             <groupId>com.beust</groupId>
             <artifactId>jcommander</artifactId>
-            <version>1.72</version>
+            <version>${jcommander.version}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3 -->
         <dependency>

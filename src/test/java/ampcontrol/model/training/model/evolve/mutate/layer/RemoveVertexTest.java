@@ -15,6 +15,7 @@ import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.nd4j.linalg.activations.impl.ActivationSoftmax;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -154,7 +155,7 @@ public class RemoveVertexTest {
                 .addVertex("spy_5", new EpsilonSpyVertex(), "5")
                 .addLayer("6", new DenseLayer.Builder().nOut(13).build(), "spy_5")
                 .addVertex("spy_6", new EpsilonSpyVertex(), "6")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_6")
+                .addLayer("output", new CenterLossOutputLayer.Builder().activation(new ActivationSoftmax()).nOut(4).build(), "spy_6")
                 .build());
         graph.init();
 
@@ -176,7 +177,7 @@ public class RemoveVertexTest {
                 .addVertex("spy_1", new EpsilonSpyVertex(), "1")
                 .addLayer("2", new DenseLayer.Builder().nOut(7).build(), "spy_1")
                 .addVertex("spy_2", new EpsilonSpyVertex(), "2")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_2")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "spy_2")
                 .build());
 
         graph.init();
@@ -209,7 +210,7 @@ public class RemoveVertexTest {
                 .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(6).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("4", graph, inputType);
@@ -234,7 +235,7 @@ public class RemoveVertexTest {
                 .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "merge2And3")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("4", graph, inputType);
@@ -259,7 +260,7 @@ public class RemoveVertexTest {
                 .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "merge2And3")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("2", graph, inputType);
@@ -283,7 +284,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "2", "3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("2", graph, inputType);
@@ -308,7 +309,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "2", "3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("2", graph, inputType);
@@ -333,7 +334,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "2", "add1And3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("5", graph, inputType);
@@ -359,7 +360,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "3", "4", "5")
                 .addLayer("6", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "6")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("5", graph, inputType);
@@ -383,7 +384,7 @@ public class RemoveVertexTest {
                 .addVertex("merge3And4", new MergeVertex(), "3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("3", graph, inputType);
@@ -406,7 +407,7 @@ public class RemoveVertexTest {
                 .addLayer("3", new BatchNormalization.Builder().nOut(5).build(), "merge1And2")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("4", graph, inputType);
@@ -433,7 +434,7 @@ public class RemoveVertexTest {
                 .addLayer("4", new BatchNormalization.Builder().nOut(3).build(), "add1And3")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("5", graph, inputType);

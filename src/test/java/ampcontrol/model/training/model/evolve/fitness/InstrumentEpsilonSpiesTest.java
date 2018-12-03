@@ -12,9 +12,11 @@ import org.deeplearning4j.nn.conf.layers.GlobalPoolingLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
+import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.lossfunctions.impl.LossMSE;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertFalse;
@@ -44,7 +46,9 @@ public class InstrumentEpsilonSpiesTest {
                 .addLayer("second", new DenseLayer.Builder().nOut(11).build(), "gp")
                 .addLayer("third", new DenseLayer.Builder().nOut(13).build(), "second")
                 .addVertex("thirdSpy", new EpsilonSpyVertex(), "third")
-                .addLayer("output", new OutputLayer.Builder().nOut(1).build(), "thirdSpy")
+                .addLayer("output", new OutputLayer.Builder().nOut(1)
+                        .lossFunction(new LossMSE())
+                        .activation(new ActivationIdentity()).build(), "thirdSpy")
                 .build());
 
         final ModelComparatorRegistry registry = new ModelComparatorRegistry();

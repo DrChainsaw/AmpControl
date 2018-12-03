@@ -12,6 +12,7 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.params.BatchNormalizationParamInitializer;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.jetbrains.annotations.NotNull;
+import org.nd4j.linalg.activations.impl.ActivationSoftmax;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -145,6 +146,7 @@ public class GraphUtils {
                         .nOut(5)
                         .build(), name1)
                 .addLayer(name3, new CenterLossOutputLayer.Builder()
+                        .activation(new ActivationSoftmax())
                         .nOut(7)
                         .build(), name2)
                 .build());

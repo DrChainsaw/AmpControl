@@ -86,11 +86,13 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         outputNames.stream()
                 .peek(name -> log.info("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
-                .forEach(outputName ->
+                .forEach(outputName -> {
+                        final GraphVertex vertex = graphBuilder.getVertices().get(outputName);
+                        graphBuilder.removeVertex(outputName, false);
                         graphBuilder.addVertex(
                                 outputName,
-                                graphBuilder.getVertices().get(outputName),
-                                inputNamesPerOutput.get(outputName).toArray(new String[1])));
+                                vertex,
+                                inputNamesPerOutput.get(outputName).toArray(new String[1]));});
 
         if (!sizeChange && !wasMergeVertex) {
             return GraphMutation.InputsAndOutputNames.builder().build();

@@ -65,12 +65,12 @@ public class MockModel implements Model {
     }
 
     @Override
-    public int numParams() {
+    public long numParams() {
         return 0;
     }
 
     @Override
-    public int numParams(boolean backwards) {
+    public long numParams(boolean backwards) {
         return 0;
     }
 

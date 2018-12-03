@@ -22,7 +22,7 @@ public class BlockBuilderTest {
         final int nrofLayers = new BlockBuilder()
                 .first(new ConvType(new int[]{4, 4, 1})) // Must be at least equal to default kernel size
                 .andThen(new Conv2D())
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .build().getnLayers();
         assertEquals("Incorrect number of layers!", 2, nrofLayers);
     }
@@ -36,7 +36,7 @@ public class BlockBuilderTest {
                 .first(new ConvType(new int[]{3, 3, 64}))
                 .andThenRes()
                 .of(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 4, nrofLayers);
     }
@@ -51,7 +51,7 @@ public class BlockBuilderTest {
                 .andThenRes()
                 .aggOf(new Conv2D().setKernelSize(3))
                 .andFinally(new ZeroPad().setPad(1))
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 5, nrofLayers);
     }
@@ -67,7 +67,7 @@ public class BlockBuilderTest {
                 .andThenRes()
                 .ofStack(nrofStacks)
                 .of(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", nrofStacks + 3, nrofLayers);
     }
@@ -82,7 +82,7 @@ public class BlockBuilderTest {
                 .first(new ConvType(new int[]{3, 3, 64}))
                 .andThenDenseStack(nrofStacks)
                 .of(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", nrofStacks * 2 + 2, nrofLayers);
     }
@@ -98,7 +98,7 @@ public class BlockBuilderTest {
                 .andThenDenseStack(nrofStacks)
                 .aggOf(new Conv2D().setKernelSize(3))
                 .andFinally(new ZeroPad().setPad(1))
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", nrofStacks * 3 + 2, nrofLayers);
     }
@@ -116,7 +116,7 @@ public class BlockBuilderTest {
                 .aggStack(nrofStacksInEachStack)
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", nrofStacks * 2 + nrofStacks * nrofStacksInEachStack + 2, nrofLayers);
     }
@@ -131,7 +131,7 @@ public class BlockBuilderTest {
                 .first(new ConvType(new int[]{nrofStacks * 4, nrofStacks * 4, 1})) // Must be at least equal to default kernel size
                 .andThenStack(nrofStacks)
                 .of(new Conv2D())
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .build().getnLayers();
         assertEquals("Incorrect number of layers!", nrofStacks + 1, nrofLayers);
     }
@@ -147,7 +147,7 @@ public class BlockBuilderTest {
                 .andThenStack(nrofStacks)
                 .aggOf(new Conv2D())
                 .andFinally(new ZeroPad())
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .build().getnLayers();
         assertEquals("Incorrect number of layers!", 2 * nrofStacks + 1, nrofLayers);
     }
@@ -165,7 +165,7 @@ public class BlockBuilderTest {
                 .aggStack(nrofStacksInEachStack)
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .build().getnLayers();
         assertEquals("Incorrect number of layers!", nrofStacks + nrofStacks * nrofStacksInEachStack + 1, nrofLayers);
     }
@@ -181,7 +181,7 @@ public class BlockBuilderTest {
                 .andThenStack(nrofStacks)
                 .res()
                 .of(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 2 * nrofStacks + 2, nrofLayers);
     }
@@ -198,7 +198,7 @@ public class BlockBuilderTest {
                 .aggRes()
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 3 * nrofStacks + 2, nrofLayers);
     }
@@ -216,7 +216,7 @@ public class BlockBuilderTest {
                 .aggDenseStack(nrofStacksInEachStack)
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Act()) // Just something which preserves input size
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!",  nrofStacks * (2*nrofStacksInEachStack + 1) + 2, nrofLayers);
     }
@@ -231,7 +231,7 @@ public class BlockBuilderTest {
                 .multiLevel()
                 .andThen(new Act()) // Just something which preserves input size
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 7, nrofLayers);
     }
@@ -247,7 +247,7 @@ public class BlockBuilderTest {
                 .andThenAgg(new Act()) // Just something which preserves input size
                 .andFinally(new Act()) // Just something which preserves input size
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 8, nrofLayers);
     }
@@ -263,7 +263,7 @@ public class BlockBuilderTest {
                 .andThenRes()
                 .of(new Act()) // Just something which preserves input size
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 8, nrofLayers);
     }
@@ -280,7 +280,7 @@ public class BlockBuilderTest {
                 .of(new Act()) // Just something which preserves input size
                 .andFinally(new Act())
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 9, nrofLayers);
     }
@@ -297,7 +297,7 @@ public class BlockBuilderTest {
                 .andThenStack(nrofStacks)
                 .of(new Act()) // Just something which preserves input size
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 6 + nrofStacks, nrofLayers);
     }
@@ -315,7 +315,7 @@ public class BlockBuilderTest {
                 .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
                 .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 6, nrofLayers);
     }
@@ -334,7 +334,7 @@ public class BlockBuilderTest {
                 .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels*2))
                 .done()
                 .andFinally(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels))
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 7, nrofLayers);
     }
@@ -353,7 +353,7 @@ public class BlockBuilderTest {
                 .andFinally(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
                 .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 7, nrofLayers);
     }
@@ -372,7 +372,7 @@ public class BlockBuilderTest {
                 .of(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
                 .add(new Conv2D().setKernelSize(1).setNrofKernels(nrofChannels / 2))
                 .done()
-                .andFinally(new Output(1))
+                .andFinally(new Output(2))
                 .buildGraph().getVertices().length;
         assertEquals("Incorrect number of layers!", 7, nrofLayers);
     }
