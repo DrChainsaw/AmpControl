@@ -39,7 +39,7 @@ class TrainingHarness {
     private static final Logger log = LoggerFactory.getLogger(TrainingHarness.class);
 
     private static final boolean doStatsLogging = false;
-    private static final int evalEveryNrofSteps = 100;
+    private static final int evalEveryNrofSteps = 101;
     private static final int nrofStepsBeforeFirstEval = 97;
     private static final String bestSuffix = "_best";
     private static final String scoreSuffix = ".score";

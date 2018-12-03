@@ -83,7 +83,7 @@ import java.util.stream.Stream;
 public final class MutatingConv2dFactory {
 
     private static final Logger log = LoggerFactory.getLogger(MutatingConv2dFactory.class);
-    private static final int evolveInterval = 107;
+    private static final int evolveInterval = 101;
 
     private final MiniEpochDataSetIterator trainIter;
     private final MiniEpochDataSetIterator evalIter;
@@ -352,7 +352,7 @@ public final class MutatingConv2dFactory {
                     new ConvType(inputShape).addLayers(bottom.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
                     new ConvType(inputShape).addLayers(top.builder(), new LayerBlockConfig.SimpleBlockInfo.Builder().build());
 
-                    if (rng.nextDouble() < 0.02) {
+                    if (rng.nextDouble() < 0.05) {
                         return new SinglePoint(() ->
                                 new SinglePoint.PointSelection(
                                         Math.min(1d, Math.max(-1d, rng.nextGaussian() / 3)),
@@ -681,16 +681,21 @@ public final class MutatingConv2dFactory {
                             }
 
                             // Remove any spy vertices as well since they don't to anything useful by themselves
-                            graphBuilder.getVertexInputs().entrySet().stream()
+                            // We don't remove them now since we are not 100% sure that the remove operation will succeed
+                            List<Function<GraphBuilder, GraphMutation.InputsAndOutputNames>> removeSpies = graphBuilder.getVertexInputs().entrySet().stream()
                                     .filter(vertexInfo -> vertexInfo.getValue().contains(vertexToRemove))
                                     .filter(vertexInfo -> vertexInfo.getKey().matches("^spy.*"))
                                     .map(Map.Entry::getKey)
                                     .collect(Collectors.toList())
-                                    .forEach(spyVertexName ->
-                                            new RemoveVertexFunction(spyVertexName).apply(graphBuilder)
-                                    );
+                                    .stream()
+                                    .map(RemoveVertexFunction::new
+                                    ).collect(Collectors.toList());
                             removeListener.accept(vertexToRemove);
-                            return new RemoveVertexFunction(vertexToRemove).apply(graphBuilder);
+                            final GraphMutation.InputsAndOutputNames output = new RemoveVertexFunction(vertexToRemove).apply(graphBuilder);
+                            if(!graphBuilder.getVertices().containsKey(vertexToRemove)) {
+                                removeSpies.forEach(removeFunction -> removeFunction.apply(graphBuilder));
+                            }
+                            return output;
                         })
                         .build()));
     }
