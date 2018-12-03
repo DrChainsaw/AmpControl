@@ -1,6 +1,6 @@
 package ampcontrol.model.training.model.validation;
 
-import org.deeplearning4j.eval.Evaluation;
+import org.nd4j.evaluation.classification.Evaluation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,9 +1,9 @@
 package ampcontrol.model.training.model;
 
-import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.nd4j.evaluation.IEvaluation;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -3,8 +3,8 @@ package ampcontrol.model.training.model;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.listen.NanScoreWatcher;
 import ampcontrol.model.training.model.validation.Validation;
-import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.optimize.api.TrainingListener;
+import org.nd4j.evaluation.IEvaluation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

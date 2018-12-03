@@ -1,7 +1,7 @@
 package ampcontrol.model.training.model;
 
-import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
+import org.nd4j.evaluation.IEvaluation;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 

@@ -2,10 +2,10 @@ package ampcontrol.model.training.model.evolve.fitness;
 
 import ampcontrol.model.training.listen.MockModel;
 import ampcontrol.model.training.model.ModelAdapter;
-import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.optimize.api.TrainingListener;
 import org.junit.Test;
+import org.nd4j.evaluation.IEvaluation;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 import java.util.ArrayList;

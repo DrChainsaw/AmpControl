@@ -1,7 +1,7 @@
 package ampcontrol.model.training.model.validation.listen;
 
-import org.deeplearning4j.eval.Evaluation;
 import org.junit.Test;
+import org.nd4j.evaluation.classification.Evaluation;
 
 import java.io.IOException;
 
