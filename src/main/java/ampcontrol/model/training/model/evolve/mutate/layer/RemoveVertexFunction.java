@@ -58,9 +58,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         log.info("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
                 " nIn: " + nIn + " nOut: " + nOut);
 
-        //System.out.println("Remove " + vertexNameToRemove + " with inputs " + inputNames + " and outputs " + outputNames +
-        //        " nIn: " + nIn + " nOut: " + nOut);
-
         final Collection<String> connectedMergeVertices = new ArrayList<>();
 
         // Skip the below if removal is trivial as handleMergeVertexOutputs tends to mess up stuff around MergeVertices in
@@ -72,11 +69,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         if (sizeChange) {
             connectedMergeVertices.addAll(handleMergeVertexOutputs(graphBuilder, outputNames));
 
-            //System.out.println("after merge handling: " + outputNames);
-
             removeOrphanedElemWiseVertices(graphBuilder, outputNames);
-
-            //System.out.println("after elemwise handling: " + outputNames + " input " + inputNames);
 
             removeRedunantMergeVertices(graphBuilder, inputNames, outputNames);
         } else {
@@ -88,17 +81,11 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         if(outputNames.isEmpty()) {
             return GraphMutation.InputsAndOutputNames.builder().build();
         }
-        // System.out.println("Size change: " + sizeChange);
-
-        //System.out.println("after redundant merge handling: " + outputNames + " input " + inputNames);
 
         final Map<String, Set<String>> inputNamesPerOutput = getInputNamesPerOutput(graphBuilder, outputNames, inputNames);
 
-        //System.out.println("input per output: " + inputNamesPerOutput);
-
         outputNames.stream()
                 .peek(name -> log.info("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
-                //.peek(name -> System.out.println("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
                 .forEach(outputName ->
                         graphBuilder.addVertex(
                                 outputName,
@@ -174,7 +161,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                             .addVertex(name, new ElementWiseVertex(ElementWiseVertex.Op.Add), leafVertex);
                 }
 
-                //System.out.println("output just before elem remove " + name + " leaves " + leafVertices);
                 new RemoveVertexFunction(name).apply(builder);
                 outputNames.remove(name);
             }
@@ -186,7 +172,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         final Graph<String> graph =
                 new Filter<>(vertex -> builder.getVertices().get(vertex) instanceof MergeVertex,
                         new Filter<>(vertex -> builder.getVertexInputs().get(vertex).size() == 1,
-                                //new Peek<>(vertex -> System.out.println("check redundant merge " + vertex),
                                 TraverseBuilder.forwards(builder)
                                         .traverseCondition(vertex -> true) // could do better here, something like is an outputname or size change propagates
                                         .build()));
@@ -194,7 +179,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         inputNames.forEach(name -> graph.children(name).forEach(outputName -> {
                     if (outputNames.contains(outputName)) {
                         new ForwardOf(builder).children(outputName).forEach(outputNames::add);
-                        //System.out.println("Remove redundant mergevertex: " + outputName);
                         outputNames.remove(outputName);
                     }
                     new RemoveVertexFunction(outputName).apply(builder);
@@ -243,25 +227,22 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                 .traverseCondition(vertex -> !isSizeChangePossible(builder.getVertices().get(vertex)))
                 .enterListener(currentPath::add)
                 .visitListener(vertex -> {
-                    ///System.out.println("visit: " + vertex);
                     if (builder.getVertices().get(vertex) instanceof MergeVertex) {
                         inputsToConnectedMergeVertex.put(vertex,
                                 new LinkedHashSet<>(backwards.children(vertex)
                                         .filter(vert -> isSizeChangePossible(builder.getVertices().get(vert)))
                                         .collect(Collectors.toSet())));
-                        //System.out.println("currpath: " + currentPath);
+
                         currentPath.stream()
                                 // add vertices which are either 1) not mergevertices and 2) mergevertices with only 1 input (the one which is about to be removed)
                                 .filter(childvertex -> inputsToConnectedMergeVertex.getOrDefault(childvertex, Collections.emptySet()).size() <= 1)
-                                //.peek(vert -> System.out.println("add to path: " + vert))
+
                                 .forEach(pathToMerge::add);
 
                     }
                 })
                 .leaveListener(currentPath::remove)
                 .build().children(vertexNameToRemove).forEach(vertex -> {/* Ignore */});
-        //System.out.println("outputsConnectedToMergeVertex map " + inputsToConnectedMergeVertex);
-        //System.out.println("path to merge: " + pathToMerge);
 
         outputNames.removeAll(pathToMerge);
 
@@ -283,7 +264,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         pathToMerge.forEach(vertex -> {
             // "Loneley" mergevertices will be part of pathToMerge, need to remove them
-            //System.out.println("Remove " + vertex);
             inputsToConnectedMergeVertex.remove(vertex);
             removeVertex(builder, vertex);
         });

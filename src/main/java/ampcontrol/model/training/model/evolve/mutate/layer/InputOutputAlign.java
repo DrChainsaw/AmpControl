@@ -45,10 +45,8 @@ public class InputOutputAlign {
     public void invoke() {
         // Not possible to change network inputs (e.g. image size)
         final boolean isAnyLayerTouchingNetworkInput =
-        //graphBuilder.getNetworkInputs().stream().anyMatch(inputNames::contains);
         isAnyLayerTouchingNetworkInput(graphBuilder, inputNames);
 
-        //System.out.println("Touches input " + isAnyLayerTouchingNetworkInput);
 
         // Do the change which adds neurons rather than the one which removes them
         // What about if nIn == nOut? Can't do early return it seems as this is no guarantee
@@ -62,10 +60,8 @@ public class InputOutputAlign {
         // previous layers which are changed either because they are to be connected with the removed layers
         // outputs or because one of the paths in a fork was just removed.
         if (nIn > nOut || isAnyLayerTouchingNetworkInput) {
-            //System.out.println("change nIn " + nIn);
             setNinOfOutputsToNoutSize(graphBuilder, outputNames);
         } else {
-            //System.out.println("change nout : " + nOut);
             changeNoutOfInputs(graphBuilder, inputNames, nOut);
         }
     }
@@ -82,12 +78,10 @@ public class InputOutputAlign {
 
     private static void changeNoutOfInputs(ComputationGraphConfiguration.GraphBuilder graphBuilder, Collection<String> inputNames, long nOut) {
 
-        //System.out.println("inputnames: " + inputNames);
         // What we want here is to traverse in topological order really. Just so happens to be so that inputNames
         // is always in reverse topological order since this is how it is constructed?
         final List<String> names = new ArrayList<>(inputNames);
         Collections.reverse(names);
-        //System.out.println("reverse: " + names);
 
         final SizeVisitor sizeRegistry = createSizeVisitor(graphBuilder, nOut);
         inputNames.forEach(vertex -> sizeRegistry.set(vertex, nOut));
@@ -103,7 +97,6 @@ public class InputOutputAlign {
                 .peek(layer -> log.info("Change nOut of layer " + layer.getLayerName() + " from " + layer.getNOut() + " to " + sizeRegistry.getSize(layer.getLayerName())))
                 .forEachOrdered(layer -> {
                     final long thisNout = sizeRegistry.getSize(layer.getLayerName());
-                    //System.out.println("change nOut of vertex " + layer.getLayerName() + " from " + layer.getNOut() + " to " + thisNout);
                     layer.setNOut(thisNout);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNIn(thisNout);
@@ -121,7 +114,6 @@ public class InputOutputAlign {
                 // We only want to process feedforward layers.
                 .filter(vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
                 .collect(Collectors.toSet());
-        //System.out.println("Change nIns after changing nOuts " + needToChangeNin + " changed layers " + changedLayers);
         setNinOfOutputsToNoutSize(graphBuilder, needToChangeNin);
     }
 
@@ -143,9 +135,8 @@ public class InputOutputAlign {
     }
 
     private static void setNinOfOutputsToNoutSize(ComputationGraphConfiguration.GraphBuilder graphBuilder, Collection<String> outputNames) {
-        //System.out.println("output names: " + outputNames);
-        log.info("Set NIn of outputs " + outputNames);
 
+        log.info("Set NIn of outputs " + outputNames);
 
         final Graph<String> traverseInputs = GraphBuilderUtil.inputSizeTravere(graphBuilder)
                 .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
@@ -160,16 +151,13 @@ public class InputOutputAlign {
                 .forEachOrdered(layer -> {
                     final long nInToUse = traverseInputs.children(layer.getLayerName())
                             .distinct()
-                            //.peek(vertex -> System.out.println("visit " + vertex ))
                             .mapToLong(vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex)
                                     .map(FeedForwardLayer::getNOut)
                                     .orElseGet(() -> graphBuilder.getNetworkInputs().contains(vertex)
                                             ? graphBuilder.getNetworkInputTypes().get(graphBuilder.getNetworkInputs().indexOf(vertex)).getShape(false)[0]
                                             : 0L))
-                            //.peek(size -> System.out.println("size: " + size))
                             .sum();
                     log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
-                    //System.out.println("change nIn of vertex " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
                     layer.setNIn(nInToUse);
                     if (!isSizeChangePossible(layer)) {
                         layer.setNOut(nInToUse);

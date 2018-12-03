@@ -80,8 +80,6 @@ public final class SinglePoint implements Crossover<GraphInfo> {
                         .map(childName -> bottom.builder().getVertices().get(childName))
                         .noneMatch(childVertex -> childVertex instanceof EpsilonSpyVertex))
                 .flatMap(bottomVertex -> findValidVertices(top)
-                       // .filter(topVertex -> topVertex.type() == bottomVertex.type())
-                       // .filter(topVertex -> isShapesSafe(topVertex.shape(), bottomVertex.shape()))
                         .filter(topVertex -> parentsTop.children(topVertex.name())
                                 .allMatch(childName -> bottomVertex.type() == new VertexData(childName, top).type()))
                         .filter(topVertex -> parentsTop.children(topVertex.name())
@@ -129,9 +127,7 @@ public final class SinglePoint implements Crossover<GraphInfo> {
 
     private static boolean isShapesSafe(long[] shapeBottom, long[] shapeTop) {
         return IntStream.range(1, shapeBottom.length)
-                //.peek(dim -> System.out.println("size " + dim + ": " + shapeBottom[dim] + " vs " + shapeTop[dim]))
                 .mapToDouble(dim -> (shapeBottom[dim] - shapeTop[dim]) / (double) (shapeBottom[dim] + shapeTop[dim]))
-                //.peek(relSize -> System.out.println("relsize: " + relSize))
                 .allMatch(relativeSize -> relativeSize > -0.1);
 
     }

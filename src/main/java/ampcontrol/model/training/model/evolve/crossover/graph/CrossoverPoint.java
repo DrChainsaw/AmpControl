@@ -35,7 +35,6 @@ class CrossoverPoint {
         this.bottom = bottom;
         this.top = top;
         distance = (bottom.location() - top.location()) / 2;
-        //System.out.println("valid point " + bottom.name() + ", " + top.name() + " dist: " + distance);
     }
 
     double distance() {
@@ -56,7 +55,6 @@ class CrossoverPoint {
      */
     GraphInfo execute() {
         log.info("Do crossover between " + bottom.name() + " and " + top.name() + " with distance " + distance);
-        //System.out.println("Do crossover between " + bottom.name() + " and " + top.name() + " with distance " + distance);
 
         final long bottomNout = GraphBuilderUtil.getOutputSize(bottom.name(), bottom.builder());
         final long topNin = GraphBuilderUtil.getInputSize(top.name(), top.builder());
@@ -73,8 +71,6 @@ class CrossoverPoint {
                 topNin,
                 bottomNout)
         .invoke();
-
-        //System.out.println("new graph: " + builder.getVertexInputs() + " inputs " + builder.getNetworkInputs());
 
         // What happens here? The user needs to be able to query the result for which vertices are from which "input"
         // info.
@@ -120,7 +116,6 @@ class CrossoverPoint {
                         vertex -> checkName(vertex, builder.getVertices().keySet(), existingVertices)
                 ));
         topVerticesNameMapping.put(top.name(), checkName(top.name(), builder.getVertices().keySet(), existingVertices));
-        //System.out.println("topVerts: " + topVerticesNameMapping.keySet());
 
         builder.addVertex(topVerticesNameMapping.get(top.name()),
                 renameVertexIfLayer(top.builder().getVertices().get(top.name()),  topVerticesNameMapping.get(top.name())),

@@ -186,9 +186,6 @@ public class ParameterTransfer {
         Optional<ParamPair> paramPairOpt = getParams(layerName, targetCompGraph);
         return paramPairOpt.map(paramPair -> {
 
-            //System.out.println("Transfer start at " + layerName + " nInTransferred: "
-            //        + hasTransferred.nInTransferredFromPreviousNoutLayers + " nOut " + hasTransferred.nOutTransferredFromPreviousNinLayers);
-
             // Basically means "!doesSizeChangeTransfer"
             if (paramPair.source.containsKey(W)) {
                 final TransferContext transferContext = new TransferContext(
@@ -197,7 +194,6 @@ public class ParameterTransfer {
                         inputDim(paramPair.source),
                         outputDim(paramPair.source));
 
-                //System.out.println("\t source " + Arrays.toString(transferContext.sourceShape) + " target " + Arrays.toString(transferContext.targetShape));
                 TransferTask.ListBuilder taskBuilder = initTransfer(transferContext, paramPair);
 
                 transferDependentLayers(targetCompGraph, paramPair, transferContext, taskBuilder);
@@ -223,7 +219,7 @@ public class ParameterTransfer {
     }
 
     private void transferDependentLayers(ComputationGraph targetCompGraph, ParamPair paramPair, TransferContext transferContext, TransferTask.ListBuilder taskBuilder) {
-        if(!hasTransferred.nOut(paramPair.layerName)) {
+        if (!hasTransferred.nOut(paramPair.layerName)) {
             final Graph<String> traverseDependent = TraverseBuilder.forwards(targetCompGraph)
                     .andTraverseCondition(vertex -> !(targetCompGraph.getVertex(vertex) instanceof MergeVertex))
                     .allowRevisit()
@@ -294,10 +290,8 @@ public class ParameterTransfer {
             ComputationGraph targetCompGraph,
             Graph<String> graph,
             TransferContext transferContext) {
-        //System.out.println("traverse from " + inputVertex);
 
         return graph.children(inputVertex).map(vertex -> {
-            //System.out.println("Got " + vertex + " from input " + inputVertex);
             final TransferTask.ListBuilder builder = new DependentTaskBuilder();
 
             // Add parameters (if any and if size allows for transfer) as dependent tasks
@@ -310,7 +304,7 @@ public class ParameterTransfer {
             // If we hit a mergevertex we must stop until we have dependent tasks for all of its inputs,
             // then we proceed.
             if (targetCompGraph.getVertex(vertex) instanceof MergeVertex) {
-                //System.out.println("\t" + inputVertex + " hit a mergevertex " + vertex + "! contexts: " + mergeTasks);
+
                 MergeContext mergeContext = mergeTasks.computeIfAbsent(vertex,
                         name -> new MergeContext());
                 // How do we know that this happens in the right order? We trust the ComputationGraphs topological
@@ -319,7 +313,6 @@ public class ParameterTransfer {
                 // Check if we have all inputs, then proceed further down the graph as we now have the right
                 // source and target shapes to pass the canTransferNoutToNin check above
                 if (targetCompGraph.getVertex(vertex).getInputVertices().length == mergeContext.contexts.size()) {
-                    //System.out.println("\tProceed with mergevertex!");
                     mergeContext.builder.addDependentTask(traverseGraph(
                             vertex,
                             targetCompGraph,
@@ -329,7 +322,7 @@ public class ParameterTransfer {
             } else if (targetCompGraph.getVertex(vertex) instanceof ElementWiseVertex
                     && transferContext.targetShape[transferContext.outputDimension]
                     != transferContext.sourceShape[transferContext.outputDimension]) {
-                //System.out.println("Hit elemvertex: " + vertex + " from input " + inputVertex);
+
                 final Graph<String> backwards =
                         new Filter<>(childVertex -> !childVertex.equals(inputVertex),
                                 TraverseBuilder.backwards(targetCompGraph)
@@ -356,20 +349,11 @@ public class ParameterTransfer {
 
         final TransferTask.ListBuilder taskBuilder = new DependentTaskBuilder();
 
-        // boolean[] first = {true};
         for (String parKey : paramPair.source.keySet()) {
             outputToInputDimMapping(parKey, paramPair.source.get(parKey).shape().length).ifPresent(dimMapper -> {
 
                 final INDArray sourceParam = paramPair.source.get(parKey);
                 final INDArray targetParam = paramPair.target.get(parKey);
-
-//                if (first[0]) {
-//                    System.out.println("\tTransfer dependent output: " + paramPair.layerName + " source " +
-//                            Arrays.toString(sourceParam.shape()) + " target: " +
-//                            Arrays.toString(targetParam.shape()) +
-//                            " along dim " + dimMapper.applyAsInt(transferContext.inputDimension));
-//                    first[0] = false;
-//                }
 
                 if (sourceParam.size(0) != targetParam.size(0)
                         || sourceParam.size(1) != targetParam.size(1)) {
@@ -393,9 +377,9 @@ public class ParameterTransfer {
             ComputationGraph targetCompGraph,
             Graph<String> graph,
             TransferContext transferContext) {
-        //System.out.println("traverse backwards from " + inputVertex);
+
         return graph.children(inputVertex).map(vertex -> {
-            //System.out.println("Got " + vertex + " from input " + inputVertex);
+
             final TransferTask.ListBuilder builder = new DependentTaskBuilder();
 
             // Add parameters (if any and if size allows for transfer) as dependent tasks
@@ -446,7 +430,6 @@ public class ParameterTransfer {
 
         final TransferTask.ListBuilder taskBuilder = new DependentTaskBuilder();
 
-        //boolean[] first = {true};
         for (String parKey : paramPair.source.keySet()) {
             inputToOutputDimMapping(parKey, paramPair.source.get(parKey).shape().length).ifPresent(dimMapper -> {
 
@@ -455,14 +438,6 @@ public class ParameterTransfer {
 
                 if (sourceParam.size(dimMapper.applyAsInt(0)) != targetParam.size(dimMapper.applyAsInt(0))) {
                     hasTransferred.addNOut(paramPair.layerName);
-//
-//                    if (first[0]) {
-//                        System.out.println("\tTransfer dependent output: " + paramPair.layerName + " source " +
-//                                Arrays.toString(sourceParam.shape()) + " target: " +
-//                                Arrays.toString(targetParam.shape()) +
-//                                " along dim " + dimMapper.applyAsInt(transferContext.inputDimension));
-//                        first[0] = false;
-//                    }
 
                     taskBuilder.addDependentTask(
                             createDependentTask(
@@ -518,9 +493,6 @@ public class ParameterTransfer {
         }
 
         final int inputDim = inputDim(paramPair.source);
-//        //System.out.println("\t Test can transfer. Sources: " + tc.sourceShape[tc.outputDimension] + " vs " +
-//                paramPair.source.get(W).size(inputDim) + " targets: " + tc.targetShape[tc.outputDimension] + " vs " +
-//                paramPair.target.get(W).size(inputDim));
         return tc.sourceShape[tc.outputDimension] == paramPair.source.get(W).size(inputDim)
                 && tc.targetShape[tc.outputDimension] == paramPair.target.get(W).size(inputDim);
     }

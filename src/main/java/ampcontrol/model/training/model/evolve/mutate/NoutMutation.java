@@ -95,7 +95,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
             layerConf.setNOut(adjustedNewNout);
 
             log.info("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
-            //System.out.println("Mutating nOut of layer " + layerName + " from " + oldNout + " to " + layerConf.getNOut());
 
             propagateNOutChange(
                     builder,
@@ -185,7 +184,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .andTraverseCondition(vertex -> backwards.children(vertex).count() == 1)
                 .build()
                 .children(layerName)
-                //.peek(vertex -> System.out.println("Preset " + vertex + " to " + deltaSize))
                 .forEach(vertex -> nOutDeltaRegistry.set(vertex, deltaSize));
         return nOutDeltaRegistry;
     }
@@ -206,26 +204,16 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                         .build());
 
         return TraverseBuilder.forwards(builder)
-//                                .enterListener(vertex -> System.out.println("\tHandle NOut change " + vertex + " with outputs: " + builder.getVertexInputs().entrySet().stream()
-//                                        .filter(entry -> entry.getValue().contains(vertex))
-//                                        .map(Map.Entry::getKey)
-//                                        .collect(Collectors.toSet())))
-//                                .leaveListener(vertex -> System.out.println("\tDone with NOut change " + vertex))
                 .visitCondition(outputName -> !visited.output(outputName))
                 .visitListener(outputName -> asFf.apply(outputName)
                         .ifPresent(layer -> {
 
                             final long thisDelta = backward.children(layer.getLayerName())
-                                    //.peek(vertex -> System.out.println("Child of " + layer.getLayerName() + " is " + vertex))
                                     .map(vertex -> Optional.ofNullable(nOutDeltaRegistry.getSize(vertex)))
                                     .filter(Optional::isPresent)
                                     .mapToLong(Optional::get)
                                     .reduce((l1, l2) -> l1 + l2)
                                     .orElse(deltaSize);
-
-
-                           // System.out.println("\t\t Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
-                           // System.out.println("delta: " + thisDelta + " deltaSize " + deltaSize);
 
                             log.info("Set nIn of layer " + outputName + " from " + layer.getNIn() + " to " + (layer.getNIn() - thisDelta));
 
@@ -257,7 +245,6 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
 
         return TraverseBuilder.backwards(builder)
                 .enterListener(nOutDeltaRegistry::visit)
-                //.leaveListener(vertex -> System.out.println("\tDone with NOut change backwards " + vertex))
                 // nOutDelta == 0 below might mask shortcoming of alg:
                 // If you end up here with delta != original delta (e.g. change of size of original mutation) the deltas
                 // are probably not correct as they might "compensate" for previous size changes in a way in which they
@@ -268,11 +255,9 @@ public class NoutMutation implements Mutation<ComputationGraphConfiguration.Grap
                 .visitListener(inputName ->
                 {
 
-                    //System.out.println("\t\t Handle input layer " + inputName + " visited: " + visited.input(inputName));
                     asFf.apply(inputName)
                             .ifPresent(layer -> {
                                 final long nOutDelta = nOutDeltaRegistry.getSize(inputName);
-                                //System.out.println("\t\t Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 log.info("Set nOut of layer " + inputName + " from " + layer.getNOut() + " to " + (layer.getNOut() - nOutDelta));
                                 visited.addInput(inputName);
                                 if (changeNinMeansChangeNout(layer) && !visited.output(inputName)) {
