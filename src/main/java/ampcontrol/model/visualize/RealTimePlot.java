@@ -34,7 +34,7 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
     private final SwingWrapper<XYChart> swingWrapper;
     private final String plotDir;
 
-    private final Map<String, DataXY<X,Y>> plotSeries = new HashMap<>();
+    private final Map<String, DataXY<X, Y>> plotSeries = new HashMap<>();
 
     private static class DataXY<X extends Number, Y extends Number> implements Serializable {
 
@@ -44,7 +44,9 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
         private final LinkedList<X> xData = new LinkedList<>();
         private final LinkedList<Y> yData = new LinkedList<>();
 
-        DataXY(String series) {this.series = series;}
+        DataXY(String series) {
+            this.series = series;
+        }
 
         private void addPoint(X x, Y y, XYChart xyChart, SwingWrapper<XYChart> swingWrapper) {
             xData.addLast(x);
@@ -66,7 +68,7 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
         }
 
         private void createSeries(XYChart xyChart, SwingWrapper<XYChart> swingWrapper) {
-            if(xData.size() == 0) {
+            if (xData.size() == 0) {
                 xyChart.addSeries(series, Arrays.asList(0), Arrays.asList(1));
             } else {
                 xyChart.addSeries(series, xData, yData);
@@ -81,7 +83,8 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
 
     /**
      * Constructor
-     * @param title Title of the plot
+     *
+     * @param title   Title of the plot
      * @param plotDir Directory to store plots in.
      */
     public RealTimePlot(String title, String plotDir) {
@@ -98,7 +101,7 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
 
     @Override
     public void plotData(String label, X x, Y y) {
-        DataXY<X,Y> data = plotSeries.get(label);
+        DataXY<X, Y> data = plotSeries.get(label);
         if (data == null) {
             data = getOrCreateSeries(label);
         }
@@ -112,7 +115,7 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
 
     @NotNull
     private DataXY<X, Y> getOrCreateSeries(String label) {
-        DataXY<X,Y> data = plotSeries.get(label);
+        DataXY<X, Y> data = plotSeries.get(label);
         if (data == null) {
             data = restoreOrCreatePlotData(label);
             plotSeries.put(label, data);
@@ -123,29 +126,29 @@ public class RealTimePlot<X extends Number, Y extends Number> implements Plot<X,
 
     @Override
     public void storePlotData(String label) throws IOException {
-            DataXY<X,Y> data = plotSeries.get(label);
-            if(data != null) {
-                OutputStream file = new FileOutputStream(createFileName(label));
-                OutputStream buffer = new BufferedOutputStream(file);
-                ObjectOutput output = new ObjectOutputStream(buffer);
-                output.writeObject(data);
-                output.close();
-                buffer.close();
-                file.close();
-            }
+        DataXY<X, Y> data = plotSeries.get(label);
+        if (data != null) {
+            OutputStream file = new FileOutputStream(createFileName(label));
+            OutputStream buffer = new BufferedOutputStream(file);
+            ObjectOutput output = new ObjectOutputStream(buffer);
+            output.writeObject(data);
+            output.close();
+            buffer.close();
+            file.close();
+        }
     }
 
-    private DataXY<X,Y> restoreOrCreatePlotData(String label) {
+    private DataXY<X, Y> restoreOrCreatePlotData(String label) {
         File dataFile = new File(createFileName(label));
-        if(dataFile.exists()) {
+        if (dataFile.exists()) {
             try {
-            InputStream file = new FileInputStream(dataFile);
-            InputStream buffer = new BufferedInputStream(file);
-            ObjectInput input = new ObjectInputStream(buffer);
-            return (DataXY<X,Y>) input.readObject();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ClassNotFoundException e) {
+                final InputStream file = new FileInputStream(dataFile);
+                final InputStream buffer = new BufferedInputStream(file);
+                final ObjectInput input = new ObjectInputStream(buffer);
+                final DataXY<X,Y> toReturn = (DataXY<X, Y>) input.readObject();
+                input.close();
+                return toReturn;
+            } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
         }

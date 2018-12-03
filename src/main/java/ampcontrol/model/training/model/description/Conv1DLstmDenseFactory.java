@@ -2,9 +2,16 @@ package ampcontrol.model.training.model.description;
 
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.iterators.preprocs.CnnToRnnToLastStepToFfPreProcessor;
-import ampcontrol.model.training.model.*;
+import ampcontrol.model.training.model.GenericModelHandle;
+import ampcontrol.model.training.model.GraphModelAdapter;
+import ampcontrol.model.training.model.ModelAdapterWithPreProc;
+import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.builder.BlockBuilder;
+import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
+import ampcontrol.model.training.model.builder.ModelBuilder;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.GlobMeanMax;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
@@ -12,7 +19,6 @@ import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.schedule.ScheduleType;
 import org.nd4j.linalg.schedule.StepSchedule;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -28,14 +34,14 @@ public class Conv1DLstmDenseFactory {
     private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
-    private final Path modelDir;
+    private final FileNamePolicy modelFileNamePolicy;
 
-    public Conv1DLstmDenseFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public Conv1DLstmDenseFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, FileNamePolicy modelFileNamePolicy) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;
         this.namePrefix = namePrefix;
-        this.modelDir = modelDir;
+        this.modelFileNamePolicy = modelFileNamePolicy;
     }
 
     /**
@@ -57,7 +63,7 @@ public class Conv1DLstmDenseFactory {
 
 
             DoubleStream.of(0).forEach(dropOutProb -> {
-                ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                ModelBuilder builder = new DeserializingModelBuilder(modelFileNamePolicy,
                         new BlockBuilder()
                                 .setNamePrefix(namePrefix)
                                 .setUpdater(new Adam(new StepSchedule(ScheduleType.ITERATION, 0.05, 0.1, 40000)))

@@ -9,17 +9,19 @@ import ampcontrol.model.training.data.iterators.factory.Cnn2D;
 import ampcontrol.model.training.data.processing.SilenceProcessor;
 import ampcontrol.model.training.data.state.ResetableStateFactory;
 import ampcontrol.model.training.model.ModelHandle;
-import ampcontrol.model.training.model.description.InceptionResNetFactory;
-import ampcontrol.model.training.model.description.ResNetConv2DFactory;
+import ampcontrol.model.training.model.description.MutatingConv2dFactory;
+import ampcontrol.model.training.model.naming.AddPrefix;
+import ampcontrol.model.training.model.naming.CharThreshold;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
+import ch.qos.logback.classic.Level;
 import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,12 +41,13 @@ public class TrainingDescription {
     private final static int clipLengthMs = 1000;
     private final static int clipSamplingRate = 44100;
     private final static Path baseDir = Paths.get("E:\\Software projects\\python\\lead_rythm\\data");
-    private final static Path modelDir = Paths.get("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models");
+    private final static FileNamePolicy modelPolicy = new AddPrefix("E:\\Software projects\\java\\leadRythm\\RythmLeadSwitch\\models\\")
+            .compose(new CharThreshold(100, FileNamePolicy.toHashCode));
     private final static List<String> labels = Arrays.asList("silence", "noise", "rythm", "lead");
     private final static int trainingIterations = 10;
-    private final static int trainBatchSize = 64;
-    private final static int evalBatchSize = 64;
-    private final static double evalSetPercentage = 10;
+    private final static int trainBatchSize = 32;
+    private final static int evalBatchSize = 32;
+    private final static double evalSetPercentage = 2;
 
     /**
      * Maps a double valued identifier to a training or evaluation set respectively.
@@ -73,6 +76,9 @@ public class TrainingDescription {
     }
 
     public static void main(String[] args) {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        root.setLevel(Level.INFO);
+
         DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
 
         List<ModelHandle> modelData = new ArrayList<>();
@@ -86,8 +92,8 @@ public class TrainingDescription {
         createModels(audioPostProcessingFactory, timeWindowSizeMs, modelData, trainingSeed);
 
         TrainingHarness harness = new TrainingHarness(modelData,
-                modelDir.toAbsolutePath().toString(),
-                title -> new RealTimePlot<>(title, modelDir.toAbsolutePath().toString() + File.separator + "plots"),
+                modelPolicy,
+                title -> new RealTimePlot<>(title, modelPolicy.toFileName("plots")),
                 BufferedTextWriter.defaultFactory);
         harness.startTraining(100000);
     }
@@ -146,7 +152,7 @@ public class TrainingDescription {
         log.info("Input shape: " + Arrays.toString(inputShape));
 
         // TODO: Figure out why amount of memory that can actually be used differs so much from what seems to be available
-        final AutoFromSize<DataProvider> dataSetIteratorFactory = new AutoFromSize<>(5L*1024L*1024L*1024L);
+        final AutoFromSize<DataProvider> dataSetIteratorFactory = new AutoFromSize<>(5L * 1024L * 1024L * 1024L);
         final MiniEpochDataSetIterator trainIter = dataSetIteratorFactory.create(AutoFromSize.Input.<DataProvider>builder()
                 .sourceInput(train.createProvider())
                 .sourceFactory(new Cnn2D(trainBatchSize, labels))
@@ -165,13 +171,13 @@ public class TrainingDescription {
                 .dataSetShape(inputShape)
                 .dataSetSize(evalSize)
                 .resetableState(evalStateFactory)
-        .build());
+                .build());
 
         String prefix = "ws_" + timeWindowSize + ProcessingFactoryFromString.prefix() + audioPostProcessingFactory.name() + "_";
 
         //new StackedConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
-        new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        //new ResNetConv2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+        //new InceptionResNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv1DLstmDenseFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new DenseNetFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new Conv2DShallowWideFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
@@ -179,6 +185,16 @@ public class TrainingDescription {
         // new SampleCnnFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new SampleCnn2DFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
         // new LstmTimeSeqFactory(trainIter, evalIter, inputShape, prefix, modelDir).addModelData(modelData);
+
+        new MutatingConv2dFactory(trainIter, evalIter, inputShape, prefix, modelPolicy).addModelData(modelData);
+
+//        try {
+//            final ComputationGraph graph = ModelSerializer.restoreComputationGraph(new File(modelPolicy.toFileName("380537952_best\\0")), true);
+//            new ModelEvaluationWorkBench(trainIter, evalIter).evalute(graph, "4");
+//            System.exit(0);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     private static void mapFilesToDataSets(DataProviderBuilder train, DataProviderBuilder eval) {

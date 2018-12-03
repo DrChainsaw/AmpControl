@@ -1,4 +1,4 @@
-package ampcontrol.model.training.model;
+package ampcontrol.model.training.model.builder;
 
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;

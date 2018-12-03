@@ -58,8 +58,6 @@ public class GenericModelHandleTest {
         probe.assertWasCalled(false);
         toTest.eval();
         probe.assertWasCalled(true);
-        // Not a good test really. Most likely not the class under tests fault if desired accuracy is not reached.
-
     }
 
     private static MultiLayerNetwork createPosNegNetwork() {

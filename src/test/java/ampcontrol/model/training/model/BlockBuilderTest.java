@@ -1,5 +1,6 @@
 package ampcontrol.model.training.model;
 
+import ampcontrol.model.training.model.builder.BlockBuilder;
 import ampcontrol.model.training.model.layerblocks.*;
 import org.junit.Test;
 

@@ -1,10 +1,16 @@
 package ampcontrol.model.training.model.description;
 
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
-import ampcontrol.model.training.model.*;
+import ampcontrol.model.training.model.GenericModelHandle;
+import ampcontrol.model.training.model.GraphModelAdapter;
+import ampcontrol.model.training.model.ModelHandle;
+import ampcontrol.model.training.model.builder.BlockBuilder;
+import ampcontrol.model.training.model.builder.DeserializingModelBuilder;
+import ampcontrol.model.training.model.builder.ModelBuilder;
 import ampcontrol.model.training.model.layerblocks.*;
 import ampcontrol.model.training.model.layerblocks.graph.Scale;
 import ampcontrol.model.training.model.layerblocks.graph.SeBlock;
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import ampcontrol.model.training.schedule.Mul;
 import ampcontrol.model.training.schedule.epoch.Exponential;
 import ampcontrol.model.training.schedule.epoch.Offset;
@@ -15,7 +21,6 @@ import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.schedule.ISchedule;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -31,14 +36,14 @@ public class InceptionResNetFactory {
     private final MiniEpochDataSetIterator evalIter;
     private final int[] inputShape;
     private final String namePrefix;
-    private final Path modelDir;
+    private final FileNamePolicy modelFileNamePolicy;
 
-    public InceptionResNetFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, Path modelDir) {
+    public InceptionResNetFactory(MiniEpochDataSetIterator trainIter, MiniEpochDataSetIterator evalIter, int[] inputShape, String namePrefix, FileNamePolicy modelFileNamePolicy) {
         this.trainIter = trainIter;
         this.evalIter = evalIter;
         this.inputShape = inputShape;
         this.namePrefix = namePrefix;
-        this.modelDir = modelDir;
+        this.modelFileNamePolicy = modelFileNamePolicy;
     }
 
     /**
@@ -58,7 +63,7 @@ public class InceptionResNetFactory {
         IntStream.of(5 ,10).forEach(resDepth ->
                 Stream.of(new IdBlock(), new SeBlock()).forEach(seOrIdBlock ->
                         DoubleStream.of(0.002).forEach(lambda -> {
-                            ModelBuilder builder = new DeserializingModelBuilder(modelDir.toString(),
+                            ModelBuilder builder = new DeserializingModelBuilder(modelFileNamePolicy,
                                     createSmallStem(lrSched, momSched, resNrofChannels)
                                             .andThenStack(resDepth)
                                             .aggRes()

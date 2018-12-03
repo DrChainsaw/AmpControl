@@ -2,7 +2,7 @@ package ampcontrol.model.training.model;
 
 import ampcontrol.model.training.model.validation.Validation;
 import org.deeplearning4j.eval.IEvaluation;
-import org.deeplearning4j.nn.api.Model;
+import org.deeplearning4j.optimize.api.TrainingListener;
 
 import java.io.IOException;
 
@@ -36,16 +36,16 @@ public interface ModelHandle {
     String name();
 
     /**
-     * Returns the {@link Model}
-     * @return the {@link Model}
-     */
-    Model getModel();
-
-    /**
      * Register a {@link Validation} to perform
      * @param validationFactory a {@link Validation.Factory} to create the validation.
      */
     void registerValidation(Validation.Factory<? extends IEvaluation> validationFactory);
+
+    /**
+     * Adds a {@link TrainingListener} to the model
+     * @param listener a {@link TrainingListener}
+     */
+    void addListener(TrainingListener listener);
 
     /**
      * Serialize the model to a file with the given name.

@@ -27,6 +27,7 @@ public class DenseStack implements LayerBlockConfig {
     
     private LayerBlockConfig blockToStack = new Conv2DBatchNormAfter();
     private int nrofStacks = 3;
+    private boolean mergeInput = true;
     private String namePrefix = "ds_";
 
     @Override
@@ -45,8 +46,11 @@ public class DenseStack implements LayerBlockConfig {
         log.info("Create dense block: " + info);
         List<String> mergeVertexInputs = new ArrayList<>();
 
-        mergeVertexInputs.addAll(Arrays.asList(info.getInputsNames()));
-        int nrofOutputs = info.getPrevNrofOutputs();
+        int nrofOutputs = 0;
+        if(mergeInput) {
+            mergeVertexInputs.addAll(Arrays.asList(info.getInputsNames()));
+            nrofOutputs += info.getPrevNrofOutputs();
+        }
         BlockInfo nextInfo = info;
         for (int i = 0; i < nrofStacks; i++) {
 
@@ -99,6 +103,16 @@ public class DenseStack implements LayerBlockConfig {
      */
     public DenseStack setNamePrefix(String namePrefix) {
         this.namePrefix = namePrefix;
+        return this;
+    }
+
+    /**
+     * Set to true if inputs shall also be merged in the dense stack
+     * @param mergeInput true if inputs shall be merged as well
+     * @return The {@link DenseStack}
+     */
+    public DenseStack setMergeInput(boolean mergeInput) {
+        this.mergeInput = mergeInput;
         return this;
     }
 }

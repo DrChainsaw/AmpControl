@@ -42,6 +42,7 @@
         <aws.sdk.version>1.11.109</aws.sdk.version>
         <jackson.version>2.6.6</jackson.version>
         <scala.plugin.version>3.2.2</scala.plugin.version>
+        <lombok.version>1.18.2</lombok.version>
     </properties>
 
 
@@ -189,7 +190,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <nd4j-backend>nd4j-cuda-9.2</nd4j-backend>
+                <nd4j-backend>nd4j-cuda-9.2-platform</nd4j-backend>
             </properties>
         </profile>
     </profiles>
@@ -267,7 +268,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.2</version>
+            <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

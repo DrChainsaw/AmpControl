@@ -4,6 +4,7 @@ import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.optimize.api.BaseTrainingListener;
 
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 /**
  * {@link BaseTrainingListener} which is basically a copy of {@link org.deeplearning4j.optimize.listeners.ScoreIterationListener}
@@ -18,6 +19,24 @@ public class TrainScoreListener extends BaseTrainingListener {
     private int iterCount = 0;
     private double resultSum = 0;
     private int lastIter;
+
+    /**
+     * Supplies the last reported score
+     */
+    public static final class TrainScoreSupplier implements Supplier<Double>, BiConsumer<Integer, Double> {
+
+        private double lastScore = -1;
+
+        @Override
+        public void accept(Integer iteration, Double score) {
+            lastScore = score;
+        }
+
+        @Override
+        public Double get() {
+            return lastScore;
+        }
+    }
 
     public TrainScoreListener(BiConsumer<Integer, Double> iterAndScoreListener) {
         this.iterAndScoreListener = iterAndScoreListener;

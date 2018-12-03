@@ -1,5 +1,6 @@
-package ampcontrol.model.training.model;
+package ampcontrol.model.training.model.builder;
 
+import ampcontrol.model.training.model.naming.FileNamePolicy;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.util.ModelSerializer;
@@ -10,8 +11,8 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * {@link ModelBuilder} which loads the model from a file an identical model is found. If not found, the
- * source {@link ModelBuilder} is asked to build the model.
+ * {@link ModelBuilder} which loads the model from a file if a model with the same name as a source {@link ModelBuilder}
+ * is found in the given directory. If not found, the source {@link ModelBuilder} is asked to build the model.
  *
  * @author Christian Skärby
  */
@@ -20,18 +21,18 @@ public class DeserializingModelBuilder implements ModelBuilder {
     private static final Logger log = LoggerFactory.getLogger(DeserializingModelBuilder.class);
 
     private final ModelBuilder sourceBuilder;
-
     private final File modelFile;
 
     /**
      * Constructor
      *
-     * @param modelDir Dir of models
+     * @param modelFileNamePolicy how to determine the filename from a model name
      * @param sourceBuilder {@link ModelBuilder} for which this class will try to restore a serialized model.
      */
-    public DeserializingModelBuilder(String modelDir, ModelBuilder sourceBuilder) {
+    public DeserializingModelBuilder(FileNamePolicy modelFileNamePolicy, ModelBuilder sourceBuilder) {
         this.sourceBuilder = sourceBuilder;
-        modelFile = new File(modelDir + File.separator + name().hashCode());
+        modelFile = new File(modelFileNamePolicy.toFileName(name()));
+        log.info("filename: " + modelFile.getAbsolutePath());
     }
 
     @Override

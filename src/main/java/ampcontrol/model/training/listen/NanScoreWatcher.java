@@ -12,8 +12,32 @@ public class NanScoreWatcher extends BaseTrainingListener {
 
     private final Runnable nanCallback;
 
+    private final static class RunOnce implements Runnable {
+
+        private Runnable runnable;
+
+        private RunOnce(Runnable runnable) {
+            this.runnable = runnable;
+        }
+
+        @Override
+        public void run() {
+            runnable.run();
+            runnable = () -> {/* do nothing */};
+        }
+    }
+
     public NanScoreWatcher(Runnable nanCallback) {
         this.nanCallback = nanCallback;
+    }
+
+    /**
+     * Returns a {@link NanScoreWatcher} which will only notify the listener once
+     * @param nanCallback Callback
+     * @return a {@link NanScoreWatcher}
+     */
+    public static NanScoreWatcher once(Runnable nanCallback) {
+        return new NanScoreWatcher(new RunOnce(nanCallback));
     }
 
     @Override

@@ -1,7 +1,6 @@
 package ampcontrol.model.training.model;
 
 import org.deeplearning4j.eval.IEvaluation;
-import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
@@ -15,7 +14,7 @@ import java.util.Arrays;
  *
  * @author Christian Skärby
  */
-public class GraphModelAdapter implements ModelAdapter {
+public class GraphModelAdapter implements CompGraphAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(GraphModelAdapter.class);
 
@@ -45,7 +44,7 @@ public class GraphModelAdapter implements ModelAdapter {
     }
 
     @Override
-    public Model asModel() {
+    public ComputationGraph asModel() {
         return graph;
     }
 }
