@@ -440,6 +440,30 @@ public class RemoveVertexTest {
         removeVertex("5", graph, inputType);
     }
 
+    /**
+     * Test to remove a vertex before a residual block where the block does not propagate size changes.
+     */
+    @Test
+    public void removeBeforeSizeProtectedResBlock() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("2", new BatchNormalization.Builder().nOut(5).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addVertex("add2And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "2", "3")
+                .addLayer("4", new BatchNormalization.Builder().nOut(5).build(), "add2And3")
+                .addLayer("5", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "4")
+                .addLayer("gp", new GlobalPoolingLayer(), "5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("1", graph, inputType);
+    }
+
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {
         final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(

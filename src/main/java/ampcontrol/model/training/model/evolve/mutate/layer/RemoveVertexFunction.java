@@ -78,7 +78,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         // This means we failed to remove a vertex, typically because it was connected to a merge vertex and none of
         // the other inputs to that vertex can have their size changed
-        if(outputNames.isEmpty()) {
+        if(graphBuilder.getVertices().containsKey(vertexNameToRemove)) {
             return GraphMutation.InputsAndOutputNames.builder().build();
         }
 

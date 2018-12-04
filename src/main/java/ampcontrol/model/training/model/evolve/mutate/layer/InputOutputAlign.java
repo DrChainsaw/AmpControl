@@ -45,7 +45,7 @@ public class InputOutputAlign {
     public void invoke() {
         // Not possible to change network inputs (e.g. image size)
         final boolean isAnyLayerTouchingNetworkInput =
-        isAnyLayerTouchingNetworkInput(graphBuilder, inputNames);
+                isAnyLayerTouchingNetworkInput(graphBuilder, inputNames);
 
 
         // Do the change which adds neurons rather than the one which removes them
@@ -145,6 +145,14 @@ public class InputOutputAlign {
         toLayerStream(
                 TraverseBuilder.forwards(graphBuilder)
                         .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
+                        .enterListener(vertex -> {
+                            final long nOut = GraphBuilderUtil.getInputSize(vertex, graphBuilder);
+                            if (nOut != GraphBuilderUtil.getOutputSize(vertex,graphBuilder) &&
+                                    GraphBuilderUtil.changeSizePropagatesBackwards(graphBuilder).test(vertex)
+                             ) {
+                                changeNoutOfInputs(graphBuilder, Collections.singleton(vertex), nOut);
+                            }
+                        })
                         .build(),
                 graphBuilder,
                 outputNames)
