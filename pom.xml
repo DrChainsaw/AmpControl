@@ -192,7 +192,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <nd4j-backend>nd4j-cuda-9.2-platform</nd4j-backend>
+                <nd4j-backend>nd4j-cuda-10.0-platform</nd4j-backend>
             </properties>
         </profile>
     </profiles>
@@ -200,7 +200,7 @@
     <dependencies>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-cuda-9.2</artifactId>
+            <artifactId>deeplearning4j-cuda-10.0</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
