@@ -1,6 +1,8 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.mutate.util.*;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.MergeVertex;
@@ -83,6 +85,8 @@ public class InputOutputAlign {
         final List<String> names = new ArrayList<>(inputNames);
         Collections.reverse(names);
 
+        log.info("Set nOut of inputs to " + inputNames);
+
         final SizeVisitor sizeRegistry = createSizeVisitor(graphBuilder, nOut);
         inputNames.forEach(vertex -> sizeRegistry.set(vertex, nOut));
 
@@ -136,22 +140,30 @@ public class InputOutputAlign {
 
     private static void setNinOfOutputsToNoutSize(ComputationGraphConfiguration.GraphBuilder graphBuilder, Collection<String> outputNames) {
 
-        log.info("Set NIn of outputs " + outputNames);
+        log.info("Set nIn of outputs to " + outputNames);
 
         final Graph<String> traverseInputs = GraphBuilderUtil.inputSizeTravere(graphBuilder)
                 .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
                 .allowRevisit()
                 .build();
+        final Mutable<String> parentVertex = new MutableObject<>();
         toLayerStream(
                 TraverseBuilder.forwards(graphBuilder)
                         .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
-                        .enterListener(vertex -> {
-                            final long nOut = GraphBuilderUtil.getInputSize(vertex, graphBuilder);
-                            if (nOut != GraphBuilderUtil.getOutputSize(vertex,graphBuilder) &&
-                                    GraphBuilderUtil.changeSizePropagatesBackwards(graphBuilder).test(vertex)
-                             ) {
-                                changeNoutOfInputs(graphBuilder, Collections.singleton(vertex), nOut);
-                            }
+                        .enterListener(parentVertex::setValue)
+                        .visitListener(vertex -> {
+                            // If vertex requires that size change propagates backwards and if one of its parents (input
+                            // vertices) has a different size compared to the other then we must go backwards and change
+                            // nOut that parent.
+                            // How can we be sure that parentVertex has the correct nOut set? Because toLayerStream
+                            // will put outputNames before this stream when concatenating.
+                            new EnterIf<>(
+                                    GraphBuilderUtil.changeSizePropagatesBackwards(graphBuilder),
+                                    new BackwardOf(graphBuilder)).children(vertex)
+                                    .filter(parent -> GraphBuilderUtil.getOutputSize(parent, graphBuilder)
+                                            != GraphBuilderUtil.getOutputSize(parentVertex.getValue(), graphBuilder))
+                                    .forEach(parent -> changeNoutOfInputs(graphBuilder, Collections.singleton(parent),
+                                            GraphBuilderUtil.getOutputSize(parentVertex.getValue(), graphBuilder)));
                         })
                         .build(),
                 graphBuilder,
