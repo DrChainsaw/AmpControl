@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -142,10 +143,7 @@ public class InputOutputAlign {
 
         log.info("Set nIn of outputs to " + outputNames);
 
-        final Graph<String> traverseInputs = GraphBuilderUtil.inputSizeTravere(graphBuilder)
-                .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).isPresent())
-                .allowRevisit()
-                .build();
+        final Function<String, Long> nInToUseFunction = nInSizeFunction(graphBuilder);
         final Mutable<String> parentVertex = new MutableObject<>();
         toLayerStream(
                 TraverseBuilder.forwards(graphBuilder)
@@ -160,23 +158,15 @@ public class InputOutputAlign {
                             new EnterIf<>(
                                     GraphBuilderUtil.changeSizePropagatesBackwards(graphBuilder),
                                     new BackwardOf(graphBuilder)).children(vertex)
-                                    .filter(parent -> GraphBuilderUtil.getOutputSize(parent, graphBuilder)
-                                            != GraphBuilderUtil.getOutputSize(parentVertex.getValue(), graphBuilder))
+                                    .filter(parent -> getActualNout(parent, graphBuilder) != getActualNout(parentVertex.getValue(), graphBuilder))
                                     .forEach(parent -> changeNoutOfInputs(graphBuilder, Collections.singleton(parent),
-                                            GraphBuilderUtil.getOutputSize(parentVertex.getValue(), graphBuilder)));
+                                            getActualNout(parentVertex.getValue(), graphBuilder)));
                         })
                         .build(),
                 graphBuilder,
                 outputNames)
                 .forEachOrdered(layer -> {
-                    final long nInToUse = traverseInputs.children(layer.getLayerName())
-                            .distinct()
-                            .mapToLong(vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex)
-                                    .map(FeedForwardLayer::getNOut)
-                                    .orElseGet(() -> graphBuilder.getNetworkInputs().contains(vertex)
-                                            ? graphBuilder.getNetworkInputTypes().get(graphBuilder.getNetworkInputs().indexOf(vertex)).getShape(false)[0]
-                                            : 0L))
-                            .sum();
+                    final long nInToUse = nInToUseFunction.apply(layer.getLayerName());
                     log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
                     layer.setNIn(nInToUse);
                     if (!isSizeChangePossible(layer)) {
@@ -194,5 +184,28 @@ public class InputOutputAlign {
                         .map(GraphBuilderUtil.asFeedforwardLayer(graphBuilder))
                         .filter(Optional::isPresent)
                         .map(Optional::get);
+    }
+
+    private static Function<String, Long> nInSizeFunction(ComputationGraphConfiguration.GraphBuilder builder) {
+        final Graph<String> traverseInputs = GraphBuilderUtil.inputSizeTravere(builder)
+                .traverseCondition(vertex -> !GraphBuilderUtil.asFeedforwardLayer(builder).apply(vertex).isPresent())
+                .allowRevisit()
+                .build();
+        return vertexName -> traverseInputs.children(vertexName)
+                .distinct()
+                .mapToLong(vertex -> GraphBuilderUtil.asFeedforwardLayer(builder).apply(vertex)
+                        .map(FeedForwardLayer::getNOut)
+                        .orElseGet(() -> builder.getNetworkInputs().contains(vertex)
+                                ? builder.getNetworkInputTypes().get(builder.getNetworkInputs().indexOf(vertex)).getShape(false)[0]
+                                : 0L))
+                .sum();
+    }
+
+    private static long getActualNout(String vertex, ComputationGraphConfiguration.GraphBuilder builder) {
+        // Can't use getOutputSize as it will traverse forwards for size transparent vertices, but here we want to know
+        // what it looks like backwards as child vertices might have the wrong size
+        return GraphBuilderUtil.asFeedforwardLayer(builder).apply(vertex)
+                .map(FeedForwardLayer::getNOut)
+                .orElse(GraphBuilderUtil.getInputSize(vertex, builder));
     }
 }

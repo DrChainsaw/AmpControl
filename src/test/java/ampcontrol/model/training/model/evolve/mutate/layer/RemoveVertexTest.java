@@ -21,6 +21,7 @@ import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.stream.Stream;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 /**
@@ -444,24 +445,54 @@ public class RemoveVertexTest {
      * Test to remove a vertex before a residual block where the block does not propagate size changes.
      */
     @Test
-    public void removeBeforeSizeProtectedResBlock() {
+    public void removeBeforeNonSizeTransparentResBlockAccidentalSameSize() {
         final InputType inputType = InputType.convolutional(10, 10, 2);
         final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
                 .graphBuilder()
                 .setInputTypes(inputType)
                 .addInputs("input")
                 .setOutputs("output")
-                .addLayer("1", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"input" )
-                .addLayer("2", new BatchNormalization.Builder().nOut(5).build(), "1")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"0" )
+                .addLayer("2", new BatchNormalization.Builder().nOut(3).build(), "1")
                 .addLayer("3", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "2")
-                .addVertex("add2And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "2", "3")
-                .addLayer("4", new BatchNormalization.Builder().nOut(5).build(), "add2And3")
-                .addLayer("5", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "4")
-                .addLayer("gp", new GlobalPoolingLayer(), "5")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "3")
+                .addVertex("add2And4", new ElementWiseVertex(ElementWiseVertex.Op.Add), "2", "4")
+                .addLayer("5", new BatchNormalization.Builder().nOut(3).build(), "add2And4")
+                .addLayer("6", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "5")
+                .addLayer("gp", new GlobalPoolingLayer(), "6")
                 .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
-        removeVertex("1", graph, inputType);
+        final ComputationGraph newGraph = removeVertex("1", graph, inputType);
+        assertEquals("Incorrect layersize!", 5, newGraph.layerSize("4"));
+    }
+
+    /**
+     * Test to remove a vertex before a residual block where the block does not propagate size changes.
+     */
+    @Test
+    public void removeBeforeNonSizeTransparentResBlockWithSizeTransparentLastVertex() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"0" )
+                .addLayer("2", new BatchNormalization.Builder().nOut(3).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addLayer("4", new BatchNormalization.Builder().nOut(3).build(), "3")
+                .addVertex("add2And4", new ElementWiseVertex(ElementWiseVertex.Op.Add), "2", "4")
+                .addLayer("5", new BatchNormalization.Builder().nOut(3).build(), "add2And4")
+                .addLayer("6", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "5")
+                .addLayer("gp", new GlobalPoolingLayer(), "6")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
+                .build());
+        graph.init();
+        final ComputationGraph newGraph = removeVertex("1", graph, inputType);
+        assertEquals("Incorrect layersize!", 5, newGraph.layerSize("4"));
     }
 
     @NotNull
