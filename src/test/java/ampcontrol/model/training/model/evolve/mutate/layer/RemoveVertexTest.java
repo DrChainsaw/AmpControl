@@ -495,6 +495,28 @@ public class RemoveVertexTest {
         assertEquals("Incorrect layersize!", 5, newGraph.layerSize("4"));
     }
 
+    /**
+     * Test to remove a vertex for which nIn == nOut must apply (batchnorm) so that an {@link ElementWiseVertex} only
+     * has one input
+     */
+    @Test
+    public void removeOrphanedElemVertexWithoutSizeChange() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("1", new BatchNormalization.Builder().nOut(3).build(),"0" )
+                .addVertex("add0And1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "0", "1")
+                .addLayer("gp", new GlobalPoolingLayer(), "add0And1")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("1", graph, inputType);
+    }
+
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {
         final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(

@@ -83,7 +83,7 @@ import java.util.stream.Stream;
 public final class MutatingConv2dFactory {
 
     private static final Logger log = LoggerFactory.getLogger(MutatingConv2dFactory.class);
-    private static final int evolveInterval = 101;
+    private static final int evolveInterval = 100;
 
     private final MiniEpochDataSetIterator trainIter;
     private final MiniEpochDataSetIterator evalIter;
@@ -682,18 +682,20 @@ public final class MutatingConv2dFactory {
 
                             // Remove any spy vertices as well since they don't to anything useful by themselves
                             // We don't remove them now since we are not 100% sure that the remove operation will succeed
-                            List<Function<GraphBuilder, GraphMutation.InputsAndOutputNames>> removeSpies = graphBuilder.getVertexInputs().entrySet().stream()
+                            List<String> removeSpies = graphBuilder.getVertexInputs().entrySet().stream()
                                     .filter(vertexInfo -> vertexInfo.getValue().contains(vertexToRemove))
                                     .filter(vertexInfo -> vertexInfo.getKey().matches("^spy.*"))
                                     .map(Map.Entry::getKey)
-                                    .collect(Collectors.toList())
-                                    .stream()
-                                    .map(RemoveVertexFunction::new
-                                    ).collect(Collectors.toList());
+                                    .collect(Collectors.toList());
                             removeListener.accept(vertexToRemove);
                             final GraphMutation.InputsAndOutputNames output = new RemoveVertexFunction(vertexToRemove).apply(graphBuilder);
                             if(!graphBuilder.getVertices().containsKey(vertexToRemove)) {
-                                removeSpies.forEach(removeFunction -> removeFunction.apply(graphBuilder));
+                                removeSpies
+                                        .stream()
+                                        // Spy might have been removed if part of a "dead branch"
+                                        .filter(spy -> graphBuilder.getVertices().containsKey(spy))
+                                        .map(RemoveVertexFunction::new
+                                        ).forEach(removeFunction -> removeFunction.apply(graphBuilder));
                             }
                             return output;
                         })

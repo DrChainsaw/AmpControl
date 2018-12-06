@@ -68,10 +68,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         final boolean wasMergeVertex = graphBuilder.getVertices().get(vertexNameToRemove) instanceof MergeVertex;
         if (sizeChange) {
             connectedMergeVertices.addAll(handleMergeVertexOutputs(graphBuilder, outputNames));
-
-            removeOrphanedElemWiseVertices(graphBuilder, outputNames);
-
-            removeRedunantMergeVertices(graphBuilder, inputNames, outputNames);
         } else {
             removeVertex(graphBuilder, vertexNameToRemove);
         }
@@ -93,6 +89,10 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
                                 outputName,
                                 vertex,
                                 inputNamesPerOutput.get(outputName).toArray(new String[1]));});
+
+        removeOrphanedElemWiseVertices(graphBuilder, outputNames);
+
+        removeRedunantMergeVertices(graphBuilder, inputNames, outputNames);
 
         if (!sizeChange && !wasMergeVertex) {
             return GraphMutation.InputsAndOutputNames.builder().build();
