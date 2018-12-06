@@ -107,12 +107,6 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
     }
 
     private static void removeVertex(GraphBuilder graphBuilder, String vertexNameToRemove) {
-        // WTF is this about? graphBuilder.removeVertex(vertexName, true) will go through all vertexInputs and
-        // remove vertexToRemove from the list of inputs. However, this list is typically created by Array.asList
-        // which returns an immutable list. Here we replace that list with a mutable instance.
-        graphBuilder.getVertexInputs().entrySet().stream()
-                .filter(entry -> entry.getValue().contains(vertexNameToRemove))
-                .forEach(entry -> graphBuilder.getVertexInputs().put(entry.getKey(), new ArrayList<>(entry.getValue())));
         graphBuilder.removeVertex(vertexNameToRemove, true);
     }
 
