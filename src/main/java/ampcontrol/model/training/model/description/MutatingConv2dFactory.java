@@ -83,7 +83,7 @@ import java.util.stream.Stream;
 public final class MutatingConv2dFactory {
 
     private static final Logger log = LoggerFactory.getLogger(MutatingConv2dFactory.class);
-    private static final int evolveInterval = 100;
+    private static final int evolveInterval = 101;
 
     private final MiniEpochDataSetIterator trainIter;
     private final MiniEpochDataSetIterator evalIter;
@@ -465,7 +465,7 @@ public final class MutatingConv2dFactory {
                                         .build(),
 
                                 // Polícy for selecting candidates after fitness has been reported
-                                FixedAgeSelection.byConfig(5,
+                                FixedAgeSelection.byConfig(15,
                                         modelAgeMap,
                                         distinctSelection.source(
                                                 CompoundSelection.<EvolvingGraphAdapter<S>>builder()
