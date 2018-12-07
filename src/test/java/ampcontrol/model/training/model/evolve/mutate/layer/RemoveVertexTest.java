@@ -540,6 +540,31 @@ public class RemoveVertexTest {
         removeVertex("1", graph, inputType);
     }
 
+    /**
+     * Test to remove a layer which is merged with another set of layers to which is it also input to
+     */
+    @Test
+    public void removeSkipToMergeConnection() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("toRm", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"0" )
+                .addVertex("toRmScale", new ScaleVertex(1), "toRm")
+                .addLayer("skippedBn", new BatchNormalization.Builder().nOut(5).build(), "toRmScale")
+                .addLayer("skippedConv", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "skippedBn")
+                .addVertex("skipScale", new ScaleVertex(1), "skippedConv")
+                .addVertex("merge", new MergeVertex(), "toRmScale", "skipScale")
+                .addLayer("gp", new GlobalPoolingLayer(), "merge")
+                .addLayer("output", new OutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("toRm", graph, inputType);
+    }
+
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {
         final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(

@@ -1,6 +1,8 @@
 package ampcontrol.model.training.model.evolve.mutate.layer;
 
 import ampcontrol.model.training.model.evolve.mutate.util.*;
+import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.ElementWiseVertex;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
@@ -74,7 +76,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         // This means we failed to remove a vertex, typically because it was connected to a merge vertex and none of
         // the other inputs to that vertex can have their size changed
-        if(graphBuilder.getVertices().containsKey(vertexNameToRemove)) {
+        if (graphBuilder.getVertices().containsKey(vertexNameToRemove)) {
             return GraphMutation.InputsAndOutputNames.builder().build();
         }
 
@@ -83,12 +85,13 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
         outputNames.stream()
                 .peek(name -> log.info("Connect " + name + " to new inputs: " + inputNamesPerOutput.get(name)))
                 .forEach(outputName -> {
-                        final GraphVertex vertex = graphBuilder.getVertices().get(outputName);
-                        graphBuilder.removeVertex(outputName, false);
-                        graphBuilder.addVertex(
-                                outputName,
-                                vertex,
-                                inputNamesPerOutput.get(outputName).toArray(new String[1]));});
+                    final GraphVertex vertex = graphBuilder.getVertices().get(outputName);
+                    graphBuilder.removeVertex(outputName, false);
+                    graphBuilder.addVertex(
+                            outputName,
+                            vertex,
+                            inputNamesPerOutput.get(outputName).toArray(new String[1]));
+                });
 
         removeOrphanedElemWiseVertices(graphBuilder, outputNames);
 
@@ -107,6 +110,7 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
     }
 
     private static void removeVertex(GraphBuilder graphBuilder, String vertexNameToRemove) {
+        log.info("Remove vertex " + vertexNameToRemove);
         graphBuilder.removeVertex(vertexNameToRemove, true);
     }
 
@@ -242,7 +246,25 @@ public class RemoveVertexFunction implements Function<GraphBuilder, GraphMutatio
 
         outputNames.removeAll(pathToMerge);
 
+
         for (Set<String> inputNames : inputsToConnectedMergeVertex.values()) {
+            // Catch edge case when vertexToRemove is input to inputNames
+            final Mutable<String> current = new MutableObject<>();
+            new ArrayList<>(inputNames).forEach(name ->
+                TraverseBuilder.backwards(builder)
+                        .enterCondition(vertex -> true)
+                        .traverseCondition(vertex -> !pathToMerge.contains(vertex))
+                        .enterListener(current::setValue)
+                        .visitListener(vertex -> {
+                            if (pathToMerge.contains(vertex)) {
+                                inputNames.remove(name);
+                                viableOutputs.add(current.getValue());
+                            }
+                        })
+                        .build()
+                .children(name).forEach(vertex -> {/* Ignore*/})
+            );
+
             inputNames.stream()
                     .filter(vertex -> !pathToMerge.contains(vertex))
                     .findFirst()
