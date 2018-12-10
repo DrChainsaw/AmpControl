@@ -83,7 +83,7 @@ import java.util.stream.Stream;
 public final class MutatingConv2dFactory {
 
     private static final Logger log = LoggerFactory.getLogger(MutatingConv2dFactory.class);
-    private static final int evolveInterval = 101;
+    private static final int evolveInterval = 103;
 
     private final MiniEpochDataSetIterator trainIter;
     private final MiniEpochDataSetIterator evalIter;
@@ -574,7 +574,6 @@ public final class MutatingConv2dFactory {
                     // log.info("Insert layer after " + inputNames[0]);
 
                     return Stream.of(inputNames)
-                            .filter(vertexName -> !vertexName.contains(afterGpStr))
                             .filter(vertexName -> isAfterGlobPool(vertexName, graphBuilder))
                             .map(layer -> new BlockMutationFunction(
                                     lbcAfterGpSupplier,
