@@ -104,10 +104,6 @@ public class ValidateCachingIter {
         final int batchSize = 8;
         return new BaseDatasetIterator(batchSize, Integer.MAX_VALUE, new BaseDataFetcher() {
 
-            {
-                this.totalExamples = Integer.MAX_VALUE;
-            }
-
             @Override
             public synchronized void fetch(int numExamples) {
                 final double[] features = new double[batchSize];
@@ -121,7 +117,12 @@ public class ValidateCachingIter {
                         Nd4j.create(features),
                         Nd4j.create(labels));
             }
-        });
+
+            private BaseDataFetcher initialize() {
+                this.totalExamples = Integer.MAX_VALUE;
+                return this;
+            }
+        }.initialize());
     }
 
 
