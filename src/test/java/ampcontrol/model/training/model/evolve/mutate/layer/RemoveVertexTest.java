@@ -565,6 +565,33 @@ public class RemoveVertexTest {
         removeVertex("toRm", graph, inputType);
     }
 
+    /**
+     * Test to remove a vertex 0 which is input to another vertex 1 for which nIn == nOut must apply (batchnorm). Vertex 1
+     * is input to a residual block which does not have to apply to nIn == nOut.
+     */
+    @Test
+    public void removeBeforeSizeTransparentBeforeNonSizeTransparentResBlockChangeNin() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                // Previous algorithm accidentally worked when new input vertex was not size transparent
+                .addVertex("s0", new ScaleVertex(1), "0")
+                .addLayer("1", new BatchNormalization.Builder().nOut(3).build(),"s0" )
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"1" )
+                .addLayer("3",  new BatchNormalization.Builder().nOut(3).build(),"2" )
+                .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
+                .addLayer("gp", new GlobalPoolingLayer(), "add1And3")
+                .addLayer("output", new OutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("0", graph, inputType);
+    }
+
+
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {
         final Mutation<ComputationGraphConfiguration.GraphBuilder> mutatation = new GraphMutation(() -> Stream.of(

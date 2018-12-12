@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -139,42 +140,6 @@ public class InputOutputAlign {
                 (layerSize, size) -> Math.max(1, size));
     }
 
-    private static void setNinOfOutputsToNoutSize(ComputationGraphConfiguration.GraphBuilder graphBuilder, Collection<String> outputNames) {
-
-        log.info("Set nIn of outputs to " + outputNames);
-
-        final Function<String, Long> nInToUseFunction = nInSizeFunction(graphBuilder);
-        final Mutable<String> parentVertex = new MutableObject<>();
-        toLayerStream(
-                TraverseBuilder.forwards(graphBuilder)
-                        .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
-                        .enterListener(parentVertex::setValue)
-                        .visitListener(vertex -> {
-                            // If vertex requires that size change propagates backwards and if one of its parents (input
-                            // vertices) has a different size compared to the other then we must go backwards and change
-                            // nOut that parent.
-                            // How can we be sure that parentVertex has the correct nOut set? Because toLayerStream
-                            // will put outputNames before this stream when concatenating.
-                            new EnterIf<>(
-                                    GraphBuilderUtil.changeSizePropagatesBackwards(graphBuilder),
-                                    new BackwardOf(graphBuilder)).children(vertex)
-                                    .filter(parent -> getActualNout(parent, graphBuilder) != getActualNout(parentVertex.getValue(), graphBuilder))
-                                    .forEach(parent -> changeNoutOfInputs(graphBuilder, Collections.singleton(parent),
-                                            getActualNout(parentVertex.getValue(), graphBuilder)));
-                        })
-                        .build(),
-                graphBuilder,
-                outputNames)
-                .forEachOrdered(layer -> {
-                    final long nInToUse = nInToUseFunction.apply(layer.getLayerName());
-                    log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
-                    layer.setNIn(nInToUse);
-                    if (!isSizeChangePossible(layer)) {
-                        layer.setNOut(nInToUse);
-                    }
-                });
-    }
-
     private static Stream<FeedForwardLayer> toLayerStream(
             Graph<String> graph,
             ComputationGraphConfiguration.GraphBuilder graphBuilder,
@@ -184,6 +149,46 @@ public class InputOutputAlign {
                         .map(GraphBuilderUtil.asFeedforwardLayer(graphBuilder))
                         .filter(Optional::isPresent)
                         .map(Optional::get);
+    }
+
+    private static void setNinOfOutputsToNoutSize(ComputationGraphConfiguration.GraphBuilder graphBuilder, Collection<String> outputNames) {
+
+        log.info("Set nIn of outputs to " + outputNames);
+
+        final Function<String, Long> nInToUseFunction = nInSizeFunction(graphBuilder);
+
+        final Consumer<String> changeSize = vertex -> GraphBuilderUtil.asFeedforwardLayer(graphBuilder).apply(vertex).ifPresent(layer -> {
+            final long nInToUse = nInToUseFunction.apply(layer.getLayerName());
+            log.info("Change nIn of layer " + layer.getLayerName() + " from " + layer.getNIn() + " to " + nInToUse);
+            layer.setNIn(nInToUse);
+            if (!isSizeChangePossible(layer)) {
+                layer.setNOut(nInToUse);
+            }
+        });
+
+        final Mutable<String> parentVertex = new MutableObject<>();
+        final Consumer<String> propagateSizeChange = name -> TraverseBuilder.forwards(graphBuilder)
+                .enterCondition(GraphBuilderUtil.changeSizePropagates(graphBuilder))
+                .enterListener(parentVertex::setValue)
+                .visitListener(vertex -> {
+                    changeSize.accept(vertex);
+
+                    // If vertex requires that size change propagates backwards and if one of its parents (input
+                    // vertices) has a different size compared to the other then we must go backwards and change
+                    // nOut that parent.
+                    new EnterIf<>(
+                            GraphBuilderUtil.changeSizePropagatesBackwards(graphBuilder),
+                            new BackwardOf(graphBuilder)).children(vertex)
+                            .filter(parent -> getActualNout(parent, graphBuilder) != getActualNout(parentVertex.getValue(), graphBuilder))
+                            .forEach(parent -> changeNoutOfInputs(graphBuilder, Collections.singleton(parent),
+                                    getActualNout(parentVertex.getValue(), graphBuilder)));
+                })
+                .build()
+                .children(name).forEach(vertex -> {/* Ignore, we have to use the visitor approach here*/});
+
+
+        outputNames.forEach(changeSize.andThen(propagateSizeChange));
+
     }
 
     private static Function<String, Long> nInSizeFunction(ComputationGraphConfiguration.GraphBuilder builder) {
