@@ -1,10 +1,7 @@
 package ampcontrol.model.training.model.evolve.crossover.graph;
 
 import ampcontrol.model.training.model.evolve.mutate.layer.InputOutputAlign;
-import ampcontrol.model.training.model.evolve.mutate.util.ForwardOf;
-import ampcontrol.model.training.model.evolve.mutate.util.GraphBuilderUtil;
-import ampcontrol.model.training.model.evolve.mutate.util.Traverse;
-import ampcontrol.model.training.model.evolve.mutate.util.TraverseBuilder;
+import ampcontrol.model.training.model.evolve.mutate.util.*;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -121,7 +118,7 @@ class CrossoverPoint {
                 renameVertexIfLayer(top.builder().getVertices().get(top.name()),  topVerticesNameMapping.get(top.name())),
                 bottom.name());
 
-        new Traverse<>(new ForwardOf(top.builder())).children(top.name())
+        new Traverse<>(new SingleVisit<>(new ForwardOf(top.builder()))).children(top.name())
                 .forEach(vertex -> builder.addVertex(
                         topVerticesNameMapping.get(vertex),
                         renameVertexIfLayer(top.builder().getVertices().get(vertex), topVerticesNameMapping.get(vertex)),

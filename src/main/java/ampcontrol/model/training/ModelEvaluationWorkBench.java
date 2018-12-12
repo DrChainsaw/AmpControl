@@ -15,7 +15,6 @@ import ampcontrol.model.training.model.evolve.mutate.state.NoMutationStateWapper
 import ampcontrol.model.training.model.evolve.transfer.ParameterTransfer;
 import ampcontrol.model.training.model.layerblocks.Conv2D;
 import ampcontrol.model.training.model.vertex.EpsilonSpyVertex;
-import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration;
 import org.deeplearning4j.nn.conf.ConvolutionMode;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -25,6 +24,7 @@ import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

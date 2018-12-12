@@ -1,7 +1,7 @@
 package ampcontrol.model.training.model.validation;
 
-import org.deeplearning4j.eval.Evaluation;
 import org.junit.Test;
+import org.nd4j.evaluation.classification.Evaluation;
 
 import java.util.Arrays;
 import java.util.List;

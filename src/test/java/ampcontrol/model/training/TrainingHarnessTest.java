@@ -4,9 +4,9 @@ import ampcontrol.model.training.model.ModelHandle;
 import ampcontrol.model.training.model.naming.AddPrefix;
 import ampcontrol.model.training.model.validation.Validation;
 import ampcontrol.model.visualize.Plot;
-import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.optimize.api.TrainingListener;
 import org.junit.Test;
+import org.nd4j.evaluation.IEvaluation;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.*;

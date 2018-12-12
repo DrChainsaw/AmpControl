@@ -254,7 +254,7 @@ public class SinglePointTest {
                 .addLayer("conv", new Convolution2D.Builder(2,2).nOut(1).build(), "input")
                 .addLayer("gp", new GlobalPoolingLayer(), "conv")
                 .addLayer("dense", new DenseLayer.Builder().nOut(1).build(), "gp")
-                .addLayer("output", new OutputLayer.Builder().nOut(1).build(), "dense")
+                .addLayer("output", new OutputLayer.Builder().nOut(2).build(), "dense")
                 .setInputTypes(inputType);
 
 

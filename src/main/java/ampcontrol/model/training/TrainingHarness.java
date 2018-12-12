@@ -10,10 +10,10 @@ import ampcontrol.model.training.model.validation.*;
 import ampcontrol.model.training.model.validation.listen.*;
 import ampcontrol.model.visualize.Plot;
 import org.deeplearning4j.api.storage.StatsStorage;
-import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.ui.api.UIServer;
 import org.deeplearning4j.ui.stats.StatsListener;
 import org.deeplearning4j.ui.storage.FileStatsStorage;
+import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +39,7 @@ class TrainingHarness {
     private static final Logger log = LoggerFactory.getLogger(TrainingHarness.class);
 
     private static final boolean doStatsLogging = false;
-    private static final int evalEveryNrofSteps = 101;
+    private static final int evalEveryNrofSteps = 100;
     private static final int nrofStepsBeforeFirstEval = 97;
     private static final String bestSuffix = "_best";
     private static final String scoreSuffix = ".score";

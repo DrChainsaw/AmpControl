@@ -12,7 +12,9 @@ import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
+import org.nd4j.linalg.activations.impl.ActivationSoftmax;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.lossfunctions.impl.LossBinaryXENT;
 
 import java.util.stream.Stream;
 
@@ -292,7 +294,7 @@ public class NoutMutationTest {
                 .addVertex("spy_4", new EpsilonSpyVertex(), "4")
                 .addLayer("5", new DenseLayer.Builder().nOut(13).build(), "spy_4")
                 .addVertex("spy_5", new EpsilonSpyVertex(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_5")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "spy_5")
                 .build());
         graph.init();
 
@@ -339,7 +341,7 @@ public class NoutMutationTest {
                 .addLayer("2", new SubsamplingLayer.Builder().kernelSize(2, 2).stride(2, 2).build(), "rbAdd0")
                 .addLayer("3", new GlobalPoolingLayer(), "2")
                 .addLayer("4", new DenseLayer.Builder().nOut(13).build(), "3")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "4")
                 .build());
         graph.init();
 
@@ -376,7 +378,7 @@ public class NoutMutationTest {
                 .addVertex("rbMvInput0", new MergeVertex(), "scale_fb1_branch_0_0", "fb1_branch_1_0")
                 .addLayer("2", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "rbMvInput0")
                 .addLayer("3", new GlobalPoolingLayer(), "2")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "3")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "3")
                 .build());
         graph.init();
 
@@ -414,7 +416,7 @@ public class NoutMutationTest {
                 .addVertex("rbMvInput0", new MergeVertex(), "fb1_branch_0_0", "fb1_branch_1_0")
                 .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "rbMvInput0")
                 .addLayer("4", new GlobalPoolingLayer(), "3")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(2).lossFunction(new LossBinaryXENT()).build(), "4")
                 .build());
         graph.init();
 
@@ -452,7 +454,7 @@ public class NoutMutationTest {
                 .addVertex("rbMvInput0", new MergeVertex(), "addScaleAnd1", "fb1_branch_1_0")
                 .addLayer("2", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "rbMvInput0")
                 .addLayer("3", new GlobalPoolingLayer(), "2")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "3")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "3")
                 .build());
         graph.init();
 
@@ -492,7 +494,7 @@ public class NoutMutationTest {
                 .addVertex("addMergeAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0", "1")
                 .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "addMergeAnd1")
                 .addLayer("4", new GlobalPoolingLayer(), "3")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "4")
                 .build());
         graph.init();
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));
@@ -537,7 +539,7 @@ public class NoutMutationTest {
                 .addVertex("addMergeAnd1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "rbMvInput0", "1")
                 .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "addMergeAnd1")
                 .addLayer("4", new GlobalPoolingLayer(), "3")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "4")
                 .build());
         graph.init();
         graph.outputSingle(Nd4j.randn(new long[]{1, 3, 122, 128}));

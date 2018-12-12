@@ -34,8 +34,6 @@ public class RnnType implements LayerBlockConfig {
     @Override
     public BlockInfo addLayers(NeuralNetConfiguration.ListBuilder listBuilder, BlockInfo info) {
         listBuilder
-                .backprop(true)
-                .pretrain(false)
                 .setInputType(InputType.recurrent(inputShape[1], inputShape[0]));
         if(tbpttLength > 0) {
             listBuilder.setBackpropType(BackpropType.TruncatedBPTT);
@@ -50,8 +48,6 @@ public class RnnType implements LayerBlockConfig {
     @Override
     public BlockInfo addLayers(ComputationGraphConfiguration.GraphBuilder graphBuilder, BlockInfo info) {
         graphBuilder
-                .backprop(true)
-                .pretrain(false)
                 .setInputTypes(InputType.recurrent(inputShape[1], inputShape[0]));
 
         if(tbpttLength > 0) {

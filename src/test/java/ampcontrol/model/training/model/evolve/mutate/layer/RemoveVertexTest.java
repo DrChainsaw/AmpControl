@@ -15,11 +15,13 @@ import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.nd4j.linalg.activations.impl.ActivationSoftmax;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.stream.Stream;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 /**
@@ -154,7 +156,7 @@ public class RemoveVertexTest {
                 .addVertex("spy_5", new EpsilonSpyVertex(), "5")
                 .addLayer("6", new DenseLayer.Builder().nOut(13).build(), "spy_5")
                 .addVertex("spy_6", new EpsilonSpyVertex(), "6")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_6")
+                .addLayer("output", new CenterLossOutputLayer.Builder().activation(new ActivationSoftmax()).nOut(4).build(), "spy_6")
                 .build());
         graph.init();
 
@@ -176,7 +178,7 @@ public class RemoveVertexTest {
                 .addVertex("spy_1", new EpsilonSpyVertex(), "1")
                 .addLayer("2", new DenseLayer.Builder().nOut(7).build(), "spy_1")
                 .addVertex("spy_2", new EpsilonSpyVertex(), "2")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "spy_2")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "spy_2")
                 .build());
 
         graph.init();
@@ -209,7 +211,7 @@ public class RemoveVertexTest {
                 .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(6).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("4", graph, inputType);
@@ -234,7 +236,7 @@ public class RemoveVertexTest {
                 .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "merge2And3")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("4", graph, inputType);
@@ -259,7 +261,7 @@ public class RemoveVertexTest {
                 .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "merge2And3")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "add1And3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("2", graph, inputType);
@@ -283,7 +285,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "2", "3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("2", graph, inputType);
@@ -308,7 +310,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "2", "3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("2", graph, inputType);
@@ -333,7 +335,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "2", "add1And3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("5", graph, inputType);
@@ -359,7 +361,7 @@ public class RemoveVertexTest {
                 .addVertex("merge2And3And4", new MergeVertex(), "3", "4", "5")
                 .addLayer("6", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge2And3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "6")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("5", graph, inputType);
@@ -383,7 +385,7 @@ public class RemoveVertexTest {
                 .addVertex("merge3And4", new MergeVertex(), "3", "4")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "merge3And4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("3", graph, inputType);
@@ -406,7 +408,7 @@ public class RemoveVertexTest {
                 .addLayer("3", new BatchNormalization.Builder().nOut(5).build(), "merge1And2")
                 .addLayer("4", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "3")
                 .addLayer("gp", new GlobalPoolingLayer(), "4")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("4", graph, inputType);
@@ -433,11 +435,162 @@ public class RemoveVertexTest {
                 .addLayer("4", new BatchNormalization.Builder().nOut(3).build(), "add1And3")
                 .addLayer("5", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "4")
                 .addLayer("gp", new GlobalPoolingLayer(), "5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
         removeVertex("5", graph, inputType);
     }
+
+    /**
+     * Test to remove a vertex before a residual block where the block does not propagate size changes.
+     */
+    @Test
+    public void removeBeforeNonSizeTransparentResBlockAccidentalSameSize() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"0" )
+                .addLayer("2", new BatchNormalization.Builder().nOut(3).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addLayer("4", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "3")
+                .addVertex("add2And4", new ElementWiseVertex(ElementWiseVertex.Op.Add), "2", "4")
+                .addLayer("5", new BatchNormalization.Builder().nOut(3).build(), "add2And4")
+                .addLayer("6", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "5")
+                .addLayer("gp", new GlobalPoolingLayer(), "6")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
+                .build());
+        graph.init();
+        final ComputationGraph newGraph = removeVertex("1", graph, inputType);
+        assertEquals("Incorrect layersize!", 5, newGraph.layerSize("4"));
+    }
+
+    /**
+     * Test to remove a vertex before a residual block where the block does not propagate size changes.
+     */
+    @Test
+    public void removeBeforeNonSizeTransparentResBlockWithSizeTransparentLastVertex() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("1", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"0" )
+                .addLayer("2", new BatchNormalization.Builder().nOut(3).build(), "1")
+                .addLayer("3", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(), "2")
+                .addLayer("4", new BatchNormalization.Builder().nOut(3).build(), "3")
+                .addVertex("add2And4", new ElementWiseVertex(ElementWiseVertex.Op.Add), "2", "4")
+                .addLayer("5", new BatchNormalization.Builder().nOut(3).build(), "add2And4")
+                .addLayer("6", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(), "5")
+                .addLayer("gp", new GlobalPoolingLayer(), "6")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
+                .build());
+        graph.init();
+        final ComputationGraph newGraph = removeVertex("1", graph, inputType);
+        assertEquals("Incorrect layersize!", 5, newGraph.layerSize("4"));
+    }
+
+    /**
+     * Test to remove a vertex for which nIn == nOut must apply (batchnorm) so that an {@link ElementWiseVertex} only
+     * has one input
+     */
+    @Test
+    public void removeOrphanedElemVertexWithoutSizeChange() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("1", new BatchNormalization.Builder().nOut(3).build(),"0" )
+                .addVertex("add0And1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "0", "1")
+                .addLayer("gp", new GlobalPoolingLayer(), "add0And1")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("1", graph, inputType);
+    }
+
+    /**
+     * Test to remove a vertex for which nIn == nOut must apply (batchnorm) so that an {@link ElementWiseVertex} only
+     * has one input which in turn makes it so that a second {@link ElementWiseVertex} only has one input
+     */
+    @Test
+    public void removeDoubleOrphanedElemVertexWithoutSizeChange() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("1", new BatchNormalization.Builder().nOut(3).build(),"0" )
+                .addVertex("add0And1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "0", "1")
+                .addVertex("add0AndAdd0And1", new ElementWiseVertex(ElementWiseVertex.Op.Add), "0", "add0And1")
+                .addLayer("gp", new GlobalPoolingLayer(), "add0AndAdd0And1")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("1", graph, inputType);
+    }
+
+    /**
+     * Test to remove a layer which is merged with another set of layers to which is it also input to
+     */
+    @Test
+    public void removeSkipToMergeConnection() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                .addLayer("toRm", new ConvolutionLayer.Builder().nOut(5).convolutionMode(ConvolutionMode.Same).build(),"0" )
+                .addVertex("toRmScale", new ScaleVertex(1), "toRm")
+                .addLayer("skippedBn", new BatchNormalization.Builder().nOut(5).build(), "toRmScale")
+                .addLayer("skippedConv", new ConvolutionLayer.Builder().nOut(7).convolutionMode(ConvolutionMode.Same).build(), "skippedBn")
+                .addVertex("skipScale", new ScaleVertex(1), "skippedConv")
+                .addVertex("merge", new MergeVertex(), "toRmScale", "skipScale")
+                .addLayer("gp", new GlobalPoolingLayer(), "merge")
+                .addLayer("output", new OutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("toRm", graph, inputType);
+    }
+
+    /**
+     * Test to remove a vertex 0 which is input to another vertex 1 for which nIn == nOut must apply (batchnorm). Vertex 1
+     * is input to a residual block which does not have to apply to nIn == nOut.
+     */
+    @Test
+    public void removeBeforeSizeTransparentBeforeNonSizeTransparentResBlockChangeNin() {
+        final InputType inputType = InputType.convolutional(10, 10, 2);
+        final ComputationGraph graph = new ComputationGraph(new NeuralNetConfiguration.Builder()
+                .graphBuilder()
+                .setInputTypes(inputType)
+                .addInputs("input")
+                .setOutputs("output")
+                .addLayer("0", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"input" )
+                // Previous algorithm accidentally worked when new input vertex was not size transparent
+                .addVertex("s0", new ScaleVertex(1), "0")
+                .addLayer("1", new BatchNormalization.Builder().nOut(3).build(),"s0" )
+                .addLayer("2", new ConvolutionLayer.Builder().nOut(3).convolutionMode(ConvolutionMode.Same).build(),"1" )
+                .addLayer("3",  new BatchNormalization.Builder().nOut(3).build(),"2" )
+                .addVertex("add1And3", new ElementWiseVertex(ElementWiseVertex.Op.Add), "1", "3")
+                .addLayer("gp", new GlobalPoolingLayer(), "add1And3")
+                .addLayer("output", new OutputLayer.Builder().nOut(4).build(), "gp")
+                .build());
+        graph.init();
+        removeVertex("0", graph, inputType);
+    }
+
 
     @NotNull
     private static ComputationGraph removeVertex(String vertexToRemove, ComputationGraph graph, InputType inputType) {

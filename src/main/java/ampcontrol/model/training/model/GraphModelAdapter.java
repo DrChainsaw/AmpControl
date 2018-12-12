@@ -1,8 +1,8 @@
 package ampcontrol.model.training.model;
 
-import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
+import org.nd4j.evaluation.IEvaluation;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

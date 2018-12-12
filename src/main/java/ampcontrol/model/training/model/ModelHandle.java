@@ -1,8 +1,8 @@
 package ampcontrol.model.training.model;
 
 import ampcontrol.model.training.model.validation.Validation;
-import org.deeplearning4j.eval.IEvaluation;
 import org.deeplearning4j.optimize.api.TrainingListener;
+import org.nd4j.evaluation.IEvaluation;
 
 import java.io.IOException;
 

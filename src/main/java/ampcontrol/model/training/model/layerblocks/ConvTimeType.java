@@ -36,8 +36,6 @@ public class ConvTimeType implements LayerBlockConfig {
     @Override
     public BlockInfo addLayers(NeuralNetConfiguration.ListBuilder listBuilder, BlockInfo info) {
         listBuilder
-                .backprop(true)
-                .pretrain(false)
                 .setInputType(InputType.recurrent(inputShape[0], inputShape[1]));
         listBuilder.setBackpropType(BackpropType.Standard);
         return info;
@@ -46,8 +44,6 @@ public class ConvTimeType implements LayerBlockConfig {
     @Override
     public BlockInfo addLayers(ComputationGraphConfiguration.GraphBuilder graphBuilder, BlockInfo info) {
         graphBuilder
-                .backprop(true)
-                .pretrain(false)
                 .setInputTypes(InputType.recurrent(inputShape[0], inputShape[1]));
         graphBuilder.setBackpropType(BackpropType.Standard);
         return info;

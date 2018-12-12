@@ -127,7 +127,7 @@ public class FixedAgeSelectionTest {
                 .setOutputs("output")
                 .addLayer("0", new DenseLayer.Builder().nOut(nOut).build(), "input")
                 .addLayer(layerName, new DenseLayer.Builder().nOut(3).build(), "0")
-                .addLayer("output", new OutputLayer.Builder().nOut(1).build(), layerName)
+                .addLayer("output", new OutputLayer.Builder().nOut(2).build(), layerName)
                 .setInputTypes(InputType.feedForward(4))
                 .build());
         graph.init();

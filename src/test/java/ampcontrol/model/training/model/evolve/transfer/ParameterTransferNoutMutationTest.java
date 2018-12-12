@@ -18,6 +18,7 @@ import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.nd4j.linalg.activations.impl.ActivationSoftmax;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -351,7 +352,7 @@ public class ParameterTransferNoutMutationTest {
                 .addLayer("5", new BatchNormalization.Builder().nOut(3).build(), "add1And3")
                 .addVertex("merge4And5", new MergeVertex(), "4", "5")
                 .addLayer("gp", new GlobalPoolingLayer(), "merge4And5")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).build(), "gp")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(4).activation(new ActivationSoftmax()).build(), "gp")
                 .build());
         graph.init();
 

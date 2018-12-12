@@ -29,8 +29,6 @@ public class ConvType implements LayerBlockConfig {
     @Override
     public BlockInfo addLayers(NeuralNetConfiguration.ListBuilder listBuilder, BlockInfo info) {
         listBuilder
-                .backprop(true)
-                .pretrain(false)
                 .setInputType(InputType.convolutional(inputShape[0], inputShape[1], inputShape[2]));
         return info;
     }
@@ -38,8 +36,6 @@ public class ConvType implements LayerBlockConfig {
     @Override
     public BlockInfo addLayers(ComputationGraphConfiguration.GraphBuilder graphBuilder, BlockInfo info) {
         graphBuilder
-                .backprop(true)
-                .pretrain(false)
                 .setInputTypes(InputType.convolutional(inputShape[0], inputShape[1], inputShape[2]));
         return info;
     }
