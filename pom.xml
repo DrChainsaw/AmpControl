@@ -20,7 +20,7 @@
         <datavec.version>1.0.0-beta3</datavec.version>
         <arbiter.version>1.0.0-beta3</arbiter.version>
         <rl4j.version>1.0.0-beta3</rl4j.version>
-        <junit.version>4.11</junit.version>
+        <junit.version>4.13.1</junit.version>
         <xchart.version>3.5.2</xchart.version>
         <jcommander.version>1.72</jcommander.version>
 
