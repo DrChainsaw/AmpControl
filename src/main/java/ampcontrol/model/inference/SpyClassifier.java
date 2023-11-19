@@ -136,7 +136,7 @@ class SpyClassifier implements Classifier {
     }
 
     private void accumInput(INDArray classification) {
-        int highestProb = classification.argMax(1).getInt(0);
+        int highestProb = classification.argMax(classification.rank()-1).getInt(0);
 
         if(classification.getDouble(highestProb) > threshold) {
             if(highestProb == right) {

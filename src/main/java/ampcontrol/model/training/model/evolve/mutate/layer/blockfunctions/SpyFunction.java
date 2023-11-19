@@ -38,7 +38,7 @@ public class SpyFunction implements Function<Long, LayerBlockConfig> {
     public static SpyFunction weightInit(Function<Long, LayerBlockConfig> source, WeightInit weightInit) {
         return new SpyFunction(factory -> new LayerSpyAdapter((layerName, layer, layerInputs) -> {
             if (layer instanceof BaseLayer) {
-                ((BaseLayer) layer).setWeightInit(weightInit);
+                ((BaseLayer) layer).setWeightInitFn(weightInit.getWeightInitFunction());
             }
         }, factory), source);
     }

@@ -26,7 +26,7 @@ public class ThresholdFilter<T> implements Interpreter<T> {
 
     @Override
     public List<T> apply(INDArray indArray) {
-        if(indArray.argMax(1).getInt(0) == index) {
+        if(indArray.argMax(indArray.rank()-1).getInt(0) == index) {
             if (indArray.getDouble(index) < threshold) {
                 return new ArrayList<>();
             }

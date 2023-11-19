@@ -22,6 +22,7 @@ import org.deeplearning4j.nn.conf.inputs.InvalidInputTypeException;
 import org.deeplearning4j.nn.conf.memory.LayerMemoryReport;
 import org.deeplearning4j.nn.conf.memory.MemoryReport;
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.shade.jackson.annotation.JsonProperty;
 
@@ -90,7 +91,7 @@ public class ElementWiseVertexLatest extends GraphVertex {
 
     @Override
     public org.deeplearning4j.nn.graph.vertex.GraphVertex instantiate(ComputationGraph graph, String name, int idx,
-                                                                      INDArray paramsView, boolean initializeParams) {
+                                                                      INDArray paramsView, boolean initializeParams, DataType dataType) {
         ElementWiseVertexLatestImpl.Op op;
         switch (this.op) {
             case Add:
@@ -108,7 +109,7 @@ public class ElementWiseVertexLatest extends GraphVertex {
             default:
                 throw new UnsupportedOperationException("No support for op: " + this.op);
         }
-        return new ElementWiseVertexLatestImpl(graph, name, idx, op);
+        return new ElementWiseVertexLatestImpl(graph, name, idx, op, dataType);
     }
 
     @Override

@@ -14,8 +14,6 @@ import org.deeplearning4j.nn.params.CenterLossParamInitializer;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.INDArrayIndex;
-import org.nd4j.linalg.indexing.NDArrayIndex;
 
 import java.util.*;
 import java.util.function.Function;
@@ -269,7 +267,7 @@ public class ParameterTransfer {
                     .addDependentTask(createDependentTask(
                             registry.register(paramPair.source.get(DefaultParamInitializer.BIAS_KEY), paramPair.layerName + "_source_b"),
                             registry.register(paramPair.target.get(DefaultParamInitializer.BIAS_KEY), paramPair.layerName + "_target_b"),
-                            dim -> 1, // Always 1 for bias!
+                            dim -> 0, // Always 0 for bias!
                             transferContext.inputDimension, 2, 3, 4)
                     );
         }
@@ -526,11 +524,11 @@ public class ParameterTransfer {
             weights.assign(Nd4j.eye(weights.size(0)));
         } else if (weights.shape().length == 4 && weights.size(2) % 2 == 1 && weights.size(3) % 2 == 1) {
             weights.assign(Nd4j.zeros(weights.shape()));
-            final long centerH = weights.size(2) / 2;
-            final long centerW = weights.size(3) / 2;
+            final int centerH = (int)weights.size(2) / 2;
+            final int centerW = (int)weights.size(3) / 2;
+
             for (int i = 0; i < weights.size(0); i++) {
-                weights.put(new INDArrayIndex[]{NDArrayIndex.point(i), NDArrayIndex.point(i), NDArrayIndex.point(centerH), NDArrayIndex.point(centerW)},
-                        Nd4j.ones(1));
+                weights.put(new int[] {i, i, centerH, centerW}, Nd4j.ones(1));
             }
         }
     }

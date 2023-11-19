@@ -111,7 +111,7 @@ public class AsioAudioInputBuffer implements AsioDriverListener, AudioInputBuffe
             driver.createBuffers(activeChannels);
 
             driver.start();
-
+            System.out.println("Driver started, sleep now");
             Thread.sleep(2000);
 
 

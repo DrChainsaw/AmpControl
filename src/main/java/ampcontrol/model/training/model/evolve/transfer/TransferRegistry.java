@@ -20,7 +20,7 @@ import static org.nd4j.linalg.ops.transforms.Transforms.abs;
  */
 class TransferRegistry {
 
-    private final Map<INDArray, ArrayEntry> registry = new HashMap<>();
+    private final Map<INDArray, ArrayEntry> registry = new IdentityHashMap<>();
     private final Map<ArrayEntry, Runnable> actions = new LinkedHashMap<>();
 
     class ArrayEntry {
@@ -60,6 +60,9 @@ class TransferRegistry {
                     public int compare(Integer e1, Integer e2) {
                         if(e1.equals(e2)) {
                             return 0;
+                        }
+                        if(tensorDimensions.length == 0) {
+                            return -Double.compare(Math.abs(array.getDouble(e1)), Math.abs(array.getDouble(e2)));
                         }
 
                         return -Double.compare(
@@ -140,6 +143,10 @@ class TransferRegistry {
             } catch (ND4JIllegalStateException e) {
                 throw new ND4JIllegalStateException("Could not get array " + debugName + "! Target array of shape "
                         + Arrays.toString(array.shape()) + ". Wanted indexes " + Arrays.toString(asIndArray()), e);
+            } catch (NullPointerException e) {
+                // Workaround for what seems to be a bug in dl4j: It sometimes gets has a nullpointer for some array indices
+                // which only shows up when using certain INDArrayIndex types (e.g. index, indices, SpecifiedIndex).
+                return addBackSingletonDimensions(array.dup().get(asIndArray()));
             }
         }
 
@@ -173,7 +180,6 @@ class TransferRegistry {
         private INDArrayIndex[] asIndArray() {
             return IntStream.range(0, array.rank())
                     .mapToObj(dim -> indexMap.getOrDefault(dim, NDArrayIndex.all()))
-                    .peek(INDArrayIndex::reset)
                     .toArray(INDArrayIndex[]::new);
         }
 

@@ -6,8 +6,8 @@ import org.deeplearning4j.nn.gradient.Gradient;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.deeplearning4j.optimize.api.ConvexOptimizer;
 import org.deeplearning4j.optimize.api.TrainingListener;
+import org.nd4j.common.primitives.Pair;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.primitives.Pair;
 
 import java.util.Collection;
 import java.util.Map;
@@ -167,6 +167,11 @@ public class MockModel implements Model {
 
     @Override
     public void applyConstraints(int iteration, int epoch) {
+        //Ignore
+    }
+
+    @Override
+    public void close() {
         //Ignore
     }
 }

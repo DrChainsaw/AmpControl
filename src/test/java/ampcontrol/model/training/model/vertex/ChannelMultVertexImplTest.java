@@ -3,6 +3,7 @@ package ampcontrol.model.training.model.vertex;
 import org.deeplearning4j.nn.graph.vertex.GraphVertex;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
 import org.junit.Test;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.NDArrayIndex;
@@ -51,7 +52,7 @@ public class ChannelMultVertexImplTest {
         epsilon.putScalar(4, 0d);
         epsilon.putScalar(110, 0d);
         epsilon.putScalar(7300, 0d);
-        final GraphVertex toTest = new ChannelMultVertexImpl(null, "test", 0);
+        final GraphVertex toTest = new ChannelMultVertexImpl(null, "test", 0, DataType.FLOAT16);
         toTest.setInputs(new INDArray[]{convInput, gates});
         toTest.setEpsilon(epsilon);
         final INDArray[] result = toTest.doBackward(false, wsMgr).getSecond();
@@ -68,7 +69,7 @@ public class ChannelMultVertexImplTest {
         gates.putScalar(oneZeroedChannel, 0);
         gates.putScalar(11, 0);
         gates.putScalar(13, 0);
-        final GraphVertex toTest = new ChannelMultVertexImpl(null, "test", 0);
+        final GraphVertex toTest = new ChannelMultVertexImpl(null, "test", 0, DataType.FLOAT16);
         toTest.setInputs(new INDArray[]{convInput, gates});
         final INDArray result = toTest.doForward(false, wsMgr);
         assertEquals("Incorrect mean!", gates.mean(1).getDouble(0), result.mean(1).getDouble(0), 1e-10);

@@ -1,13 +1,12 @@
 package ampcontrol.model.training.model.layerblocks.graph;
 
 import ampcontrol.model.training.model.layerblocks.LayerBlockConfig;
+import junit.framework.TestCase;
 import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-
-import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link MinMaxPool}
@@ -39,6 +38,12 @@ public class MinMaxPoolTest {
 
         DummyOutputLayer.setEyeOutput(graph);
 
-        assertEquals("Incorrect output", Nd4j.create(expected), graph.output(input)[0]);
+        final INDArray expectedarr = Nd4j.create(expected);
+        final INDArray result = graph.output(input)[0];
+        TestCase.assertEquals("Lengths does not match!", expectedarr.length(), result.length());
+        for(int i = 0; i < expectedarr.length(); i++) {
+            TestCase.assertEquals("Incorrect output for element " + i + "!", expectedarr.getDouble(i), result.getDouble(i), 1e-10);
+        }
+
     }
 }

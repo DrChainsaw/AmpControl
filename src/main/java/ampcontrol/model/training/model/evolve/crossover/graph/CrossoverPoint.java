@@ -7,7 +7,6 @@ import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +81,6 @@ class CrossoverPoint {
         return new GraphInfo.Result(builder, infoMap);
     }
 
-    @NotNull
     private GraphBuilder initBuilder() {
         final ComputationGraphConfiguration conf = bottom.builder().build();
         final GraphBuilder builder = new GraphBuilder(
@@ -93,7 +91,6 @@ class CrossoverPoint {
         return builder;
     }
 
-    @NotNull
     private Map<String, String> addTop(GraphBuilder builder) {
         // Need to access names which are already added to the builder below, so first create the mapping
         // between names in top and a name which is unique in builder.

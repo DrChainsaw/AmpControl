@@ -106,10 +106,10 @@ public class ValidateCachingIter {
 
             @Override
             public synchronized void fetch(int numExamples) {
-                final double[] features = new double[batchSize];
+                final double[][] features = new double[batchSize][1];
                 final double[][] labels = new double[batchSize][10];
                 IntStream.range(0, batchSize).forEach(batch -> {
-                    features[batch] = state.get().intValue();
+                    features[batch][0] = state.get().intValue();
                     labels[batch][state.get().intValue() % 10] = 1;
                     state.get().increment();
                 });

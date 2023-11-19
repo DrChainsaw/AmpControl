@@ -8,6 +8,7 @@ import org.nd4j.linalg.factory.Nd4j;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -44,8 +45,9 @@ public class SpyClassifierTest {
                 incorrectClassifiction, // 12
                 incorrectClassifiction  // 13
         );
-        final INDArray expectedCorrect = Nd4j.create(new double[]{6, 7, 8});
-        final INDArray expectedIncorrect = Nd4j.create(new double[]{9, 10, 11});
+
+        final INDArray expectedCorrect = Nd4j.create(new double[]{6, 7, 8}).reshape(3, 1);
+        final INDArray expectedIncorrect = Nd4j.create(new double[]{9, 10, 11}).reshape(3, 1);
         final SpyClassifier spyClassifier = new SpyClassifier(
                 new MockClassifier("mock", 0.7, classifications),
                 new CountingInputProvider(),
@@ -60,8 +62,8 @@ public class SpyClassifierTest {
             assertEquals("Incorrect hasInput after " + i +" samples!", i >= 11, listener.hasInput());
         }
 
-        assertEquals("Incorrect correctly classified input!", expectedCorrect, listener.getCorrectlyClassifiedInput());
-        assertEquals("Incorrect incorrectly classified input!", expectedIncorrect, listener.getIncorrectlyClassifiedInput());
+        assertArrayEquals("Incorrect correctly classified input!", expectedCorrect.toDoubleVector(), listener.getCorrectlyClassifiedInput().toDoubleVector(), 1e-10);
+        assertArrayEquals("Incorrect incorrectly classified input!", expectedIncorrect.toDoubleVector(), listener.getIncorrectlyClassifiedInput().toDoubleVector(), 1e-10);
     }
 
     private static class CountingInputProvider implements ClassifierInputProvider {

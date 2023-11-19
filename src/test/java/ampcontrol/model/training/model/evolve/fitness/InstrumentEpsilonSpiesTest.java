@@ -61,6 +61,6 @@ public class InstrumentEpsilonSpiesTest {
         assertFalse("Did not expect comparator!", registry.get(graph).apply("second").isPresent());
         assertTrue("Expected comparator!", registry.get(graph).apply("third").isPresent());
 
-        graph.fit(new DataSet(arr, Nd4j.ones(1)));
+        graph.fit(new DataSet(arr, Nd4j.ones(1,1)));
     }
 }

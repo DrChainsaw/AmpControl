@@ -24,10 +24,7 @@ import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -251,7 +248,7 @@ public class ParameterTransferNoutMutationTest {
         newGraph.init();
         newGraph.output(Nd4j.randn(new long[]{1, 3, 33, 33}));
 
-        final int oldNout = graph.layerSize(fork1NameToMutate);
+        final int oldNout = (int)graph.layerSize(fork1NameToMutate);
 
         // Drop the first oldNout - newNout elements from fork1NameToMutate
         final int[] orderToKeep = IntStream.range(0, oldNout)
@@ -271,7 +268,7 @@ public class ParameterTransferNoutMutationTest {
 
         final int[] expectedToKeep = IntStream.concat(
                 IntStream.of(orderToKeep).limit(newNout),
-                IntStream.range(0, graph.layerSize(fork2Name)).map(i -> i + oldNout)).toArray();
+                IntStream.range(0, (int)graph.layerSize(fork2Name)).map(i -> i + oldNout)).toArray();
         final INDArray sourceAfter = graph.getLayer(afterName).getParam(GraphUtils.W);
         final INDArray targetAfter = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
         assertDims(1, expectedToKeep, sourceAfter, targetAfter);
@@ -417,7 +414,7 @@ public class ParameterTransferNoutMutationTest {
 
         final INDArray sourceBias = graph.getLayer(mutationName).getParam(GraphUtils.B);
         final INDArray targetBias = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.B);
-        assertDims(1, orderToKeepFirst, sourceBias, targetBias);
+        assertDims(0, orderToKeepFirst, sourceBias, targetBias);
 
         final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(GraphUtils.W);
         final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.W);
@@ -425,7 +422,7 @@ public class ParameterTransferNoutMutationTest {
 
         final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(GraphUtils.B);
         final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.B);
-        assertDims(1, orderToKeepSecond, sourceNextBias, targetNextBias);
+        assertDims(0, orderToKeepSecond, sourceNextBias, targetNextBias);
 
         final INDArray sourceOutput = graph.getLayer(afterName).getParam(GraphUtils.W);
         final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
@@ -451,7 +448,7 @@ public class ParameterTransferNoutMutationTest {
 
         final long mutationNewNout = 5;
         final long nextMutationNewNout = 9;
-        final int nextMutationPrevNout = graph.layerSize(nextMutationName);
+        final int nextMutationPrevNout = (int)graph.layerSize(nextMutationName);
         final double nextMutationNewVal = 666d; // Is this obtainable somehow?
 
         final ComputationGraph newGraph = new ComputationGraph(new NoutMutation(
@@ -477,7 +474,7 @@ public class ParameterTransferNoutMutationTest {
 
         final INDArray sourceBias = graph.getLayer(mutationName).getParam(GraphUtils.B);
         final INDArray targetBias = mutatedGraph.getLayer(mutationName).getParam(GraphUtils.B);
-        assertDims(1, orderToKeepFirst, sourceBias, targetBias);
+        assertDims(0, orderToKeepFirst, sourceBias, targetBias);
 
         final INDArray sourceNext = graph.getLayer(nextMutationName).getParam(GraphUtils.W);
         final INDArray targetNext = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.W);
@@ -486,8 +483,8 @@ public class ParameterTransferNoutMutationTest {
 
         final INDArray sourceNextBias = graph.getLayer(nextMutationName).getParam(GraphUtils.B);
         final INDArray targetNextBias = mutatedGraph.getLayer(nextMutationName).getParam(GraphUtils.B);
-        assertDims(1, IntStream.range(0, (int) nextMutationNewNout).toArray(), sourceNextBias, targetNextBias);
-        assertScalar(1, nextMutationPrevNout, 0, targetNextBias);
+        assertDims(0, IntStream.range(0, (int) nextMutationNewNout).toArray(), sourceNextBias, targetNextBias);
+        assertScalar(0, nextMutationPrevNout, 0, targetNextBias);
 
         final INDArray sourceOutput = graph.getLayer(afterName).getParam(GraphUtils.W);
         final INDArray targetOutput = mutatedGraph.getLayer(afterName).getParam(GraphUtils.W);
@@ -511,10 +508,18 @@ public class ParameterTransferNoutMutationTest {
         final long[] shapeTarget = target.shape();
         final long[] shapeSource = source.shape();
         final int[] dims = IntStream.range(0, shapeTarget.length).filter(i -> i != dim).toArray();
-        for (int elemInd = 0; elemInd < Math.min(shapeTarget[dim], shapeSource[dim]); elemInd++) {
-            assertEquals("Incorrect target for element index " + elemInd + "!",
-                    source.tensorAlongDimension(orderToKeep[elemInd], dims),
-                    target.tensorAlongDimension(elemInd, dims));
+        if(dims.length == 0) {
+            for (int elemInd = 0; elemInd < Math.min(shapeTarget[dim], shapeSource[dim]); elemInd++) {
+                assertEquals("Incorrect target for element index " + elemInd + "!",
+                        source.getDouble(orderToKeep[elemInd]),
+                        target.getDouble(elemInd), 1e-10);
+            }
+        } else {
+            for (int elemInd = 0; elemInd < Math.min(shapeTarget[dim], shapeSource[dim]); elemInd++) {
+                assertEquals("Incorrect target for element index " + elemInd + "!",
+                        source.tensorAlongDimension(orderToKeep[elemInd], dims),
+                        target.tensorAlongDimension(elemInd, dims));
+            }
         }
     }
 
@@ -567,9 +572,19 @@ public class ParameterTransferNoutMutationTest {
 
         for (int elemInd0 = 0; elemInd0 < Math.min(shapeTarget[outputDim], shapeSource[outputDim]); elemInd0++) {
             for (int elemInd1 = 0; elemInd1 < Math.min(shapeTarget[inputDim], shapeSource[inputDim]); elemInd1++) {
-                assertEquals("Incorrect target output for element index " + elemInd0 + ", " + elemInd1 + "!",
-                        source.tensorAlongDimension(expectedElementOrderDim0[elemInd0], firstTensorDims).tensorAlongDimension(expectedElementOrderDim1[elemInd1], secondTensorDims),
-                        target.tensorAlongDimension(elemInd0, firstTensorDims).tensorAlongDimension(elemInd1, secondTensorDims));
+                // Somewhat convoluted code to get old behaviour where tensorAlongDimension could return a 0d array from a 1d array
+                final INDArray sourcedim0 = source.tensorAlongDimension(expectedElementOrderDim0[elemInd0], firstTensorDims);
+                final INDArray targetdim0 = target.tensorAlongDimension(elemInd0, firstTensorDims);
+
+                if(shapeSource.length == 2) {
+                    assertEquals("Incorrect target output for element index " + elemInd0 + ", " + elemInd1 + "!",
+                            sourcedim0.getDouble(expectedElementOrderDim1[elemInd1]),
+                            targetdim0.getDouble(elemInd1), 1e-10);
+                } else {
+                    assertEquals("Incorrect target output for element index " + elemInd0 + ", " + elemInd1 + "!",
+                            sourcedim0.tensorAlongDimension(expectedElementOrderDim1[elemInd1], secondTensorDims),
+                            targetdim0.tensorAlongDimension(elemInd1, secondTensorDims));
+                }
             }
         }
     }
