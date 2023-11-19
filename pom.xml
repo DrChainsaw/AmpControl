@@ -18,7 +18,7 @@
         <dl4j.version>1.0.0-M2.1</dl4j.version>
         <slf4j.version>1.7.21</slf4j.version>
         <datavec.version>1.0.0-beta7</datavec.version>
-        <junit.version>4.11</junit.version>
+        <junit.version>4.13.1</junit.version>
         <xchart.version>3.5.2</xchart.version>
         <jcommander.version>1.72</jcommander.version>
 
@@ -109,7 +109,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.1</version>
+                <version>0.8.5</version>
                 <executions>
                     <execution>
                         <id>default-prepare-agent</id>
