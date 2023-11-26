@@ -55,7 +55,6 @@ import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
@@ -257,10 +256,8 @@ public final class MutatingConv2dFactory {
             initialPopulation.add(adapter);
 
         });
-        // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
-        if (Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
-            Nd4j.getMemoryManager().purgeCaches();
-        }
+
+        Nd4j.getMemoryManager().purgeCaches();
 
         final Population<ModelHandle> population;
         try {

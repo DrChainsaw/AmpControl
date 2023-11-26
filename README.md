@@ -1,12 +1,10 @@
 
-Travis [![Build Status](https://travis-ci.org/DrChainsaw/AmpControl.svg?branch=master)](https://travis-ci.org/DrChainsaw/AmpControl)
-AppVeyor [![Build status](https://ci.appveyor.com/api/projects/status/b9e4h8g0em7r7c1v/branch/master?svg=true)](https://ci.appveyor.com/project/DrChainsaw/ampcontrol-fsko3)
+![Build Status](https://github.com/DrChainsaw/AmpControl/actions/workflows/maven.yml/badge.svg)
+
 
 [![codebeat badge](https://codebeat.co/badges/998446a1-99e0-4f8f-9b62-d8dda4ef780d)](https://codebeat.co/projects/github-com-drchainsaw-ampcontrol-master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/1b55604515c3475cb7d4826fd67f7817)](https://www.codacy.com/app/DrChainsaw/AmpControl?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=DrChainsaw/AmpControl&amp;utm_campaign=Badge_Grade)
 [![Maintainability](https://api.codeclimate.com/v1/badges/94297293618a7a420e6d/maintainability)](https://codeclimate.com/github/DrChainsaw/AmpControl/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/94297293618a7a420e6d/test_coverage)](https://codeclimate.com/github/DrChainsaw/AmpControl/test_coverage)
-
 
 # AmpControl
 
