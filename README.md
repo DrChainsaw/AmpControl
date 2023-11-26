@@ -56,11 +56,13 @@ I don't really expect anyone but me to use this project and as of now it does no
 
 ### Prerequisites
 
-Maven, Git, Data set or models. Current configuration uses the CUDA 9.2 backend for the models and this requires CUDA 9.2 along with an NVIDIA GPU which supports CUDA 8.0. See https://deeplearning4j.org/gpu
+Maven, Git, Data set or models. Current configuration uses the CUDA 11.4 backend for the models which requires a NVIDIA GPU which supports CUDA. See https://deeplearning4j.org/gpu
 
 ### Installing
 
 Clone the repo and fire it up in your IDE of choice. I had some issues getting CUDA to work in eclipse due to some m2e bug/feature but this resolved when using IntelliJ. After I got it to work with IntelliJ it worked in eclipse for me as well.
+
+Using `mvn compile assembly:single` will produce a jar file under `target` which runs `ampcontrol.admin.AmpControlMain`.
 
 ## Running the tests
 
