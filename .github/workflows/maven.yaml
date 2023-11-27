@@ -35,6 +35,24 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
-      - name: Build with Maven
-        run: mvn clean test -P backend-CPU -B
-        
+      - name: Setup code coverage
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            chmod +x ./cc-test-reporter
+            ./cc-test-reporter before-build
+          fi
+      - name: Build and Test
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            mvn clean test jacoco:report -P backend-CPU -B
+          else
+            mvn clean test -P backend-CPU -B
+          fi
+
+      - name: Upload coverage
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            JACOCO_SOURCE_PATH=src/main/java ./cc-test-reporter format-coverage target/site/jacoco/jacoco.xml --input-type jacoco
+            ./cc-test-reporter upload-coverage
+          fi

@@ -1,8 +1,0 @@
-version: '{build}'
-platform: x86
-cache:
-  - '%USERPROFILE%\.m2'
-environment:
-  BACKEND_PRIORITY_CPU: 100000
-build_script:
-- cmd: mvn clean test -P backend-CPU -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
