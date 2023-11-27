@@ -1,7 +1,7 @@
 package ampcontrol.model.training.data.processing;
 
 import ampcontrol.model.training.data.state.StateFactory;
-import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.nio.file.Path;
 import java.util.List;

@@ -2,7 +2,6 @@ package ampcontrol.model.training.model.evolve;
 
 import ampcontrol.model.training.model.evolve.fitness.FitnessPolicy;
 import ampcontrol.model.training.model.evolve.selection.Selection;
-import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,11 +72,7 @@ public final class EvolvingPopulation<T> implements Evolving<EvolvingPopulation<
                 .collect(Collectors.toList()));
         evalCands.clear();
 
-        // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
-        if(Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
-            // Needed to free memory?
-            Nd4j.getMemoryManager().purgeCaches();
-        }
+        Nd4j.getMemoryManager().purgeCaches();
         return this;
     }
 

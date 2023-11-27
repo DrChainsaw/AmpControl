@@ -43,7 +43,7 @@ public class ForkAggTest {
     @Test
     public void addLayers() {
         final String inputName = "input";
-        final INDArray input = Nd4j.create(new double[] {-1.23, 2.34}).transpose();
+        final INDArray input = Nd4j.create(new double[] {-1.23, 2.34}).reshape(2, 1);
         final double scal0 = 10.11;
         final double scal1 = -13.3;
 
@@ -66,6 +66,10 @@ public class ForkAggTest {
         DummyOutputLayer.setEyeOutput(graph);
 
         final INDArray expected = Nd4j.hstack(input.mul(scal0), input.mul(scal1));
-        assertEquals("Incorrect output!", expected, graph.output(input)[0]);
+        final INDArray result = graph.output(input)[0];
+        assertEquals("Lengths does not match!", expected.length(), result.length());
+        for(int i = 0; i < expected.length(); i++) {
+            assertEquals("Incorrect output for element " + i + "!", expected.getDouble(i), result.getDouble(i), 1e-6);
+        }
     }
 }

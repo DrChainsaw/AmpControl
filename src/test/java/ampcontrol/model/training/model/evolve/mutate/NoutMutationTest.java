@@ -12,13 +12,14 @@ import org.deeplearning4j.nn.conf.inputs.InputType;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.junit.Test;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.activations.impl.ActivationSoftmax;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.lossfunctions.impl.LossBinaryXENT;
 
 import java.util.stream.Stream;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction.XENT;
 
 /**
  * Test cases for {@link NoutMutation}
@@ -416,7 +417,7 @@ public class NoutMutationTest {
                 .addVertex("rbMvInput0", new MergeVertex(), "fb1_branch_0_0", "fb1_branch_1_0")
                 .addLayer("3", new Convolution2D.Builder().convolutionMode(ConvolutionMode.Same).nOut(7).build(), "rbMvInput0")
                 .addLayer("4", new GlobalPoolingLayer(), "3")
-                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(2).lossFunction(new LossBinaryXENT()).build(), "4")
+                .addLayer("output", new CenterLossOutputLayer.Builder().nOut(2).activation(Activation.SIGMOID).lossFunction(XENT).build(), "4")
                 .build());
         graph.init();
 

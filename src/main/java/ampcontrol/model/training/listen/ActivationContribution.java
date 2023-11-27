@@ -13,6 +13,7 @@ import org.nd4j.linalg.api.memory.enums.ResetPolicy;
 import org.nd4j.linalg.api.memory.enums.SpillPolicy;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.ops.transforms.Transforms;
 
 import java.util.Map;
 import java.util.function.Consumer;
@@ -61,7 +62,8 @@ public class ActivationContribution extends BaseTrainingListener {
             try (MemoryWorkspace wss = Nd4j.getWorkspaceManager().getAndActivateWorkspace(workspaceConfig, wsName)) {
                 final INDArray tmpEps = eps.migrate(false);
                 int[] meanDims = IntStream.range(0, act.rank()).filter(dim -> dim != 1).toArray();
-                listener.accept(tmpEps.muli(act).amean(meanDims));
+                // amean seems broken in M2.1: it always returns a single element array
+                listener.accept(Transforms.abs(tmpEps.muli(act)).mean(meanDims));
             }
         }
     }

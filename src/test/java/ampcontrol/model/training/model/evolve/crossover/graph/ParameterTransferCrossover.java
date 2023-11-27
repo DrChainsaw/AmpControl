@@ -61,6 +61,14 @@ public class ParameterTransferCrossover {
         final ComputationGraph graphFirst = GraphUtils.getGraph(first[0], first[1], first[2]);
         final ComputationGraph graphSecond = GraphUtils.getGraph(second[0], second[1], second[2]);
 
+        crossover(
+                InputType.feedForward(33),
+                graphFirst,
+                first[1],
+                graphSecond,
+                second[0]
+        );
+
         for (String firstCp : first) {
             for (String secondCp : second) {
                 crossover(

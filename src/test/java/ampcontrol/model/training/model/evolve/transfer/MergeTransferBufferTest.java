@@ -22,17 +22,17 @@ public class MergeTransferBufferTest {
     public void transferFirstSource1D() {
         final long length1 = 5;
         final long length2 = 8;
-        final INDArray source1 = Nd4j.linspace(0, length1 - 1, length1);
+        final INDArray source1 = Nd4j.linspace(0, length1 - 1, length1).reshape(1, length1);
         final INDArray target1 = Nd4j.zeros(1, source1.length() - 2);
-        final INDArray source2 = Nd4j.linspace(source1.length(), source1.length() + length2 - 1, length2);
+        final INDArray source2 = Nd4j.linspace(source1.length(), source1.length() + length2 - 1, length2).reshape(1, length2);
         final INDArray target2 = Nd4j.zeros(1, source2.length());
 
-        final INDArray mergedSource = Nd4j.linspace(0, length1 + length2 - 1, length1 + length2);
+        final INDArray mergedSource = Nd4j.linspace(0, length1 + length2 - 1, length1 + length2).reshape(1, length1+length2);
         final INDArray mergedTarget = Nd4j.zeros(1, length1 + length2 - 2);
 
 
         final int[] expectedIndexes = {0, 2, 4, 1, 3};
-        final INDArray expectedTarget1 = source1.get(new SpecifiedIndex(expectedIndexes)).get(NDArrayIndex.interval(0, target1.length())).transpose();
+        final INDArray expectedTarget1 = source1.get(NDArrayIndex.point(0), new SpecifiedIndex(expectedIndexes)).get(NDArrayIndex.interval(0, target1.length())).reshape(1, target1.length() );
         final INDArray expectedMergedTarget = Nd4j.concat(1, expectedTarget1, source2);
 
         final TransferRegistry registry = new TransferRegistry();

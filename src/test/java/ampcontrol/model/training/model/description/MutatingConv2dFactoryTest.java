@@ -1,6 +1,7 @@
 package ampcontrol.model.training.model.description;
 
 import org.junit.Test;
+import org.nd4j.linalg.factory.Nd4j;
 
 import java.util.ArrayList;
 

@@ -53,6 +53,6 @@ public class SpyFunctionTest {
         spiedLayers.stream()
                 .filter(layer -> layer instanceof BaseLayer)
                 .map(layer -> (BaseLayer)layer)
-                .forEach(baseLayer -> assertEquals("Incorrect weight init!", expected, baseLayer.getWeightInit()));
+                .forEach(baseLayer -> assertEquals("Incorrect weight init!", expected.getWeightInitFunction(), baseLayer.getWeightInitFn()));
     }
 }

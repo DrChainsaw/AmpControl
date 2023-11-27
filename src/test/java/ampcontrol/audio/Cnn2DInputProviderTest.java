@@ -11,7 +11,7 @@ import java.util.Collections;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
 
 /**
  * Test cases for {@link Cnn2DInputProvider}.
@@ -38,7 +38,10 @@ public class Cnn2DInputProviderTest {
         final ProcessingResult res0 = proc.create(new SingletonDoubleInput(audioFrames[0]));
         final INDArray expected0 = Nd4j.create(res0.stream().findFirst().get());
         for(int channel = 0; channel < nrofChannels; channel++) {
-            assertEquals("Incorrect model input!", expected0, inputProvider.getModelInput().get(NDArrayIndex.point(0), NDArrayIndex.point(channel)));
+            final INDArray res = inputProvider.getModelInput().get(NDArrayIndex.point(0), NDArrayIndex.point(channel));
+            assertArrayEquals("Incorrect shape!", expected0.shape(), res.shape());
+            assertArrayEquals("Incorrect model input!", expected0.reshape(expected0.length()).toDoubleVector(),
+                   res.reshape(res.length()).toDoubleVector(), 1e-10);
         }
 
         mockBuffer.advance();
@@ -46,7 +49,10 @@ public class Cnn2DInputProviderTest {
         final ProcessingResult res1 = proc.create(new SingletonDoubleInput(audioFrames[1]));
         final INDArray expected1 = Nd4j.create(res1.stream().findFirst().get());
         for(int channel = 0; channel < nrofChannels; channel++) {
-            assertEquals("Incorrect model input!", expected1, inputProvider.getModelInput().get(NDArrayIndex.point(0), NDArrayIndex.point(channel)));
+            final INDArray res = inputProvider.getModelInput().get(NDArrayIndex.point(0), NDArrayIndex.point(channel));
+            assertArrayEquals("Incorrect shape!", expected1.shape(), res.shape());
+            assertArrayEquals("Incorrect model input!", expected1.reshape(expected1.length()).toDoubleVector(),
+                    res.reshape(res.length()).toDoubleVector(), 1e-10);
         }
     }
 

@@ -1,12 +1,10 @@
 
-Travis [![Build Status](https://travis-ci.org/DrChainsaw/AmpControl.svg?branch=master)](https://travis-ci.org/DrChainsaw/AmpControl)
-AppVeyor [![Build status](https://ci.appveyor.com/api/projects/status/b9e4h8g0em7r7c1v/branch/master?svg=true)](https://ci.appveyor.com/project/DrChainsaw/ampcontrol-fsko3)
+![Build Status](https://github.com/DrChainsaw/AmpControl/actions/workflows/maven.yml/badge.svg)
+
 
 [![codebeat badge](https://codebeat.co/badges/998446a1-99e0-4f8f-9b62-d8dda4ef780d)](https://codebeat.co/projects/github-com-drchainsaw-ampcontrol-master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/1b55604515c3475cb7d4826fd67f7817)](https://www.codacy.com/app/DrChainsaw/AmpControl?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=DrChainsaw/AmpControl&amp;utm_campaign=Badge_Grade)
 [![Maintainability](https://api.codeclimate.com/v1/badges/94297293618a7a420e6d/maintainability)](https://codeclimate.com/github/DrChainsaw/AmpControl/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/94297293618a7a420e6d/test_coverage)](https://codeclimate.com/github/DrChainsaw/AmpControl/test_coverage)
-
 
 # AmpControl
 
@@ -56,11 +54,13 @@ I don't really expect anyone but me to use this project and as of now it does no
 
 ### Prerequisites
 
-Maven, Git, Data set or models. Current configuration uses the CUDA 9.2 backend for the models and this requires CUDA 9.2 along with an NVIDIA GPU which supports CUDA 8.0. See https://deeplearning4j.org/gpu
+Maven, Git, Data set or models. Current configuration uses the CUDA 11.4 backend for the models which requires a NVIDIA GPU which supports CUDA. See https://deeplearning4j.org/gpu
 
 ### Installing
 
 Clone the repo and fire it up in your IDE of choice. I had some issues getting CUDA to work in eclipse due to some m2e bug/feature but this resolved when using IntelliJ. After I got it to work with IntelliJ it worked in eclipse for me as well.
+
+Using `mvn compile assembly:single` will produce a jar file under `target` which runs `ampcontrol.admin.AmpControlMain`.
 
 ## Running the tests
 

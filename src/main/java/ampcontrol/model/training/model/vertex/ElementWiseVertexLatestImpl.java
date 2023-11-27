@@ -25,10 +25,11 @@ import org.deeplearning4j.nn.graph.vertex.BaseGraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
 import org.deeplearning4j.nn.workspace.ArrayType;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
+import org.nd4j.common.primitives.Pair;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.api.ops.impl.transforms.Or;
+import org.nd4j.linalg.api.ops.impl.transforms.pairwise.bool.Or;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.primitives.Pair;
 
 /** An ElementWiseVertex is used to combine the activations of two or more layer in an element-wise manner<br>
  * For example, the activations may be combined by addition, subtraction or multiplication or by selecting the maximum.
@@ -46,13 +47,13 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
     private Op op;
     private int nInForwardPass;
 
-    public ElementWiseVertexLatestImpl(ComputationGraph graph, String name, int vertexIndex, Op op) {
-        this(graph, name, vertexIndex, null, null, op);
+    public ElementWiseVertexLatestImpl(ComputationGraph graph, String name, int vertexIndex, Op op, DataType dataType) {
+        this(graph, name, vertexIndex, null, null, op, dataType);
     }
 
     public ElementWiseVertexLatestImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices,
-                                       VertexIndices[] outputVertices, Op op) {
-        super(graph, name, vertexIndex, inputVertices, outputVertices);
+                                       VertexIndices[] outputVertices, Op op, DataType dataType) {
+        super(graph, name, vertexIndex, inputVertices, outputVertices, dataType);
         this.op = op;
     }
 
@@ -179,6 +180,7 @@ public class ElementWiseVertexLatestImpl extends BaseGraphVertex {
             return new Pair<>(maskArrays[0], currentMaskState);
         } else {
             INDArray ret = maskArrays[0].dup(maskArrays[0].ordering());
+
             Nd4j.getExecutioner().exec(new Or(maskArrays[0], maskArrays[1], ret));
             for (int i = 2; i < maskArrays.length; i++) {
                 Nd4j.getExecutioner().exec(new Or(maskArrays[i], ret, ret));

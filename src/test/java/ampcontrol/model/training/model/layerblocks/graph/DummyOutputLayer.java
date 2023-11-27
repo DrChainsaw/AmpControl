@@ -5,7 +5,6 @@ import ampcontrol.model.training.model.layerblocks.adapters.BuilderAdapter;
 import org.deeplearning4j.nn.conf.distribution.BinomialDistribution;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.impl.ActivationIdentity;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.lossfunctions.impl.LossMSE;
@@ -29,8 +28,7 @@ public class DummyOutputLayer implements LayerBlockConfig {
                 .nOut(info.getPrevNrofOutputs())
                 .activation(new ActivationIdentity())
                 .biasInit(0)
-                .weightInit(WeightInit.DISTRIBUTION)
-                .dist(new BinomialDistribution(1,1)) // 100% probability of 1
+                .weightInit(new BinomialDistribution(1,1)) // 100% probability of 1
                 .build();
         return builder.layer(info,output);
     }

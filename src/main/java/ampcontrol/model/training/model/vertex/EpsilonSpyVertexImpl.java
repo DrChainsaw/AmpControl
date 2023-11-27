@@ -8,8 +8,9 @@ import org.deeplearning4j.nn.graph.vertex.BaseGraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
 import org.deeplearning4j.nn.workspace.ArrayType;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
+import org.nd4j.common.primitives.Pair;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.primitives.Pair;
 
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -25,12 +26,12 @@ public class EpsilonSpyVertexImpl extends BaseGraphVertex {
 
     private Consumer<INDArray> listener;
 
-    protected EpsilonSpyVertexImpl(ComputationGraph graph, String name, int vertexIndex) {
-        this(graph, name, vertexIndex, null, null);
+    protected EpsilonSpyVertexImpl(ComputationGraph graph, String name, int vertexIndex, DataType dataType) {
+        this(graph, name, vertexIndex, null, null, dataType);
     }
 
-    protected EpsilonSpyVertexImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices, VertexIndices[] outputVertices) {
-        super(graph, name, vertexIndex, inputVertices, outputVertices);
+    protected EpsilonSpyVertexImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices, VertexIndices[] outputVertices, DataType dataType) {
+        super(graph, name, vertexIndex, inputVertices, outputVertices, dataType);
     }
 
     public void setListener(Consumer<INDArray> listener) {

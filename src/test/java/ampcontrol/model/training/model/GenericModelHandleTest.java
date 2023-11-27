@@ -91,7 +91,9 @@ public class GenericModelHandleTest {
         public DataSet next(int num) {
             final double[] terms1 = rng.ints(num, -10, 10).mapToDouble(i -> i).toArray();
             final double[][] evenOrOdd = DoubleStream.of(terms1).mapToInt(d -> (int) d).mapToObj(i -> i > 0 ? positive : negative).collect(Collectors.toList()).toArray(new double[][]{});
-            return new DataSet(Nd4j.create(terms1).transpose(), Nd4j.create(evenOrOdd));
+
+
+            return new DataSet(Nd4j.create(terms1).reshape(terms1.length, 1), Nd4j.create(evenOrOdd));
         }
 
         @Override

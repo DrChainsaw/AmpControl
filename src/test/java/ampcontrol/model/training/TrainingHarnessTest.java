@@ -76,7 +76,7 @@ public class TrainingHarnessTest {
 
             nrofEvalCalls++;
             validations.stream().map(Validation::get)
-                    .forEach(ieOpt -> ieOpt.ifPresent(ie -> ie.eval(Nd4j.create(result), Nd4j.zeros(labels.size()))));
+                    .forEach(ieOpt -> ieOpt.ifPresent(ie -> ie.eval(Nd4j.create(result).reshape(labels.size(), 1), Nd4j.zeros(labels.size(), 1))));
             validations.forEach(Validation::notifyComplete);
         }
 

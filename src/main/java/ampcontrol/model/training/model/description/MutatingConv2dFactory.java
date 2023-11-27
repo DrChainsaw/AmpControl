@@ -49,14 +49,12 @@ import ampcontrol.model.training.schedule.epoch.Step;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.Getter;
-import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.commons.lang3.mutable.MutableLong;
 import org.deeplearning4j.nn.conf.ComputationGraphConfiguration.GraphBuilder;
 import org.deeplearning4j.nn.conf.graph.LayerVertex;
 import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.jetbrains.annotations.NotNull;
-import org.nd4j.jita.memory.CudaMemoryManager;
 import org.nd4j.linalg.activations.impl.ActivationReLU;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
@@ -258,10 +256,8 @@ public final class MutatingConv2dFactory {
             initialPopulation.add(adapter);
 
         });
-        // Its either this or catch an exception since everything but the CudaMemoryManager throws an exception
-        if (Nd4j.getMemoryManager() instanceof CudaMemoryManager) {
-            Nd4j.getMemoryManager().purgeCaches();
-        }
+
+        Nd4j.getMemoryManager().purgeCaches();
 
         final Population<ModelHandle> population;
         try {
@@ -403,7 +399,7 @@ public final class MutatingConv2dFactory {
         }
     }
 
-    @NotNull
+
     private <S> Population<ModelHandle> createPopulation(
             Map<String, Integer> modelAgeMap,
             ModelComparatorRegistry comparatorRegistry,
@@ -595,7 +591,7 @@ public final class MutatingConv2dFactory {
                 .filter(mut -> rng.nextDouble() < 0.1));
     }
 
-    @NotNull
+
     private static Function<Long, LayerBlockConfig> createAfterGlobPoolLayerFactory(UnaryOperator<GraphBuilderAdapter> spyFactory, Random rng) {
 
         final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
@@ -608,7 +604,7 @@ public final class MutatingConv2dFactory {
         return nOut -> afterGpBlocks.andThen(spyConfig).apply(nOut);
     }
 
-    @NotNull
+
     private static Function<Long, LayerBlockConfig> createBeforeGlobPoolLayerFactory(UnaryOperator<GraphBuilderAdapter> spyFactory, Random rng) {
         final Function<LayerBlockConfig, LayerBlockConfig> spyConfig = lbc -> new SpyBlock(lbc)
                 .setFactory(spyFactory);

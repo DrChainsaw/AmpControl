@@ -7,7 +7,6 @@ import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.factory.Nd4j;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
 /**
  * Test cases for {@link CnnToManyToOneRnnPreProcessor}.
@@ -32,7 +31,8 @@ public class CnnToManyToOneRnnPreProcessorTest {
         pp.preProcess(testSet);
         assertArrayEquals("Incorrect feature shape!", expectedFeatureShape, testSet.getFeatures().shape());
         assertArrayEquals("Incorrect labels shape!", expectedLabelsShape, testSet.getLabels().shape());
-        assertEquals("Incorrect mask!", expectedLabelsMask, testSet.getLabelsMaskArray());
+        assertArrayEquals("Incorrect mask!", expectedLabelsMask.reshape(expectedLabelsMask.length()).toDoubleVector(),
+                testSet.getLabelsMaskArray().reshape(testSet.getLabelsMaskArray().length()).toDoubleVector(), 1e-10);
 
     }
 

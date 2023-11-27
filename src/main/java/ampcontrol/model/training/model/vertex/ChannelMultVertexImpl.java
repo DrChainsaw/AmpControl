@@ -9,8 +9,10 @@ import org.deeplearning4j.nn.graph.vertex.BaseGraphVertex;
 import org.deeplearning4j.nn.graph.vertex.VertexIndices;
 import org.deeplearning4j.nn.workspace.ArrayType;
 import org.deeplearning4j.nn.workspace.LayerWorkspaceMgr;
+import org.nd4j.common.primitives.Pair;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.primitives.Pair;
+
 
 /**
  * {@link BaseGraphVertex} which multiplies each channel in a convolutional activation of size [b,c,h,w] with a scalar
@@ -21,14 +23,14 @@ import org.nd4j.linalg.primitives.Pair;
  */
 public class ChannelMultVertexImpl extends BaseGraphVertex {
 
-    public ChannelMultVertexImpl(ComputationGraph graph, String name, int vertexIndex) {
-        this(graph, name, vertexIndex, null, null);
+    public ChannelMultVertexImpl(ComputationGraph graph, String name, int vertexIndex, DataType dataType) {
+        this(graph, name, vertexIndex, null, null, dataType);
 
     }
 
     public ChannelMultVertexImpl(ComputationGraph graph, String name, int vertexIndex, VertexIndices[] inputVertices,
-                                 VertexIndices[] outputVertices) {
-        super(graph, name, vertexIndex, inputVertices, outputVertices);
+                                 VertexIndices[] outputVertices, DataType dataType) {
+        super(graph, name, vertexIndex, inputVertices, outputVertices, dataType);
     }
 
     @Override
@@ -87,8 +89,8 @@ public class ChannelMultVertexImpl extends BaseGraphVertex {
 
         // Goal: multiply each h*w activation a_i with the corresponding scale factor s_i, i in range [0, b*c-1]
 
-        final long nrofChannelBatch = channelActivations.tensorssAlongDimension(2, 3); // view each channel and each batch
-        final long nrofFeaturesInActivation = channelActivations.tensorssAlongDimension(0, 1); // view each h and w activation for all batches
+        final long nrofChannelBatch = channelActivations.tensorsAlongDimension(2, 3); // view each channel and each batch
+        final long nrofFeaturesInActivation = channelActivations.tensorsAlongDimension(0, 1); // view each h and w activation for all batches
 
         // From empiric testing: Whatever makes the fewest number of loops is fastest
         if (nrofChannelBatch < nrofFeaturesInActivation) {

@@ -63,7 +63,7 @@ public class ActivationContributionTest {
         activationContribution.onEpochEnd(graph);
         final INDArray expected = Nd4j.create(new double[]{0, 2}); // gradient is 0,2 and "activation" is 1,1
         probe.assertNrofCalls(1);
-        assertEquals("Incorrect output!", expected, probe.last);
+        assertArrayEquals("Incorrect output!", expected.toDoubleVector(), probe.last.toDoubleVector(), 1e-10);
     }
 
     /**
@@ -93,7 +93,7 @@ public class ActivationContributionTest {
         final Probe probe = new Probe();
         final ActivationContribution activationContribution = new ActivationContribution(layerName, probe);
         graph.addListeners(activationContribution);
-        final int nrofOutputs = graph.layerSize(outputName);
+        final long nrofOutputs = graph.layerSize(outputName);
         final INDArray feature = Nd4j.linspace(-10, 10, heigh * width * depth * miniBatchSize).reshape(miniBatchSize, depth, heigh, width);
         final INDArray label = Nd4j.linspace(-2, 2, nrofOutputs * miniBatchSize).reshape(miniBatchSize, nrofOutputs);
 
@@ -101,7 +101,7 @@ public class ActivationContributionTest {
 
         activationContribution.onEpochEnd(graph);
         probe.assertNrofCalls(1);
-        assertArrayEquals("Incorrect output shape", new long[] {1, nOut}, probe.last.shape());
+        assertArrayEquals("Incorrect output shape", new long[] {nOut}, probe.last.shape());
     }
 
     @NotNull

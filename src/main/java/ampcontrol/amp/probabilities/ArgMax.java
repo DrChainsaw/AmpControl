@@ -14,6 +14,6 @@ public class ArgMax implements Interpreter<Integer> {
 
     @Override
     public List<Integer> apply(INDArray probabilities) {
-        return Collections.singletonList(probabilities.argMax(1).getInt(0));
+        return Collections.singletonList(probabilities.argMax(probabilities.rank()-1).getInt(0));
     }
 }

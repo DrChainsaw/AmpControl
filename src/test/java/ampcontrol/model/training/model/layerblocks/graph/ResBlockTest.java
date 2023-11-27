@@ -26,7 +26,7 @@ public class ResBlockTest {
     @Test
     public void addLayers() {
         final String inputName = "input";
-        final INDArray input = Nd4j.create(new double[] {77});
+        final INDArray input = Nd4j.create(new double[] {77}).reshape(1,1);
 
         final ComputationGraphConfiguration.GraphBuilder graphBuilder = new NeuralNetConfiguration.Builder().graphBuilder()
                 .addInputs(inputName)
@@ -43,6 +43,11 @@ public class ResBlockTest {
         graphBuilder.setOutputs(output.getInputsNames());
         final ComputationGraph graph = new ComputationGraph(graphBuilder.build());
         graph.init();
-        assertEquals("Incorrect output!", input.mul(2), graph.output(input)[0]);
+        final INDArray expected = input.mul(2);
+        final INDArray result = graph.output(input)[0];
+        assertEquals("Lengths does not match!", expected.length(), result.length());
+        for(int i = 0; i < expected.length(); i++) {
+            assertEquals("Incorrect output for element " + i + "!", expected.getDouble(i), result.getDouble(i), 1e-10);
+        }
     }
 }

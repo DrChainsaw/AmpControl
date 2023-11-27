@@ -55,7 +55,10 @@ public class SingleTransferTaskTest {
                 }
         }});
 
-        assertEquals("Incorrect output!", expected, target);
+        assertEquals("Lengths does not match!", expected.length(), target.length());
+        for(int i = 0; i < expected.length(); i++) {
+            assertEquals("Incorrect output for element " + i + "!", expected.getDouble(i), target.getDouble(i), 1e-6);
+        }
     }
 
     /**
@@ -89,7 +92,10 @@ public class SingleTransferTaskTest {
                 {{0}, {3}}},
         });
 
-        assertEquals("Incorrect output!", expected, target);
+        assertEquals("Lengths does not match!", expected.length(), target.length());
+        for(int i = 0; i < expected.length(); i++) {
+            assertEquals("Incorrect output for element " + i + "!", expected.getDouble(i), target.getDouble(i), 1e-10);
+        }
     }
 
     /**
@@ -143,7 +149,11 @@ public class SingleTransferTaskTest {
                 {{{3}}, {{2}}, {{0}}},
         });
 
-        assertEquals("Incorrect output!", expected, target);
+        assertEquals("Lengths does not match!", expected.length(), target.length());
+        for(int i = 0; i < expected.length(); i++) {
+            assertEquals("Incorrect output for element " + i + "!", expected.getDouble(i), target.getDouble(i), 1e-10);
+        }
+
     }
 
     /**
@@ -246,8 +256,8 @@ public class SingleTransferTaskTest {
         for (int elemInd0 = 0; elemInd0 < shapeTarget[0]; elemInd0++) {
             for (int elemInd1 = 0; elemInd1 < shapeTarget[1]; elemInd1++) {
                 assertEquals("Incorrect target for element index " + elemInd0 + "," + elemInd1 + "!",
-                        source.tensorAlongDimension(orderToKeep[elemInd0], 1).tensorAlongDimension(orderToKeep[elemInd1], 0),
-                        target.tensorAlongDimension(elemInd0, 1).tensorAlongDimension(elemInd1, 0));
+                        source.tensorAlongDimension(orderToKeep[elemInd0], 1).getDouble(orderToKeep[elemInd1]),
+                        target.tensorAlongDimension(elemInd0, 1).getDouble(elemInd1), 1e-10);
             }
         }
 

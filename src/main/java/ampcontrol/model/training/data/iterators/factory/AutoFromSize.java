@@ -3,7 +3,6 @@ package ampcontrol.model.training.data.iterators.factory;
 import ampcontrol.model.training.data.iterators.MiniEpochDataSetIterator;
 import ampcontrol.model.training.data.state.ResetableState;
 import lombok.Builder;
-import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +81,7 @@ public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetI
         return factory.create(input.sourceInput);
     }
 
-    @NotNull
+
     private DataSetIteratorFactory<MiniEpochDataSetIterator, V> createFactory(Input<V> input, long sizeOfOneBatch, long sizeOfWholeDataSet) {
         DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
         if (margin * sizeOfWholeDataSet > memoryAllowance) {
@@ -93,7 +92,7 @@ public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetI
         return factory;
     }
 
-    @NotNull
+
     private DataSetIteratorFactory<MiniEpochDataSetIterator, V> createAsynchFactory(Input<V> input, long sizeOfOneBatch, long sizeOfWholeDataSet) {
         DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
         log.info("Create Asynch iter for set of size {} with memory allowance {}", sizeOfWholeDataSet, memoryAllowance);
@@ -105,7 +104,6 @@ public class AutoFromSize<V> implements DataSetIteratorFactory<MiniEpochDataSetI
         return factory;
     }
 
-    @NotNull
     private DataSetIteratorFactory<MiniEpochDataSetIterator, V> createCachingFactory(Input<V> input, long sizeOfWholeDataSet) {
         DataSetIteratorFactory<MiniEpochDataSetIterator, V> factory;
         log.info("Create Caching iter for set of size {} with memory allowance {}", sizeOfWholeDataSet, memoryAllowance);

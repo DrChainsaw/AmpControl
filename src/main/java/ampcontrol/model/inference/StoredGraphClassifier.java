@@ -4,7 +4,6 @@ import ampcontrol.audio.ClassifierInputProvider;
 import ampcontrol.model.training.model.validation.listen.BestEvalScore;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.util.ModelSerializer;
-import org.jetbrains.annotations.NotNull;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.io.IOException;
@@ -31,7 +30,6 @@ public class StoredGraphClassifier implements Classifier {
 		this.accuracy = new BestEvalScore(realFileName + ".score").get();
 	}
 
-	@NotNull
 	private static String getHashedFileNameFromModelName(String path) {
 		final String modelName = Paths.get(path).getFileName().toString();
 		String pathHashCode = modelName;

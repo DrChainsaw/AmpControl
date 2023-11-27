@@ -17,7 +17,7 @@ import ampcontrol.model.training.model.validation.listen.BufferedTextWriter;
 import ampcontrol.model.visualize.RealTimePlot;
 import ch.qos.logback.classic.Level;
 import org.jetbrains.annotations.NotNull;
-import org.nd4j.linalg.api.buffer.DataBuffer;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.buffer.util.DataTypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +79,8 @@ public class TrainingDescription {
         ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         root.setLevel(Level.INFO);
 
-        DataTypeUtil.setDTypeForContext(DataBuffer.Type.HALF);
+        DataTypeUtil.setDTypeForContext(DataType.FLOAT16);
+        DataTypeUtil.getDtypeFromContext();
 
         List<ModelHandle> modelData = new ArrayList<>();
 

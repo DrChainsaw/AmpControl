@@ -114,8 +114,7 @@ class ModelEvaluationWorkBench {
                                                 .map(layerConf -> (ConvolutionLayer) layerConf)
                                                 .map(convConf -> {
                                                     convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] - 1, convConf.getKernelSize()[1]});
-                                                    convConf.setWeightInit(WeightInit.DISTRIBUTION);
-                                                    convConf.setDist(new ConstantDistribution(0));
+                                                    convConf.setWeightInitFn(WeightInit.DISTRIBUTION.getWeightInitFunction(new ConstantDistribution(0)));
                                                     return convConf;
                                                 })
                                                 .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))
@@ -138,8 +137,7 @@ class ModelEvaluationWorkBench {
                                                 .map(layerConf -> (ConvolutionLayer) layerConf)
                                                 .map(convConf -> {
                                                     convConf.setKernelSize(new int[]{convConf.getKernelSize()[0] + 1, convConf.getKernelSize()[1]});
-                                                    convConf.setWeightInit(WeightInit.DISTRIBUTION);
-                                                    convConf.setDist(new ConstantDistribution(0));
+                                                    convConf.setWeightInitFn(WeightInit.DISTRIBUTION.getWeightInitFunction(new ConstantDistribution(0)));
                                                     return convConf;
                                                 })
                                                 .orElseThrow(() -> new IllegalArgumentException("Could not mutate layer from " + layerConfIn)))

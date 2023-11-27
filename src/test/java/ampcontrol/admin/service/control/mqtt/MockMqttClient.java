@@ -117,6 +117,46 @@ public class MockMqttClient implements IMqttClient {
     }
 
     @Override
+    public IMqttToken subscribeWithResponse(String s) throws MqttException {
+        return null;
+    }
+
+    @Override
+    public IMqttToken subscribeWithResponse(String s, IMqttMessageListener iMqttMessageListener) throws MqttException {
+        return null;
+    }
+
+    @Override
+    public IMqttToken subscribeWithResponse(String s, int i) throws MqttException {
+        return null;
+    }
+
+    @Override
+    public IMqttToken subscribeWithResponse(String s, int i, IMqttMessageListener iMqttMessageListener) throws MqttException {
+        return null;
+    }
+
+    @Override
+    public IMqttToken subscribeWithResponse(String[] strings) throws MqttException {
+        return null;
+    }
+
+    @Override
+    public IMqttToken subscribeWithResponse(String[] strings, IMqttMessageListener[] iMqttMessageListeners) throws MqttException {
+        return null;
+    }
+
+    @Override
+    public IMqttToken subscribeWithResponse(String[] strings, int[] ints) throws MqttException {
+        return null;
+    }
+
+    @Override
+    public IMqttToken subscribeWithResponse(String[] strings, int[] ints, IMqttMessageListener[] iMqttMessageListeners) throws MqttException {
+        return null;
+    }
+
+    @Override
     public void unsubscribe(String topicFilter) {
         //Ignore
     }
@@ -171,6 +211,11 @@ public class MockMqttClient implements IMqttClient {
     @Override
     public void setManualAcks(boolean manualAcks) {
         //Ignore
+    }
+
+    @Override
+    public void reconnect() throws MqttException {
+
     }
 
     @Override

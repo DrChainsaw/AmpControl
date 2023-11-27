@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>AmpControl</groupId>
     <artifactId>AmpControl</artifactId>
-    <version>0.5.2-SNAPSHOT</version>
+    <version>0.5.3-SNAPSHOT</version>
 
     <name>AmpControl</name>
     <description>Controls amplifiers</description>
@@ -11,32 +11,23 @@
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <shadedClassifier>bin</shadedClassifier>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <java.version>1.8</java.version>
-        <nd4j.version>1.0.0-beta3</nd4j.version>
-        <dl4j.version>1.0.0-beta3</dl4j.version>
-        <slf4j.version>1.7.21</slf4j.version>
-        <datavec.version>1.0.0-beta3</datavec.version>
-        <arbiter.version>1.0.0-beta3</arbiter.version>
-        <rl4j.version>1.0.0-beta3</rl4j.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>1.21</java.version>
+        <nd4j.version>1.0.0-M2.1</nd4j.version>
+        <dl4j.version>1.0.0-M2.1</dl4j.version>
+        <slf4j.version>2.0.9</slf4j.version>
+        <datavec.version>1.0.0-beta7</datavec.version>
         <junit.version>4.13.1</junit.version>
         <xchart.version>3.5.2</xchart.version>
         <jcommander.version>1.72</jcommander.version>
 
-        <!-- For Spark examples: change the _1 to _2 to switch between Spark 1 and Spark 2 -->
-
-        <dl4j.spark.version>1.0.0-beta3_spark_1</dl4j.spark.version>
-        <datavec.spark.version>1.0.0-beta3_spark_1</datavec.spark.version>
-
-        <!-- Scala binary version: DL4J's Spark and UI functionality are released with both Scala 2.10 and 2.11 support -->
-
-        <scala.binary.version>2.11</scala.binary.version>
         <guava.version>19.0</guava.version>
-        <logback.version>1.1.7</logback.version>
+        <paho.version>1.2.5</paho.version>
+        <logback.version>1.4.11</logback.version>
         <jfreechart.version>1.0.13</jfreechart.version>
         <jcommon.version>1.0.23</jcommon.version>
-        <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
         <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
         <exec-maven-plugin.version>1.4.0</exec-maven-plugin.version>
         <maven.minimum.version>3.3.1</maven.minimum.version>
@@ -44,7 +35,7 @@
         <aws.sdk.version>1.11.109</aws.sdk.version>
         <jackson.version>2.6.6</jackson.version>
         <scala.plugin.version>3.2.2</scala.plugin.version>
-        <lombok.version>1.18.2</lombok.version>
+        <lombok.version>1.18.30</lombok.version>
     </properties>
 
 
@@ -58,6 +49,13 @@
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -86,7 +84,7 @@
             <!-- Automated Code Formatting -->
 
 
-            <plugin>
+<!--            <plugin>
                 <groupId>com.lewisd</groupId>
                 <artifactId>lint-maven-plugin</artifactId>
                 <version>0.0.11</version>
@@ -108,11 +106,11 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.5</version>
+                <version>0.8.11</version>
                 <executions>
                     <execution>
                         <id>default-prepare-agent</id>
@@ -131,7 +129,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.21.0</version>
+                <version>3.2.2</version>
             </plugin>
         </plugins>
 
@@ -163,14 +161,16 @@
                 -->
                 <plugin>
                     <artifactId>maven-assembly-plugin</artifactId>
+                    <version>3.6.0</version>
                     <configuration>
                         <archive>
                             <manifest>
+                                <addClasspath>true</addClasspath>
                                 <mainClass>ampcontrol.admin.AmpControlMain</mainClass>
                             </manifest>
                         </archive>
                         <descriptorRefs>
-                            <descriptorRef>AmpControl</descriptorRef>
+                            <descriptorRef>jar-with-dependencies</descriptorRef>
                         </descriptorRefs>
                     </configuration>
                 </plugin>
@@ -192,17 +192,22 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <nd4j-backend>nd4j-cuda-10.0-platform</nd4j-backend>
+                <nd4j-backend>nd4j-cuda-11.4-platform</nd4j-backend>
             </properties>
         </profile>
     </profiles>
 
     <dependencies>
         <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>cuda-platform-redist</artifactId>
+            <version>11.4-8.2-1.5.6</version>
+        </dependency>
+<!--        <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-cuda-10.0</artifactId>
             <version>${dl4j.version}</version>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-core</artifactId>
@@ -215,12 +220,11 @@
         </dependency>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
-            <artifactId>deeplearning4j-ui_2.11</artifactId>
+            <artifactId>deeplearning4j-ui</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
-            <!--  <artifactId>nd4j-cuda-9.1</artifactId> -->
             <artifactId>${nd4j-backend}</artifactId>
             <version>${nd4j.version}</version>
         </dependency>
@@ -248,7 +252,7 @@
         <dependency>
             <groupId>org.eclipse.paho</groupId>
             <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
-            <version>1.1.0</version>
+            <version>${paho.version}</version>
         </dependency>
         <dependency>
             <groupId>com.github.wendykierp</groupId>
@@ -287,6 +291,16 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.1.0</version>
         </dependency>
     </dependencies>
 

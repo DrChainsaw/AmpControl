@@ -95,13 +95,13 @@ public class ForwardOfTest {
         final Graph<String> graph = new ForwardOf(compGraph);
 
         assertEquals("Incorrect children!",
-                Arrays.asList("vertex1_0", "vertex1_1"), graph.children("input1").collect(Collectors.toList()));
+                Arrays.asList("vertex1_0", "vertex1_1"), graph.children("input1").sorted().collect(Collectors.toList()));
 
         assertEquals("Incorrect children!",
                 Collections.singletonList("vertex2_0"), graph.children("input2").collect(Collectors.toList()));
 
         assertEquals("Incorrect children!",
-                Arrays.asList("vertex3_0", "vertex3_1"), graph.children("vertex1_0").collect(Collectors.toList()));
+                Arrays.asList("vertex3_0", "vertex3_1"), graph.children("vertex1_0").sorted().collect(Collectors.toList()));
 
         assertEquals("Incorrect children!",
                 Collections.emptyList(), graph.children("vertex2_0").collect(Collectors.toList()));

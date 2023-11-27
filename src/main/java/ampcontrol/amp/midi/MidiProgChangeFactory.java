@@ -31,7 +31,7 @@ public class MidiProgChangeFactory implements AmpInterface.Factory {
     private Predicate<MidiDevice.Info> device = Devices.audioBox44Vsl;
 
     @Parameter(names = {"-labelToProg", "-ltp"},
-            description = "Comma separated list of how to map labels programs. First program is mapped to label 0 etc")
+            description = "Comma separated list of how to map labels to programs. First program is mapped to label 0 etc")
     private List<Integer> programChangesList = Arrays.asList(
             2, // Silence
             2, // Noise

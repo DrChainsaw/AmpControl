@@ -1,7 +1,5 @@
 package ampcontrol.audio.processing;
 
-import org.jetbrains.annotations.Nullable;
-
 /**
  * Creates a {@link ProcessingResult.Factory} based on a name string. Used for persistence since
  * all preprocessing needs be recreated when restoring a saved model.
@@ -99,7 +97,6 @@ public class ProcessingFactoryFromString {
         return new UnitMaxZeroMean();
     }
 
-    @Nullable
     private ProcessingResult.Factory getPipedSupplier(
             String nameStr,
             ProcessingResult.Factory first,
